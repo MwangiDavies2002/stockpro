@@ -1,0 +1,164 @@
+{
+  "tables": {
+    "users": [
+      {
+        "id": 1,
+        "name": "Davies Mwangi",
+        "email": "daviesmwangi096@gmail.com",
+        "password": "$2a$12$oOpbYc4Khe1hEzxxENV8QesMO5J2vEPygEnCfo5D5XMH3jxFB/74.",
+        "role": "employee",
+        "phone": null,
+        "created_at": "2026-04-27T18:11:36.102Z",
+        "updated_at": "2026-04-27T18:11:36.102Z"
+      },
+      {
+        "id": 2,
+        "name": "New User",
+        "email": "newuser1234@example.com",
+        "password": "$2a$12$5CwesWsO4YQzd3OToTmZJeYTn1WKUxNjMZej2C79t0MJSgLdlUs4C",
+        "role": "employee",
+        "phone": null,
+        "created_at": "2026-04-27T18:54:37.332Z",
+        "updated_at": "2026-04-27T18:54:37.332Z"
+      }
+    ],
+    "suppliers": [
+      {
+        "id": 1,
+        "name": "EABL Kenya",
+        "email": "orders@eabl.co.ke",
+        "phone": "0800720720",
+        "created_at": "2026-04-27T17:57:08.412Z",
+        "updated_at": "2026-04-27T17:57:08.414Z"
+      },
+      {
+        "id": 2,
+        "name": "Diageo Kenya",
+        "email": "supply@diageo.co.ke",
+        "phone": "0800723888",
+        "created_at": "2026-04-27T17:57:08.479Z",
+        "updated_at": "2026-04-27T17:57:08.480Z"
+      },
+      {
+        "id": 3,
+        "name": "Beverage World",
+        "email": "info@beverageworld.co.ke",
+        "phone": "0711223344",
+        "created_at": "2026-04-27T17:57:08.481Z",
+        "updated_at": "2026-04-27T17:57:08.481Z"
+      },
+      {
+        "id": 4,
+        "name": "Wine World KE",
+        "email": "orders@wineworld.co.ke",
+        "phone": "0733445566",
+        "created_at": "2026-04-27T17:57:08.483Z",
+        "updated_at": "2026-04-27T17:57:08.483Z"
+      }
+    ],
+    "inventory_items": [
+      {
+        "id": 1,
+        "name": "Tusker Lager",
+        "category": "Beers",
+        "unit": "Bottles",
+        "stock": 47,
+        "threshold": 20,
+        "price": 200,
+        "sold": 235,
+        "supplier_id": 1,
+        "created_at": "2026-04-27T17:57:08.485Z",
+        "updated_at": "2026-04-27T17:58:18.914Z"
+      },
+      {
+        "id": 2,
+        "name": "White Cap",
+        "category": "Beers",
+        "unit": "Bottles",
+        "stock": 8,
+        "threshold": 15,
+        "price": 180,
+        "sold": 189,
+        "supplier_id": 1,
+        "created_at": "2026-04-27T17:57:08.495Z",
+        "updated_at": "2026-04-27T17:57:08.495Z"
+      },
+      {
+        "id": 3,
+        "name": "Johnnie Walker Black",
+        "category": "Spirits",
+        "unit": "Bottles",
+        "stock": 5,
+        "threshold": 10,
+        "price": 2200,
+        "sold": 42,
+        "supplier_id": 2,
+        "created_at": "2026-04-27T17:57:08.498Z",
+        "updated_at": "2026-04-27T17:57:08.498Z"
+      },
+      {
+        "id": 4,
+        "name": "Gilbeys Gin",
+        "category": "Spirits",
+        "unit": "Bottles",
+        "stock": 22,
+        "threshold": 8,
+        "price": 950,
+        "sold": 78,
+        "supplier_id": 2,
+        "created_at": "2026-04-27T17:57:08.499Z",
+        "updated_at": "2026-04-27T17:57:08.499Z"
+      },
+      {
+        "id": 5,
+        "name": "Coca Cola",
+        "category": "Soft Drinks",
+        "unit": "Bottles",
+        "stock": 120,
+        "threshold": 50,
+        "price": 100,
+        "sold": 520,
+        "supplier_id": 3,
+        "created_at": "2026-04-27T17:57:08.500Z",
+        "updated_at": "2026-04-27T17:57:08.500Z"
+      },
+      {
+        "id": 6,
+        "name": "Fanta Orange",
+        "category": "Soft Drinks",
+        "unit": "Bottles",
+        "stock": 95,
+        "threshold": 40,
+        "price": 80,
+        "sold": 380,
+        "supplier_id": 3,
+        "created_at": "2026-04-27T17:57:08.501Z",
+        "updated_at": "2026-04-27T17:57:08.501Z"
+      }
+    ],
+    "orders": [],
+    "order_items": [],
+    "mpesa_payments": [
+      {
+        "id": 1,
+        "transaction_id": "CHK2",
+        "phone": "254712345678",
+        "amount": 200,
+        "price_group": "Small",
+        "mpesa_receipt": "RCPT456",
+        "created_at": "2026-04-27T17:58:18.905Z",
+        "updated_at": "2026-04-27T17:58:18.917Z",
+        "item_id": 1,
+        "item_name": "Tusker Lager"
+      }
+    ]
+  },
+  "nextIds": {
+    "users": 3,
+    "suppliers": 5,
+    "inventory_items": 7,
+    "orders": 1,
+    "order_items": 1,
+    "mpesa_payments": 2
+  }
+}
