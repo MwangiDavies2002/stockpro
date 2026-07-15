@@ -132,7 +132,7 @@ export default function ReportsPage() {
       XLSX.utils.book_append_sheet(wb, ws2, 'Sale Size Groups');
       XLSX.utils.book_append_sheet(wb, ws3, 'Daily Sales');
 
-      XLSX.writeFile(wb, `BarStock_Report_${label}.xlsx`);
+      XLSX.writeFile(wb, `StockPro_Report_${label}.xlsx`);
       toast.success(`Exported ${days}-day report as Excel`);
     } catch {
       toast.error('Export failed');

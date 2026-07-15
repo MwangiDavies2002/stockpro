@@ -89,7 +89,7 @@ async function startServer(startPort, attempts = 5) {
   for (let i = 0; i < attempts; i++) {
     try {
       const { port: boundPort } = await listenAsync(port);
-      console.log(`✅  BarStock API running on http://localhost:${boundPort}`);
+      console.log(`✅  StockPro API running on http://localhost:${boundPort}`);
       return;
     } catch (err) {
       console.error(`Port ${port} unavailable: ${err.message}`);
@@ -100,7 +100,7 @@ async function startServer(startPort, attempts = 5) {
   console.warn('All configured ports were unavailable; attempting an ephemeral port.');
   try {
     const { port: boundPort } = await listenAsync(0);
-    console.log(`✅  BarStock API running on http://localhost:${boundPort} (ephemeral port)`);
+    console.log(`✅  StockPro API running on http://localhost:${boundPort} (ephemeral port)`);
     return;
   } catch (err) {
     console.error('Unable to bind an ephemeral port:', err.message);

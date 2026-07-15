@@ -76,7 +76,7 @@ export default function Navbar({ user, alertCount = 0 }: NavbarProps) {
             <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
               <Package className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm">BarStock Pro</span>
+            <span className="font-semibold text-gray-900 text-sm">StockPro</span>
           </div>
 
           {/* Desktop nav */}

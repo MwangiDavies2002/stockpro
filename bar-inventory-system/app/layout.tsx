@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BarStock Pro – Bar Inventory Management',
+  title: 'StockPro ',
   description: 'Real-time bar inventory management with M-Pesa integration',
 };
 
