@@ -34,12 +34,17 @@ const CATEGORY_COLORS: Record<string, string> = {
   Garnishes: 'bg-yellow-50 text-yellow-700',
 };
 
+/**
+ * InventoryTable - presents inventory items in a sortable table (desktop)
+ * and stacked cards (mobile). Accepts callbacks for edit/delete/restock/sell.
+ */
 export default function InventoryTable({
-  items, isAdmin, onEdit, onDelete, onRestock, onSell,
+  items, isAdmin, onEdit, onDelete, onRestock, 
 }: InventoryTableProps) {
   const [sortKey, setSortKey] = useState<keyof InventoryItem>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
+  /** Toggle sorting key/direction for table columns. */
   function toggleSort(key: keyof InventoryItem) {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
@@ -52,11 +57,13 @@ export default function InventoryTable({
     return sortDir === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av);
   });
 
+  /** Small helper to render current sort direction for a column. */
   function SortIcon({ col }: { col: keyof InventoryItem }) {
     if (sortKey !== col) return <span className="ml-1 text-gray-300">↕</span>;
     return <span className="ml-1 text-brand">{sortDir === 'asc' ? '↑' : '↓'}</span>;
   }
 
+  /** Renders a compact stock status bar and badge for an item. */
   function StockStatus({ item }: { item: InventoryItem }) {
     const pct = Math.min(100, Math.round((item.stock / Math.max(item.threshold * 3, 1)) * 100));
     const critical = item.stock <= Math.floor(item.threshold / 2);
@@ -136,21 +143,16 @@ export default function InventoryTable({
                 <td className="px-4 py-3"><StockStatus item={item} /></td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => onRestock(item)}
-                      title="Restock"
-                      className="p-1.5 rounded-md hover:bg-green-50 text-green-600 transition-colors"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => onSell(item.id)}
-                      title="Record sale"
-                      className="p-1.5 rounded-md hover:bg-blue-50 text-blue-600 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5 rotate-45" />
-                    </button>
                     {isAdmin && (
+                      <button
+                        onClick={() => onRestock(item)}
+                        title="Restock"
+                        className="p-1.5 rounded-md hover:bg-green-50 text-green-600 transition-colors"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                                       {isAdmin && (
                       <>
                         <button
                           onClick={() => onEdit(item)}
@@ -196,12 +198,12 @@ export default function InventoryTable({
               </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center gap-1">
-                  <button onClick={() => onRestock(item)} title="Restock" className="p-2 rounded-md hover:bg-green-50 text-green-600">
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => onSell(item.id)} title="Record sale" className="p-2 rounded-md hover:bg-blue-50 text-blue-600">
-                    <Plus className="w-4 h-4 rotate-45" />
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => onRestock(item)} title="Restock" className="p-2 rounded-md hover:bg-green-50 text-green-600">
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  )}
+                  
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-1">
@@ -223,6 +225,7 @@ export default function InventoryTable({
 }
 
 // micro component used above
+/** Simple SVG package icon used in empty state. */
 function Package({ className }: { className?: string }) {
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: <explanation>

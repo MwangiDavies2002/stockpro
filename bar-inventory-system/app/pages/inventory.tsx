@@ -1,18 +1,27 @@
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Plus, Download, Filter } from 'lucide-react';
+import axios from 'axios';
+import { Search, Plus, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import InventoryTable, { InventoryItem } from '../components/InventoryTable';
+import InventoryTable from '../components/InventoryTable';
+import type { InventoryItem } from '../components/InventoryTable';
 import { inventoryApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
-const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'];
-const UNITS = ['Bottles', 'Cases', 'Liters', 'Pieces'];
+const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'] as const;
+const UNITS = ['Bottles', 'Cases', 'Liters', 'Pieces'] as const;
+
+interface InventoryFormState {
+  name: string;
+  category: string;
+  unit: string;
+  stock: number;
+  threshold: number;
+  price: number;
+  sold: number;
+}
 
 const MOCK_ITEMS: InventoryItem[] = [
   { id:1,  name:'Tusker Lager',         category:'Beers',     unit:'Bottles', stock:48, threshold:20, price:200,  sold:234 },
@@ -27,7 +36,7 @@ const MOCK_ITEMS: InventoryItem[] = [
   { id:10, name:'Red Bull',             category:'Mixers',    unit:'Bottles', stock:7,  threshold:15, price:350,  sold:180 },
 ];
 
-const EMPTY_FORM = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, price:0, sold:0 };
+const EMPTY_FORM: InventoryFormState = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, price:0, sold:0 };
 
 export default function InventoryPage() {
   const user = { name:'Admin', role:'admin', email:'admin@bar.co.ke' };
@@ -81,6 +90,17 @@ export default function InventoryPage() {
     }
   }
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data } = await inventoryApi.getAll();
+        setItems(data);
+      } catch {
+        toast.error('Unable to load inventory from backend');
+      }
+    })();
+  }, []);
+
   async function handleDelete(id: number) {
     if (!confirm('Delete this item?')) return;
     try {
@@ -92,24 +112,31 @@ export default function InventoryPage() {
     }
   }
 
-  function handleSell(id: number) {
-    setItems((prev) => prev.map((i) => {
-      if (i.id !== id || i.stock === 0) return i;
-      const updated = { ...i, stock: i.stock - 1, sold: i.sold + 1 };
-      if (updated.stock <= updated.threshold) toast.warning(`Low stock: ${updated.name}`);
-      return updated;
-    }));
+  async function handleSell(id: number) {
+    try {
+      const response = await inventoryApi.sell(id, 1);
+      setItems((prev) => prev.map((item) => item.id === id ? { ...item, ...response.data.item } : item));
+      if (response.data.item.stock <= response.data.item.threshold) {
+        toast.warning(`Low stock: ${response.data.item.name}`);
+      } else {
+        toast.success('Sale recorded');
+      }
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : 'Failed to record sale';
+      toast.error(message);
+    }
   }
 
   async function handleRestock() {
     if (!restockItem) return;
     try {
-      // await inventoryApi.restock(restockItem.id, restockQty);
-      setItems((prev) => prev.map((i) => i.id === restockItem.id ? { ...i, stock: i.stock + restockQty } : i));
+      const response = await inventoryApi.restock(restockItem.id, restockQty);
+      setItems((prev) => prev.map((item) => item.id === restockItem.id ? { ...item, ...response.data } : item));
       toast.success(`Restocked ${restockItem.name} +${restockQty}`);
       setRestockItem(null);
-    } catch {
-      toast.error('Restock failed');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : 'Restock failed';
+      toast.error(message);
     }
   }
 
@@ -139,11 +166,11 @@ export default function InventoryPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-base font-semibold text-gray-900">Inventory Management</h1>
           <div className="flex gap-2">
-            <button onClick={exportExcel} className="flex items-center gap-2 border border-gray-300 bg-white text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
+            <button type="button" onClick={exportExcel} className="flex items-center gap-2 border border-gray-300 bg-white text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
               <Download className="w-3.5 h-3.5" /> Export
             </button>
             {isAdmin && (
-              <button onClick={openAdd} className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-lg transition-colors">
+              <button type="button" onClick={openAdd} className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-lg transition-colors">
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
             )}
@@ -165,6 +192,7 @@ export default function InventoryPage() {
             {CATEGORIES.map((c) => (
               <button
                 key={c}
+                type="button"
                 onClick={() => setCatFilter(c)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors
                   ${catFilter === c ? 'bg-brand text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}
@@ -198,7 +226,7 @@ export default function InventoryPage() {
             isAdmin={isAdmin}
             onEdit={openEdit}
             onDelete={handleDelete}
-            onRestock={(item) => { setRestockItem(item); setRestockQty(24); }}
+            onRestock={(item: InventoryItem) => { setRestockItem(item); setRestockQty(24); }}
             onSell={handleSell}
           />
         </div>
@@ -211,60 +239,57 @@ export default function InventoryPage() {
           <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl border border-gray-200">
             <div className="flex items-start justify-between mb-5">
               <h2 className="text-base font-semibold">{editItem ? 'Edit Item' : 'Add Inventory Item'}</h2>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-700">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <button type="button" onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+                <svg aria-hidden="true" focusable="false" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
             <div className="space-y-3">
-              {[
-                { label:'Item Name', key:'name', type:'text', placeholder:'e.g. Tusker Lager' },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-                  <input
-                    type={type}
-                    value={(form as any)[key]}
-                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
-                </div>
-              ))}
+              <div>
+                <label htmlFor="input-name" className="block text-xs font-medium text-gray-700 mb-1">Item Name</label>
+                <input
+                  id="input-name"
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Tusker Lager"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
-                  <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  <label htmlFor="select-category" className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                  <select id="select-category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                     {CATEGORIES.slice(1).map((c) => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
-                  <select value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                  <label htmlFor="select-unit" className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                  <select id="select-unit" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                     {UNITS.map((u) => <option key={u}>{u}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Stock Qty</label>
-                  <input type="number" min={0} value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: +e.target.value }))}
+                  <label htmlFor="input-stock" className="block text-xs font-medium text-gray-700 mb-1">Stock Qty</label>
+                  <input id="input-stock" type="number" min={0} value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: +e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Low-Stock Threshold</label>
-                  <input type="number" min={1} value={form.threshold} onChange={(e) => setForm((f) => ({ ...f, threshold: +e.target.value }))}
+                  <label htmlFor="input-threshold" className="block text-xs font-medium text-gray-700 mb-1">Low-Stock Threshold</label>
+                  <input id="input-threshold" type="number" min={1} value={form.threshold} onChange={(e) => setForm((f) => ({ ...f, threshold: +e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Price (KES)</label>
-                  <input type="number" min={0} value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: +e.target.value }))}
+                  <label htmlFor="input-price" className="block text-xs font-medium text-gray-700 mb-1">Price (KES)</label>
+                  <input id="input-price" type="number" min={0} value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: +e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark disabled:opacity-60">
+              <button type="button" onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark disabled:opacity-60">
                 {saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Item'}
               </button>
             </div>
@@ -278,17 +303,17 @@ export default function InventoryPage() {
           <div className="bg-white rounded-xl w-full max-w-sm p-6 border border-gray-200">
             <div className="flex items-start justify-between mb-1">
               <h2 className="text-base font-semibold">Restock Item</h2>
-              <button onClick={() => setRestockItem(null)} className="text-gray-400 hover:text-gray-700">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <button type="button" onClick={() => setRestockItem(null)} className="text-gray-400 hover:text-gray-700">
+                <svg aria-hidden="true" focusable="false" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
             <p className="text-sm text-gray-500 mb-4">{restockItem.name} — current stock: {restockItem.stock}</p>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Quantity to add</label>
-            <input type="number" min={1} value={restockQty} onChange={(e) => setRestockQty(+e.target.value)}
+            <label htmlFor="restock-qty" className="block text-xs font-medium text-gray-700 mb-1">Quantity to add</label>
+            <input id="restock-qty" type="number" min={1} value={restockQty} onChange={(e) => setRestockQty(+e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4" />
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setRestockItem(null)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button onClick={handleRestock} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark">Confirm Restock</button>
+              <button type="button" onClick={() => setRestockItem(null)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={handleRestock} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark">Confirm Restock</button>
             </div>
           </div>
         </div>

@@ -15,17 +15,30 @@ const orderRoutes     = require('./src/routes/orders');
 const reportRoutes    = require('./src/routes/reports');
 const supplierRoutes  = require('./src/routes/suppliers');
 const mpesaRoutes     = require('./src/routes/mpesa');
+const salesRoutes     = require('./src/routes/sales');
 const devRoutes       = require('./src/routes/dev');
+const userRoutes = require('./src/routes/users');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
 /* ── Security & Middleware ─────────────────────────── */
 app.use(helmet());
-app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:3000',
+const corsOptions = {
+  origin: (origin, callback) => {
+    const whitelist = [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://127.0.0.1:3000'];
+    if (!origin || whitelist.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
@@ -44,6 +57,8 @@ app.use('/api/orders',    orderRoutes);
 app.use('/api/reports',   reportRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/mpesa',     mpesaRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
@@ -56,10 +71,45 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(errorHandler);
 
 /* ── Start ─────────────────────────────────────────── */
-(async () => {
+function listenAsync(port) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      const boundPort = server.address()?.port;
+      resolve({ server, port: boundPort });
+    });
+    server.once('error', reject);
+  });
+}
+
+async function startServer(startPort, attempts = 5) {
   initializeDatabase();
   await testConnection();
-  app.listen(PORT, () => {
-    console.log(`✅  BarStock API running on http://localhost:${PORT}`);
-  });
+
+  let port = startPort;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const { port: boundPort } = await listenAsync(port);
+      console.log(`✅  BarStock API running on http://localhost:${boundPort}`);
+      return;
+    } catch (err) {
+      console.error(`Port ${port} unavailable: ${err.message}`);
+      port += 1;
+    }
+  }
+
+  console.warn('All configured ports were unavailable; attempting an ephemeral port.');
+  try {
+    const { port: boundPort } = await listenAsync(0);
+    console.log(`✅  BarStock API running on http://localhost:${boundPort} (ephemeral port)`);
+    return;
+  } catch (err) {
+    console.error('Unable to bind an ephemeral port:', err.message);
+  }
+
+  console.error('Failed to bind server after multiple attempts. Please set a free PORT in .env and retry.');
+  process.exit(1);
+}
+
+(async () => {
+  await startServer(Number(process.env.PORT || PORT));
 })();

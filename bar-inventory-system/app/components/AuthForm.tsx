@@ -10,6 +10,10 @@ import { toast } from 'sonner';
 
 type Mode = 'login' | 'register';
 
+/**
+ * Authentication form component used for login and registration.
+ * Switches mode between `login` and `register` and handles form submit.
+ */
 export default function AuthForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
@@ -19,10 +23,16 @@ export default function AuthForm() {
     name: '', email: '', password: '', confirmPassword: '', role: 'employee',
   });
 
+  /**
+   * Update form state for input/select changes.
+   */
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   }
 
+  /**
+   * Handle form submission for login or register flows.
+   */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);

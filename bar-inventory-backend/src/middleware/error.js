@@ -1,3 +1,7 @@
+/**
+ * Central Express error handler. Normalizes several common error shapes
+ * (validation errors, PostgreSQL constraint codes) and returns a JSON response.
+ */
 function errorHandler(err, req, res, next) {
   console.error(`[ERROR] ${req.method} ${req.path}:`, err.message);
 

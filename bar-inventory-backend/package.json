@@ -9,7 +9,6 @@
     "migrate": "node src/config/migrate.js"
   },
   "dependencies": {
-    "@prisma/client": "^7.8.0",
     "axios": "^1.6.8",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -20,7 +19,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "prisma": "^7.8.0"
+    "mysql2": "^3.22.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

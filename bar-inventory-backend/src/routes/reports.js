@@ -4,9 +4,9 @@ const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
 
-router.get('/stock',        ctrl.getStock);
-router.get('/usage',        ctrl.getUsage);
-router.get('/mpesa-groups', ctrl.getMpesaGroups);
-router.get('/sales-trend',  ctrl.getSalesTrend);
+router.get('/stock',            ctrl.getStock);
+router.get('/usage',            ctrl.getUsage);
+router.get('/sale-size-groups', ctrl.getSaleSizeGroups);
+router.get('/sales-trend',      ctrl.getSalesTrend);
 
 module.exports = router;

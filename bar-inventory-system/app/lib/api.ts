@@ -10,6 +10,9 @@ const api = axios.create({
 });
 
 // Attach JWT token to every request
+/**
+ * Interceptor: attach JWT token from cookies to outgoing requests.
+ */
 api.interceptors.request.use((config) => {
   const token = Cookies.get('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -17,6 +20,9 @@ api.interceptors.request.use((config) => {
 });
 
 // Global response error handler
+/**
+ * Interceptor: handle global response errors (redirect on 401).
+ */
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -29,6 +35,9 @@ api.interceptors.response.use(
 );
 
 /* ── Auth ──────────────────────────────────────────────── */
+/**
+ * Auth API helpers
+ */
 export const authApi = {
   register: (data: { name: string; email: string; password: string; role: string }) =>
     api.post('/auth/register', data),
@@ -39,6 +48,9 @@ export const authApi = {
 };
 
 /* ── Inventory ─────────────────────────────────────────── */
+/**
+ * Inventory API helpers
+ */
 const inventoryApi = {
   getAll: (params?: { category?: string; search?: string }) =>
     api.get('/inventory', { params }),
@@ -49,10 +61,15 @@ const inventoryApi = {
   delete: (id: number) => api.delete(`/inventory/${id}`),
   restock: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/restock`, { quantity: qty }),
+  sell: (id: number, qty: number) =>
+    api.patch(`/inventory/${id}/sell`, { quantity: qty }),
   getLowStock: () => api.get('/inventory/low-stock'),
 };
 
 /* ── Orders ────────────────────────────────────────────── */
+/**
+ * Orders API helpers
+ */
 const ordersApi = {
   getAll: (params?: { status?: string }) => api.get('/orders', { params }),
   getOne: (id: number) => api.get(`/orders/${id}`),
@@ -65,6 +82,9 @@ const ordersApi = {
 };
 
 /* ── Suppliers ─────────────────────────────────────────── */
+/**
+ * Suppliers API helpers
+ */
 const suppliersApi = {
   getAll: () => api.get('/suppliers'),
   getOne: (id: number) => api.get(`/suppliers/${id}`),
@@ -75,22 +95,44 @@ const suppliersApi = {
 };
 
 /* ── Reports ───────────────────────────────────────────── */
+/**
+ * Reports API helpers
+ */
 const reportsApi = {
   getStock: () => api.get('/reports/stock'),
-  getUsage: (params?: { days?: number }) =>
-    api.get('/reports/usage', { params }),
-  getMpesaGroups: () => api.get('/reports/mpesa-groups'),
+  getUsage: (days?: number) => api.get('/reports/usage', { params: { days } }),
+  getMpesaGroups: () => api.get('/reports/sale-size-groups'),
   getSalesTrend: (days: number) =>
     api.get('/reports/sales-trend', { params: { days } }),
 };
 
 /* ── M-Pesa ────────────────────────────────────────────── */
+/**
+ * M-Pesa related API helpers
+ */
 const mpesaApi = {
   getPayments: (params?: { period?: string }) =>
     api.get('/mpesa/payments', { params }),
   getGroups: () => api.get('/mpesa/groups'),
   initiateSTK: (data: { phone: string; amount: number; itemId: number }) =>
     api.post('/mpesa/stk-push', data),
+};
+
+const salesApi = {
+  create: (data: { items: { itemId: number; quantity: number; unitPrice?: number }[]; paymentMethod?: string; note?: string }) =>
+    api.post('/sales', data),
+  getAll: () => api.get('/sales'),
+  getOne: (id: number) => api.get(`/sales/${id}`),
+};
+
+const usersApi = {
+  getAll: () => api.get('/users'),
+  getOne: (id: number) => api.get(`/users/${id}`),
+  create: (data: { name: string; email: string; password: string; role: string; phone?: string }) =>
+    api.post('/users', data),
+  update: (id: number, data: any) => api.put(`/users/${id}`, data),
+  toggleActive: (id: number) => api.patch(`/users/${id}/toggle-active`),
+  delete: (id: number) => api.delete(`/users/${id}`),
 };
 
 /* ── Types ─────────────────────────────────────────────── */
@@ -119,4 +161,5 @@ export interface SupplierPayload {
   itemsSupplied?: string[];
 }
 
+export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi,usersApi };
 export default api;

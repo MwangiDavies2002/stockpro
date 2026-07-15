@@ -4,36 +4,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import { Search, Plus, Download, Filter } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import InventoryTable, { InventoryItem } from '../components/InventoryTable';
-import { inventoryApi } from '../lib/api';
+import { inventoryApi, authApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'];
 const UNITS = ['Bottles', 'Cases', 'Liters', 'Pieces'];
 
-const MOCK_ITEMS: InventoryItem[] = [
-  { id:1,  name:'Tusker Lager',         category:'Beers',     unit:'Bottles', stock:48, threshold:20, price:200,  sold:234 },
-  { id:2,  name:'White Cap',            category:'Beers',     unit:'Bottles', stock:8,  threshold:15, price:180,  sold:189 },
-  { id:3,  name:'Johnnie Walker Black', category:'Spirits',   unit:'Bottles', stock:5,  threshold:10, price:2200, sold:42  },
-  { id:4,  name:'Gilbeys Gin',          category:'Spirits',   unit:'Bottles', stock:22, threshold:8,  price:950,  sold:78  },
-  { id:5,  name:'KWV Pinotage',         category:'Wines',     unit:'Bottles', stock:11, threshold:6,  price:750,  sold:33  },
-  { id:6,  name:'Soda Water',           category:'Mixers',    unit:'Bottles', stock:3,  threshold:12, price:50,   sold:310 },
-  { id:7,  name:'Lime Wedges',          category:'Garnishes', unit:'Pieces',  stock:40, threshold:30, price:5,    sold:450 },
-  { id:8,  name:'Konyagi',              category:'Spirits',   unit:'Bottles', stock:30, threshold:10, price:650,  sold:115 },
-  { id:9,  name:'Pilsner Urquell',      category:'Beers',     unit:'Bottles', stock:25, threshold:10, price:220,  sold:97  },
-  { id:10, name:'Red Bull',             category:'Mixers',    unit:'Bottles', stock:7,  threshold:15, price:350,  sold:180 },
-];
-
 const EMPTY_FORM = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, price:0, sold:0 };
 
 export default function InventoryPage() {
-  const user = { name:'Admin', role:'admin', email:'admin@bar.co.ke' };
-  const isAdmin = user.role === 'admin';
+  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
+  const isAdmin = user?.role === 'admin';
 
-  const [items, setItems]           = useState<InventoryItem[]>(MOCK_ITEMS);
+  const [items, setItems]           = useState<InventoryItem[]>([]);
   const [search, setSearch]         = useState('');
   const [catFilter, setCatFilter]   = useState('All');
   const [modalOpen, setModalOpen]   = useState(false);
@@ -42,6 +32,37 @@ export default function InventoryPage() {
   const [restockQty, setRestockQty] = useState(24);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
+
+  useEffect(() => {
+    const token = Cookies.get('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    authApi.me()
+  .then((res) => {
+    setUser(res.data);
+    if (res.data.role !== 'admin') {
+      router.push('/pos');
+    }
+  })
+  .catch(() => {
+    Cookies.remove('token');
+    router.push('/login');
+  });
+  }, []);
+
+  useEffect(() => {
+    async function loadItems() {
+      try {
+        const { data } = await inventoryApi.getAll();
+        setItems(data);
+      } catch {
+        toast.error('Failed to load inventory');
+      }
+    }
+    loadItems();
+  }, []);
 
   const filtered = items.filter((i) =>
     (catFilter === 'All' || i.category === catFilter) &&
@@ -64,13 +85,12 @@ export default function InventoryPage() {
     setSaving(true);
     try {
       if (editItem) {
-        // await inventoryApi.update(editItem.id, form);
-        setItems((prev) => prev.map((i) => i.id === editItem.id ? { ...i, ...form } : i));
+        const { data } = await inventoryApi.update(editItem.id, form);
+        setItems((prev) => prev.map((i) => i.id === editItem.id ? data : i));
         toast.success('Item updated');
       } else {
-        // const { data } = await inventoryApi.create(form);
-        const newItem: InventoryItem = { id: Date.now(), ...form };
-        setItems((prev) => [...prev, newItem]);
+        const { data } = await inventoryApi.create(form);
+        setItems((prev) => [...prev, data]);
         toast.success('Item added');
       }
       setModalOpen(false);
@@ -84,7 +104,7 @@ export default function InventoryPage() {
   async function handleDelete(id: number) {
     if (!confirm('Delete this item?')) return;
     try {
-      // await inventoryApi.delete(id);
+      await inventoryApi.delete(id);
       setItems((prev) => prev.filter((i) => i.id !== id));
       toast.success('Item deleted');
     } catch {
@@ -92,18 +112,9 @@ export default function InventoryPage() {
     }
   }
 
-  function handleSell(id: number) {
-    setItems((prev) => prev.map((i) => {
-      if (i.id !== id || i.stock === 0) return i;
-      const updated = { ...i, stock: i.stock - 1, sold: i.sold + 1 };
-      if (updated.stock <= updated.threshold) toast.warning(`Low stock: ${updated.name}`);
-      return updated;
-    }));
-  }
+  
 
-  async function handleRestock(id: number) {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
+  async function handleRestock(item: InventoryItem) {
     setRestockItem(item);
     setRestockQty(24);
   }
@@ -111,8 +122,8 @@ export default function InventoryPage() {
   async function confirmRestock() {
     if (!restockItem || restockQty <= 0) return;
     try {
-      // await inventoryApi.restock(restockItem.id, restockQty);
-      setItems((prev) => prev.map((i) => i.id === restockItem.id ? { ...i, stock: i.stock + restockQty } : i));
+      const { data } = await inventoryApi.restock(restockItem.id, restockQty);
+      setItems((prev) => prev.map((i) => i.id === restockItem.id ? data : i));
       toast.success(`${restockItem.name} restocked +${restockQty}`);
       setRestockItem(null);
     } catch {
@@ -133,6 +144,10 @@ export default function InventoryPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, csv, 'Inventory');
     XLSX.writeFile(wb, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
+  }
+
+  if (!user) {
+    return <div className="min-h-screen bg-gray-50" />;
   }
 
   return (
@@ -187,27 +202,44 @@ export default function InventoryPage() {
           items={filtered}
           onEdit={openEdit}
           onDelete={handleDelete}
-          onSell={handleSell}
           onRestock={handleRestock}
           isAdmin={isAdmin}
         />
 
-        {/* Add/Edit Modal */}
+        {/* Add/Edit Modal — with labels */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
               <h2 className="text-lg font-semibold">{editItem ? 'Edit Item' : 'Add Item'}</h2>
               <div className="space-y-3">
-                <input type="text" placeholder="Item name" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                  {CATEGORIES.filter((c) => c !== 'All').map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <select value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                  {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                </select>
-                <input type="number" placeholder="Stock" value={form.stock} onChange={(e) => setForm({...form, stock: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                <input type="number" placeholder="Threshold" value={form.threshold} onChange={(e) => setForm({...form, threshold: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                <input type="number" placeholder="Price (KES)" value={form.price} onChange={(e) => setForm({...form, price: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Item Name</label>
+                  <input type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Category</label>
+                  <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    {CATEGORIES.filter((c) => c !== 'All').map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Unit</label>
+                  <select value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Stock Quantity</label>
+                  <input type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({...form, stock: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Low Stock Threshold</label>
+                  <input type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Price (KES)</label>
+                  <input type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
