@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
@@ -64,6 +64,7 @@ const inventoryApi = {
   sell: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/sell`, { quantity: qty }),
   getLowStock: () => api.get('/inventory/low-stock'),
+  bulkImport: (items: any[]) => api.post('/inventory/import', { items }),
 };
 
 /* ── Orders ────────────────────────────────────────────── */
@@ -80,7 +81,12 @@ const ordersApi = {
   updateStatus: (id: number, status: string) =>
     api.patch(`/orders/${id}/status`, { status }),
 };
-
+const shiftsApi = {
+  getCurrent: () => api.get('/shifts/current'),
+  open: (openingFloat: number) => api.post('/shifts', { openingFloat }),
+  close: (id: number, actualCash: number) => api.patch(`/shifts/${id}/close`, { actualCash }),
+  getAll: () => api.get('/shifts'),
+};
 /* ── Suppliers ─────────────────────────────────────────── */
 /**
  * Suppliers API helpers
@@ -161,5 +167,5 @@ export interface SupplierPayload {
   itemsSupplied?: string[];
 }
 
-export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi,usersApi };
+export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, usersApi, shiftsApi };
 export default api;

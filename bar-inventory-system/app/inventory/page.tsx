@@ -3,10 +3,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Search, Plus, Download, Filter } from 'lucide-react';
+import { Search, Plus, Download, Upload, FileDown } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import InventoryTable, { InventoryItem } from '../components/InventoryTable';
 import { inventoryApi, authApi } from '../lib/api';
@@ -33,6 +33,10 @@ export default function InventoryPage() {
   const [form, setForm]             = useState(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ createdCount: number; errorCount: number; errors: any[] } | null>(null);
+
   useEffect(() => {
     const token = Cookies.get('token');
     if (!token) {
@@ -40,29 +44,25 @@ export default function InventoryPage() {
       return;
     }
     authApi.me()
-  .then((res) => {
-    setUser(res.data);
-    if (res.data.role !== 'admin') {
-      router.push('/pos');
-    }
-  })
-  .catch(() => {
-    Cookies.remove('token');
-    router.push('/login');
-  });
+      .then((res) => setUser(res.data))
+      .catch(() => {
+        Cookies.remove('token');
+        router.push('/login');
+      });
   }, []);
 
   useEffect(() => {
-    async function loadItems() {
-      try {
-        const { data } = await inventoryApi.getAll();
-        setItems(data);
-      } catch {
-        toast.error('Failed to load inventory');
-      }
-    }
     loadItems();
   }, []);
+
+  async function loadItems() {
+    try {
+      const { data } = await inventoryApi.getAll();
+      setItems(data);
+    } catch {
+      toast.error('Failed to load inventory');
+    }
+  }
 
   const filtered = items.filter((i) =>
     (catFilter === 'All' || i.category === catFilter) &&
@@ -112,8 +112,6 @@ export default function InventoryPage() {
     }
   }
 
-  
-
   async function handleRestock(item: InventoryItem) {
     setRestockItem(item);
     setRestockQty(24);
@@ -146,6 +144,59 @@ export default function InventoryPage() {
     XLSX.writeFile(wb, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
   }
 
+  function downloadTemplate() {
+    const template = [
+      { name: 'Tusker Lager', category: 'Beers', unit: 'Bottles', stock: 48, threshold: 20, price: 200 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'inventory-import-template.xlsx');
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer);
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+      if (!rows.length) {
+        toast.error('The file has no rows to import');
+        return;
+      }
+
+      const { data } = await inventoryApi.bulkImport(
+        rows.map((r: any) => ({
+          name: r.name ?? r.Name,
+          category: r.category ?? r.Category,
+          unit: r.unit ?? r.Unit,
+          stock: r.stock ?? r.Stock,
+          threshold: r.threshold ?? r.Threshold,
+          price: r.price ?? r.Price,
+        }))
+      );
+
+      setImportResult(data);
+      if (data.createdCount > 0) {
+        toast.success(`Imported ${data.createdCount} item(s)`);
+        await loadItems();
+      }
+      if (data.errorCount > 0) {
+        toast.warning(`${data.errorCount} row(s) failed — see details below`);
+      }
+    } catch {
+      toast.error('Failed to import file');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   if (!user) {
     return <div className="min-h-screen bg-gray-50" />;
   }
@@ -167,12 +218,50 @@ export default function InventoryPage() {
               <Download className="w-3.5 h-3.5" /> Export
             </button>
             {isAdmin && (
-              <button onClick={openAdd} className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-lg">
-                <Plus className="w-3.5 h-3.5" /> Add Item
-              </button>
+              <>
+                <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">
+                  <FileDown className="w-3.5 h-3.5" /> Template
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importing}
+                  className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <Upload className="w-3.5 h-3.5" /> {importing ? 'Importing...' : 'Import Excel'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+                <button onClick={openAdd} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-lg">
+                  <Plus className="w-3.5 h-3.5" /> Add Item
+                </button>
+              </>
             )}
           </div>
         </div>
+
+        {/* Import result banner */}
+        {importResult && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4 text-sm">
+            <p className="font-medium text-gray-900">
+              Import result: {importResult.createdCount} created, {importResult.errorCount} failed
+            </p>
+            {importResult.errors.length > 0 && (
+              <ul className="mt-2 space-y-1 text-xs text-red-600">
+                {importResult.errors.map((e: any, i: number) => (
+                  <li key={i}>Row {e.row} ({e.name}): {e.message}</li>
+                ))}
+              </ul>
+            )}
+            <button onClick={() => setImportResult(null)} className="mt-2 text-xs text-gray-500 hover:text-gray-700">
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
@@ -183,13 +272,13 @@ export default function InventoryPage() {
               placeholder="Search items..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
           <select
             value={catFilter}
             onChange={(e) => setCatFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -206,7 +295,7 @@ export default function InventoryPage() {
           isAdmin={isAdmin}
         />
 
-        {/* Add/Edit Modal — with labels */}
+        {/* Add/Edit Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
@@ -214,36 +303,36 @@ export default function InventoryPage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Item Name</label>
-                  <input type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Category</label>
-                  <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                  <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                     {CATEGORIES.filter((c) => c !== 'All').map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Unit</label>
-                  <select value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                  <select value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                     {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Stock Quantity</label>
-                  <input type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({...form, stock: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({...form, stock: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Low Stock Threshold</label>
-                  <input type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Price (KES)</label>
-                  <input type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <input type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-                <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+                <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
               </div>
             </div>
           </div>
@@ -256,11 +345,11 @@ export default function InventoryPage() {
               <h2 className="text-lg font-semibold">Restock: {restockItem.name}</h2>
               <div>
                 <label className="text-sm text-gray-600 mb-2 block">Current stock: {restockItem.stock}</label>
-                <input type="number" value={restockQty} onChange={(e) => setRestockQty(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                <input type="number" value={restockQty} onChange={(e) => setRestockQty(parseInt(e.target.value) || 0)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setRestockItem(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-                <button onClick={confirmRestock} className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark text-sm font-medium">Confirm</button>
+                <button onClick={confirmRestock} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Confirm</button>
               </div>
             </div>
           </div>

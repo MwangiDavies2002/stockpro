@@ -8,11 +8,12 @@ const { sendLowStockAlert } = require('../utils/notifications');
  */
 async function getAll(req, res, next) {
   try {
-    const { category, search } = req.query;
-    let sql = 'SELECT i.*, s.name AS supplier_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id WHERE 1=1';
+    const { category, search, locationId } = req.query;
+    let sql = 'SELECT i.*, s.name AS supplier_name, l.name AS location_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id LEFT JOIN locations l ON l.id=i.location_id WHERE 1=1';
     const params = [];
     if (category) { params.push(category); sql += ' AND i.category=?'; }
     if (search)   { params.push(`%${search}%`); sql += ' AND i.name LIKE ?'; }
+    if (locationId) { params.push(locationId); sql += ' AND i.location_id=?'; }
     sql += ' ORDER BY i.name';
     const { rows } = await query(sql, params);
     res.json(rows);
@@ -23,7 +24,7 @@ async function getAll(req, res, next) {
 /**
  * Return items where `stock <= threshold` (low stock alert list).
  */
-async function getLowStock(_req, res, next) {
+async function getLowStock(req, res, next) {
   try {
     const { rows } = await query(
       'SELECT * FROM inventory_items WHERE stock <= threshold ORDER BY stock ASC'
@@ -53,11 +54,11 @@ async function getOne(req, res, next) {
  */
 async function create(req, res, next) {
   try {
-    const { name, category, unit, stock, threshold, price, supplierId } = req.body;
+    const { name, category, unit, stock, threshold, price, supplierId, locationId } = req.body;
     if (!name || !category) return res.status(400).json({ message: 'name and category are required' });
     const { insertId } = await query(
-      'INSERT INTO inventory_items (name,category,unit,stock,threshold,price,supplier_id) VALUES (?,?,?,?,?,?,?)',
-      [name, category, unit || 'Bottles', stock || 0, threshold || 5, price || 0, supplierId || null]
+      'INSERT INTO inventory_items (name,category,unit,stock,threshold,price,supplier_id,location_id) VALUES (?,?,?,?,?,?,?,?)',
+      [name, category, unit || 'Bottles', stock || 0, threshold || 5, price || 0, supplierId || null, locationId || 1]
     );
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=?', [insertId]);
     res.status(201).json(rows[0]);

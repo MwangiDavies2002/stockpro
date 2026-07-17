@@ -11,7 +11,7 @@ const { sendLowStockAlert } = require('../utils/notifications');
  * Expected body: { items: [{ itemId, quantity, unitPrice }], paymentMethod, note }
  */
 async function create(req, res, next) {
-  const { items = [], paymentMethod, note } = req.body;
+  const { items = [], paymentMethod, note, locationId, customerId } = req.body;
 
   if (!Array.isArray(items) || !items.length) {
     return res.status(400).json({ message: 'Sale must include at least one item' });
@@ -53,12 +53,36 @@ async function create(req, res, next) {
       0
     );
 
+    // Credit sales: require a customer and check they have room on their tab
+    if (paymentMethod === 'credit') {
+      if (!customerId) {
+        client.release();
+        return res.status(400).json({ message: 'A customer is required for credit sales' });
+      }
+      const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=$1', [customerId]);
+      if (!custRes.rows.length) {
+        client.release();
+        return res.status(404).json({ message: 'Customer not found' });
+      }
+      const customer = custRes.rows[0];
+      if (!customer.active) {
+        client.release();
+        return res.status(400).json({ message: 'This customer account is inactive' });
+      }
+      if (Number(customer.balance) + total > Number(customer.credit_limit)) {
+        client.release();
+        return res.status(400).json({
+          message: `Credit limit exceeded: balance KSh ${customer.balance} + this sale KSh ${total} exceeds limit KSh ${customer.credit_limit}`,
+        });
+      }
+    }
+
     await client.query('BEGIN');
 
     const saleNote = note || (paymentMethod ? `Sale via ${paymentMethod}` : 'Sale recorded');
     const { insertId: saleId } = await client.query(
-      'INSERT INTO sales (total, created_by, notes) VALUES ($1,$2,$3)',
-      [total, req.user?.id || null, saleNote]
+      'INSERT INTO sales (total, created_by, notes, payment_method, location_id, customer_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      [total, req.user?.id || null, saleNote, paymentMethod || 'cash', locationId || 1, customerId || null]
     );
 
     const updatedItems = [];
@@ -88,6 +112,10 @@ async function create(req, res, next) {
       updatedItems.push(updated);
     }
 
+    if (paymentMethod === 'credit') {
+      await client.query('UPDATE customers SET balance = balance + $1 WHERE id=$2', [total, customerId]);
+    }
+
     const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=$1', [saleId]);
     const { rows: saleItems } = await client.query('SELECT * FROM sale_items WHERE sale_id=$1', [saleId]);
 
@@ -113,7 +141,7 @@ async function create(req, res, next) {
 /**
  * List sales with their line items, most recent first.
  */
-async function getAll(_req, res, next) {
+async function getAll(req, res, next) {
   const client = await getClient();
   try {
     const { rows: sales } = await client.query(

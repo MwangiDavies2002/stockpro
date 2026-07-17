@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import {
   Package, TrendingUp, AlertTriangle, CreditCard,
   ArrowUpRight, ArrowDownRight,
@@ -10,7 +12,7 @@ import {
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import Navbar from './components/Navbar';
-import { reportsApi } from './lib/api';
+import { reportsApi, authApi } from './lib/api';
 import { toast } from 'sonner';
 
 interface StockRow {
@@ -50,13 +52,33 @@ const GROUP_META: Record<string, { range: string; color: string }> = {
 };
 
 export default function DashboardPage() {
-  const [user] = useState({ name: 'Admin', role: 'admin', email: 'admin@bar.co.ke' });
+  const router = useRouter();
+  const [user, setUser] = useState<{ id: number; name: string; role: string; email: string } | null>(null);
 
   const [stock, setStock]   = useState<StockRow[]>([]);
   const [usage, setUsage]   = useState<UsageRow[]>([]);
   const [trend, setTrend]   = useState<TrendRow[]>([]);
   const [groups, setGroups] = useState<SizeGroup[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = Cookies.get('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    authApi.me()
+      .then((res) => {
+        setUser(res.data);
+        if (res.data.role !== 'admin') {
+          router.push('/pos');
+        }
+      })
+      .catch(() => {
+        Cookies.remove('token');
+        router.push('/login');
+      });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -130,6 +152,10 @@ export default function DashboardPage() {
       up: true,
     },
   ];
+
+  if (!user) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

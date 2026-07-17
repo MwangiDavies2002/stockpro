@@ -18,6 +18,9 @@ const mpesaRoutes     = require('./src/routes/mpesa');
 const salesRoutes     = require('./src/routes/sales');
 const devRoutes       = require('./src/routes/dev');
 const userRoutes = require('./src/routes/users');
+const shiftRoutes = require('./src/routes/shifts');
+const locationRoutes = require('./src/routes/locations')
+const customerRoutes = require('./src/routes/customers');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -59,7 +62,9 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/mpesa',     mpesaRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/users', userRoutes);
-
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/locations',locationRoutes);
+app.use('/api/customers', customerRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Development-only routes

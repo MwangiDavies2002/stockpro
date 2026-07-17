@@ -8,6 +8,13 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'StockPro ',
   description: 'Real-time bar inventory management with M-Pesa integration',
+  manifest:'/manifest.json',
+  themeColor:'#16a34a',
+   appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'StockPro',
+  },
 };
 
 export default function RootLayout({
