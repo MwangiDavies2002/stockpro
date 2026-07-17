@@ -118,3 +118,6 @@ async function startServer(startPort, attempts = 5) {
 (async () => {
   await startServer(Number(process.env.PORT || PORT));
 })();
+
+
+module.exports = app;
