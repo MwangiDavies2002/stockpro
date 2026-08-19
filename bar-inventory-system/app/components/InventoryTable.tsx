@@ -1,9 +1,7 @@
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
-
 'use client';
 
 import { useState } from 'react';
-import { Edit2, Trash2, Plus, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Edit2, Trash2, RefreshCw, AlertTriangle, SlidersHorizontal } from 'lucide-react';
 
 export interface InventoryItem {
   id: number;
@@ -12,6 +10,7 @@ export interface InventoryItem {
   unit: string;
   stock: number;
   threshold: number;
+  cost: number;
   price: number;
   sold: number;
   supplierId?: number;
@@ -23,7 +22,8 @@ interface InventoryTableProps {
   onEdit: (item: InventoryItem) => void;
   onDelete: (id: number) => void;
   onRestock: (item: InventoryItem) => void;
-  onSell: (id: number) => void;
+  onAdjust?: (item: InventoryItem) => void;
+  onSell?: (id: number) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -39,7 +39,7 @@ const CATEGORY_COLORS: Record<string, string> = {
  * and stacked cards (mobile). Accepts callbacks for edit/delete/restock/sell.
  */
 export default function InventoryTable({
-  items, isAdmin, onEdit, onDelete, onRestock, 
+  items, isAdmin, onEdit, onDelete, onRestock, onAdjust,
 }: InventoryTableProps) {
   const [sortKey, setSortKey] = useState<keyof InventoryItem>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -105,6 +105,7 @@ export default function InventoryTable({
               { key: 'unit',      label: 'Unit'         },
               { key: 'stock',     label: 'Stock'        },
               { key: 'threshold', label: 'Threshold'    },
+              { key: 'cost',      label: 'Cost (KES)'   },
               { key: 'price',     label: 'Price (KES)'  },
               { key: 'sold',      label: 'Total Sold'   },
             ].map(({ key, label }) => (
@@ -138,6 +139,7 @@ export default function InventoryTable({
                 <td className="px-4 py-3 text-gray-600">{item.unit}</td>
                 <td className="px-4 py-3 font-medium">{item.stock}</td>
                 <td className="px-4 py-3 text-gray-500">{item.threshold}</td>
+                <td className="px-4 py-3 text-gray-700">KES {item.cost.toLocaleString()}</td>
                 <td className="px-4 py-3 text-gray-700">KES {item.price.toLocaleString()}</td>
                 <td className="px-4 py-3 text-gray-700">{item.sold.toLocaleString()}</td>
                 <td className="px-4 py-3"><StockStatus item={item} /></td>
@@ -145,6 +147,7 @@ export default function InventoryTable({
                   <div className="flex items-center gap-1">
                     {isAdmin && (
                       <button
+                        type="button"
                         onClick={() => onRestock(item)}
                         title="Restock"
                         className="p-1.5 rounded-md hover:bg-green-50 text-green-600 transition-colors"
@@ -152,9 +155,11 @@ export default function InventoryTable({
                         <RefreshCw className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    {isAdmin && onAdjust && <button type="button" onClick={() => onAdjust(item)} title="Stock correction" className="p-1.5 rounded-md hover:bg-amber-50 text-amber-600 transition-colors"><SlidersHorizontal className="w-3.5 h-3.5" /></button>}
                                        {isAdmin && (
                       <>
                         <button
+                          type="button"
                           onClick={() => onEdit(item)}
                           title="Edit"
                           className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
@@ -162,6 +167,7 @@ export default function InventoryTable({
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => onDelete(item.id)}
                           title="Delete"
                           className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
@@ -192,25 +198,28 @@ export default function InventoryTable({
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>{item.category}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{item.unit} • KES {item.price.toLocaleString()}</div>
-                <div className="mt-2 text-sm">
-                  <span className="font-semibold">Stock:</span> {item.stock} &nbsp; <span className="text-gray-500">Sold: {item.sold}</span>
+                <div className="mt-2 text-sm space-y-1">
+                  <div><span className="font-semibold">Stock:</span> {item.stock}</div>
+                  <div><span className="font-semibold">Cost:</span> KES {item.cost.toLocaleString()}</div>
+                  <div className="text-gray-500">Sold: {item.sold}</div>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center gap-1">
                   {isAdmin && (
-                    <button onClick={() => onRestock(item)} title="Restock" className="p-2 rounded-md hover:bg-green-50 text-green-600">
+                    <button type="button" onClick={() => onRestock(item)} title="Restock" className="p-2 rounded-md hover:bg-green-50 text-green-600">
                       <RefreshCw className="w-4 h-4" />
                     </button>
                   )}
+                  {isAdmin && onAdjust && <button type="button" onClick={() => onAdjust(item)} title="Stock correction" className="p-2 rounded-md hover:bg-amber-50 text-amber-600"><SlidersHorizontal className="w-4 h-4" /></button>}
                   
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-1">
-                    <button onClick={() => onEdit(item)} title="Edit" className="p-2 rounded-md hover:bg-gray-100 text-gray-500">
+                    <button type="button" onClick={() => onEdit(item)} title="Edit" className="p-2 rounded-md hover:bg-gray-100 text-gray-500">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => onDelete(item.id)} title="Delete" className="p-2 rounded-md hover:bg-red-50 text-red-500">
+                    <button type="button" onClick={() => onDelete(item.id)} title="Delete" className="p-2 rounded-md hover:bg-red-50 text-red-500">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -228,7 +237,7 @@ export default function InventoryTable({
 /** Simple SVG package icon used in empty state. */
 function Package({ className }: { className?: string }) {
   return (
-    // biome-ignore lint/a11y/noSvgWithoutTitle: <explanation>
+    // biome-ignore lint/a11y/noSvgWithoutTitle: false positive
 <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
     </svg>

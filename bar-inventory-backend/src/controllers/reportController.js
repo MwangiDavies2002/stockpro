@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const Journal = require('../models/Journal');
 
 /* GET /api/reports/stock */
 /**
@@ -97,4 +98,11 @@ async function getSalesTrend(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend };
+async function getLedger(_req, res, next) {
+  try {
+    const { rows } = await Journal.findAll();
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+
+module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getLedger };

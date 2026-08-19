@@ -70,7 +70,7 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
             <span>TOTAL</span>
             <span>KSh {total.toFixed(2)}</span>
           </div>
-          <p className="mt-1">Payment: {paymentMethod === 'cash' ? 'Cash' : 'M-Pesa'}</p>
+          <p className="mt-1">Payment: {paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'credit' ? 'Credit / Tab' : 'M-Pesa'}</p>
           <div className="border-t border-dashed border-black my-2" />
           <p className="text-center">Thank you for your business!</p>
         </div>

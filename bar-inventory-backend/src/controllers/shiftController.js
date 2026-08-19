@@ -83,6 +83,11 @@ async function close(req, res, next) {
       [expected, actualCash, variance, notes || null, req.params.id]
     );
 
+    // If there's a variance, we might want to log it specifically or notify admin
+    if (Math.abs(variance) > 0) {
+      console.log(`Shift ${req.params.id} closed with variance: ${variance}`);
+    }
+
     const { rows } = await query('SELECT * FROM shifts WHERE id=?', [req.params.id]);
     res.json(rows[0]);
   } catch (err) { next(err); }

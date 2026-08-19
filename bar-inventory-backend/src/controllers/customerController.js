@@ -1,4 +1,5 @@
 const { query, getClient } = require('../config/db');
+const JournalEngine = require('../models/JournalEngine');
 
 async function getAll(req, res, next) {
   try {
@@ -86,6 +87,16 @@ async function recordPayment(req, res, next) {
       [req.params.id, amount, method || 'cash', notes || null, req.user?.id || null]
     );
     await client.query('UPDATE customers SET balance = balance - ? WHERE id=?', [amount, req.params.id]);
+    
+    // Journal Entry for Debt Payment
+    const paymentData = {};
+    if (method === 'mpesa') paymentData.settingKey = 'payment_mobile';
+    else if (method === 'bank') paymentData.settingKey = 'payment_bank';
+    // If we have a specific treasuryId from the UI, we could use it too
+    // For now, let JournalEngine handle the mapping based on type/method
+
+    await JournalEngine.generate('DEBT_PAYMENT', amount, `Payment from Cust #${req.params.id}`, notes || 'Customer Payment', client, paymentData);
+
     const { rows } = await client.query('SELECT * FROM customers WHERE id=?', [req.params.id]);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);

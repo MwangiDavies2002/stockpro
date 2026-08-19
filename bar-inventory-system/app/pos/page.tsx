@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Search, X, Banknote, Smartphone, Trash2, WifiOff, CloudUpload } from 'lucide-react';
+import { Search, X, Banknote, Smartphone, Trash2, WifiOff, CloudUpload, Plus } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Receipt from '../components/Receipt';
-import { inventoryApi, salesApi, authApi, shiftsApi } from '../lib/api';
+import { inventoryApi, salesApi, authApi, shiftsApi, customersApi } from '../lib/api';
 import { toast } from 'sonner';
 
 interface Product {
@@ -46,6 +46,13 @@ export default function POSPage() {
   const [openingFloat, setOpeningFloat] = useState(0);
   const [closingCash, setClosingCash] = useState(0);
   const [receiptData, setReceiptData] = useState<any>(null);
+
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [newCustomerModalOpen, setNewCustomerModalOpen] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', creditLimit: 0 });
 
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSales, setPendingSales] = useState<any[]>([]);
@@ -132,6 +139,12 @@ export default function POSPage() {
         router.push('/login');
       });
   }, []);
+
+  useEffect(() => {
+    if (creditModalOpen && !customers.length) {
+      customersApi.getAll().then((res) => setCustomers(res.data)).catch(() => {});
+    }
+  }, [creditModalOpen]);
 
   useEffect(() => {
     shiftsApi.getCurrent().then((res) => setShift(res.data)).catch(() => {});
@@ -266,7 +279,7 @@ export default function POSPage() {
     }
   }
 
-  async function checkout(method: 'cash' | 'mpesa') {
+  async function checkout(method: 'cash' | 'mpesa' | 'credit', customerId?: number) {
     if (checkoutLockRef.current) return;
     if (!cart.length) {
       toast.error('Cart is empty');
@@ -283,7 +296,17 @@ export default function POSPage() {
     const salePayload = {
       items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price })),
       paymentMethod: method,
+      customerId: method === 'credit' ? customerId : undefined,
     };
+
+    // Credit sales need a live server check against the customer's
+    // balance/limit, so they can't be queued offline like cash/M-Pesa can.
+    if (method === 'credit' && !isOnline) {
+      toast.error('Credit sales require an internet connection');
+      setCheckingOut(false);
+      checkoutLockRef.current = false;
+      return;
+    }
 
     // ── Offline path: queue locally instead of hitting the API ──
     if (!isOnline) {
@@ -335,6 +358,23 @@ export default function POSPage() {
     } finally {
       setCheckingOut(false);
       checkoutLockRef.current = false;
+    }
+  }
+
+  async function handleAddCustomer() {
+    if (!newCustomer.name.trim()) {
+      toast.error('Customer name is required');
+      return;
+    }
+    try {
+      const { data } = await customersApi.create(newCustomer);
+      setCustomers(prev => [data, ...prev]);
+      setSelectedCustomerId(data.id);
+      setNewCustomerModalOpen(false);
+      setNewCustomer({ name: '', phone: '', creditLimit: 0 });
+      toast.success('Customer added and selected');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to add customer');
     }
   }
 
@@ -469,6 +509,13 @@ export default function POSPage() {
               </button>
             </div>
             <button
+              onClick={() => setCreditModalOpen(true)}
+              disabled={checkingOut || !cart.length}
+              className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+            >
+              Credit / Tab
+            </button>
+            <button
               onClick={clearCart}
               disabled={!cart.length}
               className="w-full flex items-center justify-center gap-2 text-gray-500 hover:text-red-500 text-xs py-1.5 disabled:opacity-40"
@@ -540,6 +587,132 @@ export default function POSPage() {
           )}
         </div>
       </main>
+
+      {/* ── Credit sale: customer picker ─────────────────── */}
+      {creditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Sell on Credit</h2>
+              <button onClick={() => { setCreditModalOpen(false); setSelectedCustomerId(null); setCustomerSearch(''); }}>
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search customer..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <button 
+                onClick={() => setNewCustomerModalOpen(true)}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
+                title="Add New Customer"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
+              {customers
+                .filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase()))
+                .map((c) => {
+                  const over = Number(c.balance) > Number(c.credit_limit);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCustomerId(c.id)}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left ${
+                        selectedCustomerId === c.id ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                        <p className="text-xs text-gray-500">
+                          Balance: KSh {Number(c.balance).toLocaleString()} / KSh {Number(c.credit_limit).toLocaleString()}
+                        </p>
+                      </div>
+                      {over && <span className="text-[10px] text-red-600 font-medium">OVER LIMIT</span>}
+                    </button>
+                  );
+                })}
+              {!customers.length && <p className="text-xs text-gray-400 text-center py-4">No customers yet — add one on the Customers page</p>}
+            </div>
+            <button
+              onClick={() => {
+                if (!selectedCustomerId) {
+                  toast.error('Select a customer first');
+                  return;
+                }
+                setCreditModalOpen(false);
+                checkout('credit', selectedCustomerId);
+                setSelectedCustomerId(null);
+                setCustomerSearch('');
+              }}
+              disabled={!selectedCustomerId}
+              className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+            >
+              Confirm Credit Sale
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Customer Modal ─────────────────── */}
+      {newCustomerModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Add New Customer</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Full Name</label>
+                <input
+                  type="text"
+                  value={newCustomer.name}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number</label>
+                <input
+                  type="text"
+                  value={newCustomer.phone}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
+                <input
+                  type="number"
+                  value={newCustomer.creditLimit}
+                  onChange={(e) => setNewCustomer({ ...newCustomer, creditLimit: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => setNewCustomerModalOpen(false)} 
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAddCustomer} 
+                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium"
+              >
+                Save & Select
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Shift open/close modal ─────────────────────── */}
       {shiftModalOpen && (

@@ -21,13 +21,13 @@ const Item = {
   findLowStock: ()   => query('SELECT * FROM inventory_items WHERE stock <= threshold ORDER BY stock ASC'),
   /** Create a new inventory item. */
   create:      (d)   => query(
-    'INSERT INTO inventory_items (name,category,unit,stock,threshold,price,supplier_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-    [d.name, d.category, d.unit||'Bottles', d.stock||0, d.threshold||5, d.price||0, d.supplierId||null]
+    'INSERT INTO inventory_items (name,category,unit,stock,threshold,cost,price,supplier_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [d.name, d.category, d.unit||'Bottles', d.stock||0, d.threshold||5, d.cost||0, d.price||0, d.supplierId||null]
   ),
   /** Update an existing inventory item. */
   update: (id, d) => query(
-    'UPDATE inventory_items SET name=$1,category=$2,unit=$3,stock=$4,threshold=$5,price=$6,supplier_id=$7,updated_at=NOW() WHERE id=$8 RETURNING *',
-    [d.name, d.category, d.unit, d.stock, d.threshold, d.price, d.supplierId||null, id]
+    'UPDATE inventory_items SET name=$1,category=$2,unit=$3,stock=$4,threshold=$5,cost=$6,price=$7,supplier_id=$8,updated_at=NOW() WHERE id=$9 RETURNING *',
+    [d.name, d.category, d.unit, d.stock, d.threshold, d.cost||0, d.price, d.supplierId||null, id]
   ),
   /** Decrement stock and increment `sold` counter. */
   incrementSold: (id, qty) => query(

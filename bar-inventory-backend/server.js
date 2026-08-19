@@ -21,6 +21,10 @@ const userRoutes = require('./src/routes/users');
 const shiftRoutes = require('./src/routes/shifts');
 const locationRoutes = require('./src/routes/locations')
 const customerRoutes = require('./src/routes/customers');
+const accountRoutes = require('./src/routes/accountRoutes');
+const treasuryRoutes = require('./src/routes/treasuryRoutes');
+const settingRoutes = require('./src/routes/settingRoutes');
+const journalEntryRoutes = require('./src/routes/journalEntryRoutes');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -29,8 +33,10 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 const corsOptions = {
   origin: (origin, callback) => {
-    const whitelist = [process.env.FRONTEND_URL || 'http://localhost:3000', 'http://127.0.0.1:3000'];
-    if (!origin || whitelist.includes(origin)) {
+    const whitelist = (process.env.FRONTEND_URL || 'http://localhost:3000,http://127.0.0.1:3000')
+      .split(',').map((url) => url.trim()).filter(Boolean);
+    const isVercelPreview = process.env.VERCEL_ENV === 'preview' && /^https:\/\/[^/]+\.vercel\.app$/.test(origin || '');
+    if (!origin || whitelist.includes(origin) || isVercelPreview) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
@@ -65,6 +71,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/locations',locationRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/treasury', treasuryRoutes);
+app.use('/api/accounting-settings', settingRoutes);
+app.use('/api/journal-entries', journalEntryRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Development-only routes
@@ -115,9 +125,14 @@ async function startServer(startPort, attempts = 5) {
   process.exit(1);
 }
 
-(async () => {
-  await startServer(Number(process.env.PORT || PORT));
-})();
+// Vercel imports this Express instance as a serverless function. Only bind a
+// local port when this file is run directly (npm start / npm run dev).
+if (require.main === module) {
+  startServer(Number(process.env.PORT || PORT)).catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
 
 
 module.exports = app;

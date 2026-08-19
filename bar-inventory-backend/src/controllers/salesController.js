@@ -1,5 +1,7 @@
 const { getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
+const JournalEngine = require('../models/JournalEngine');
+const Setting = require('../models/Setting');
 
 /* POST /api/sales */
 /**
@@ -31,7 +33,7 @@ async function create(req, res, next) {
     const stockChecks = [];
     for (const line of items) {
       const { rows } = await client.query(
-        'SELECT id, name, stock, threshold, price FROM inventory_items WHERE id=$1',
+        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=?',
         [line.itemId]
       );
       if (!rows.length) {
@@ -53,13 +55,20 @@ async function create(req, res, next) {
       0
     );
 
+    // Calculate COGS total
+    let totalCogs = 0;
+    for (const { item, line } of stockChecks) {
+      // Need cost from item. We should fetch cost in the stock check query.
+      totalCogs += (item.cost || 0) * line.quantity;
+    }
+
     // Credit sales: require a customer and check they have room on their tab
     if (paymentMethod === 'credit') {
       if (!customerId) {
         client.release();
         return res.status(400).json({ message: 'A customer is required for credit sales' });
       }
-      const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=$1', [customerId]);
+      const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=?', [customerId]);
       if (!custRes.rows.length) {
         client.release();
         return res.status(404).json({ message: 'Customer not found' });
@@ -81,7 +90,7 @@ async function create(req, res, next) {
 
     const saleNote = note || (paymentMethod ? `Sale via ${paymentMethod}` : 'Sale recorded');
     const { insertId: saleId } = await client.query(
-      'INSERT INTO sales (total, created_by, notes, payment_method, location_id, customer_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      'INSERT INTO sales (total, created_by, notes, payment_method, location_id, customer_id) VALUES (?,?,?,?,?,?)',
       [total, req.user?.id || null, saleNote, paymentMethod || 'cash', locationId || 1, customerId || null]
     );
 
@@ -90,22 +99,22 @@ async function create(req, res, next) {
       const unitPrice = line.unitPrice ?? item.price;
 
       await client.query(
-        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)',
+        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price) VALUES (?,?,?,?,?)',
         [saleId, item.id, item.name, line.quantity, unitPrice]
       );
 
       await client.query(
-        'UPDATE inventory_items SET stock=stock-$1,sold=sold+$2,updated_at=NOW() WHERE id=$3',
+        'UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=?',
         [line.quantity, line.quantity, item.id]
       );
 
       const { rows: [updated] } = await client.query(
-        'SELECT * FROM inventory_items WHERE id=$1',
+        'SELECT * FROM inventory_items WHERE id=?',
         [item.id]
       );
 
       await client.query(
-        'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
         [item.id, 'sale', line.quantity, item.stock, updated.stock, req.user?.id || null, saleNote]
       );
 
@@ -113,11 +122,20 @@ async function create(req, res, next) {
     }
 
     if (paymentMethod === 'credit') {
-      await client.query('UPDATE customers SET balance = balance + $1 WHERE id=$2', [total, customerId]);
+      await client.query('UPDATE customers SET balance = balance + ? WHERE id=?', [total, customerId]);
+      // 2. Journal Entry for Credit Sale
+      await JournalEngine.generate('CREDIT_SALE', total, `Sale #${saleId}`, saleNote, client, { cogsAmount: totalCogs });
+    } else {
+      // CASH/MOBILE/BANK SALE INTEGRATION
+      let type = 'CASH_SALE';
+      if (paymentMethod === 'mpesa') type = 'MPESA_SALE';
+      if (paymentMethod === 'bank') type = 'BANK_SALE';
+
+      await JournalEngine.generate(type, total, `Sale #${saleId}`, saleNote, client, { cogsAmount: totalCogs });
     }
 
-    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=$1', [saleId]);
-    const { rows: saleItems } = await client.query('SELECT * FROM sale_items WHERE sale_id=$1', [saleId]);
+    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=?', [saleId]);
+    const { rows: saleItems } = await client.query('SELECT * FROM sale_items WHERE sale_id=?', [saleId]);
 
     await client.query('COMMIT');
 
@@ -177,9 +195,9 @@ async function getAll(req, res, next) {
 async function getOne(req, res, next) {
   const client = await getClient();
   try {
-    const { rows } = await client.query('SELECT * FROM sales WHERE id=$1', [req.params.id]);
+    const { rows } = await client.query('SELECT * FROM sales WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Sale not found' });
-    const { rows: items } = await client.query('SELECT * FROM sale_items WHERE sale_id=$1', [req.params.id]);
+    const { rows: items } = await client.query('SELECT * FROM sale_items WHERE sale_id=?', [req.params.id]);
     res.json({ ...rows[0], items });
   } catch (err) { next(err); }
   finally { client.release(); }

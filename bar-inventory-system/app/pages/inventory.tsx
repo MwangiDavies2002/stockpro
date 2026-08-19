@@ -19,24 +19,25 @@ interface InventoryFormState {
   unit: string;
   stock: number;
   threshold: number;
+  cost: number;
   price: number;
   sold: number;
 }
 
 const MOCK_ITEMS: InventoryItem[] = [
-  { id:1,  name:'Tusker Lager',         category:'Beers',     unit:'Bottles', stock:48, threshold:20, price:200,  sold:234 },
-  { id:2,  name:'White Cap',            category:'Beers',     unit:'Bottles', stock:8,  threshold:15, price:180,  sold:189 },
-  { id:3,  name:'Johnnie Walker Black', category:'Spirits',   unit:'Bottles', stock:5,  threshold:10, price:2200, sold:42  },
-  { id:4,  name:'Gilbeys Gin',          category:'Spirits',   unit:'Bottles', stock:22, threshold:8,  price:950,  sold:78  },
-  { id:5,  name:'KWV Pinotage',         category:'Wines',     unit:'Bottles', stock:11, threshold:6,  price:750,  sold:33  },
-  { id:6,  name:'Soda Water',           category:'Mixers',    unit:'Bottles', stock:3,  threshold:12, price:50,   sold:310 },
-  { id:7,  name:'Lime Wedges',          category:'Garnishes', unit:'Pieces',  stock:40, threshold:30, price:5,    sold:450 },
-  { id:8,  name:'Konyagi',              category:'Spirits',   unit:'Bottles', stock:30, threshold:10, price:650,  sold:115 },
-  { id:9,  name:'Pilsner Urquell',      category:'Beers',     unit:'Bottles', stock:25, threshold:10, price:220,  sold:97  },
-  { id:10, name:'Red Bull',             category:'Mixers',    unit:'Bottles', stock:7,  threshold:15, price:350,  sold:180 },
+  { id:1,  name:'Tusker Lager',         category:'Beers',     unit:'Bottles', stock:48, threshold:20, cost:200, price:200,  sold:234 },
+  { id:2,  name:'White Cap',            category:'Beers',     unit:'Bottles', stock:8,  threshold:15, cost:180, price:180,  sold:189 },
+  { id:3,  name:'Johnnie Walker Black', category:'Spirits',   unit:'Bottles', stock:5,  threshold:10, cost:2200, price:2200, sold:42  },
+  { id:4,  name:'Gilbeys Gin',          category:'Spirits',   unit:'Bottles', stock:22, threshold:8,  cost:950, price:950,  sold:78  },
+  { id:5,  name:'KWV Pinotage',         category:'Wines',     unit:'Bottles', stock:11, threshold:6,  cost:750, price:750,  sold:33  },
+  { id:6,  name:'Soda Water',           category:'Mixers',    unit:'Bottles', stock:3,  threshold:12, cost:50,  price:50,   sold:310 },
+  { id:7,  name:'Lime Wedges',          category:'Garnishes', unit:'Pieces',  stock:40, threshold:30, cost:5,   price:5,    sold:450 },
+  { id:8,  name:'Konyagi',              category:'Spirits',   unit:'Bottles', stock:30, threshold:10, cost:650, price:650,  sold:115 },
+  { id:9,  name:'Pilsner Urquell',      category:'Beers',     unit:'Bottles', stock:25, threshold:10, cost:220, price:220,  sold:97  },
+  { id:10, name:'Red Bull',             category:'Mixers',    unit:'Bottles', stock:7,  threshold:15, cost:350, price:350,  sold:180 },
 ];
 
-const EMPTY_FORM: InventoryFormState = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, price:0, sold:0 };
+const EMPTY_FORM: InventoryFormState = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, cost:0, price:0, sold:0 };
 
 export default function InventoryPage() {
   const user = { name:'Admin', role:'admin', email:'admin@bar.co.ke' };
@@ -64,7 +65,7 @@ export default function InventoryPage() {
   }
   function openEdit(item: InventoryItem) {
     setEditItem(item);
-    setForm({ name:item.name, category:item.category, unit:item.unit, stock:item.stock, threshold:item.threshold, price:item.price, sold:item.sold });
+    setForm({ name:item.name, category:item.category, unit:item.unit, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold });
     setModalOpen(true);
   }
 
@@ -147,6 +148,7 @@ export default function InventoryPage() {
       'Unit':       i.unit,
       'Stock':      i.stock,
       'Threshold':  i.threshold,
+      'Cost(KES)':  i.cost,
       'Price(KES)': i.price,
       'Total Sold': i.sold,
       'Status':     i.stock <= i.threshold ? 'LOW' : 'OK',
@@ -278,6 +280,11 @@ export default function InventoryPage() {
                 <div>
                   <label htmlFor="input-threshold" className="block text-xs font-medium text-gray-700 mb-1">Low-Stock Threshold</label>
                   <input id="input-threshold" type="number" min={1} value={form.threshold} onChange={(e) => setForm((f) => ({ ...f, threshold: +e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="input-cost" className="block text-xs font-medium text-gray-700 mb-1">Cost (KES)</label>
+                  <input id="input-cost" type="number" min={0} value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: +e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div className="col-span-2">

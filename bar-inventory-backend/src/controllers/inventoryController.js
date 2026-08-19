@@ -1,5 +1,6 @@
 const { query, getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
+const JournalEngine = require('../models/JournalEngine');
 
 /* GET /api/inventory */
 /**
@@ -54,11 +55,11 @@ async function getOne(req, res, next) {
  */
 async function create(req, res, next) {
   try {
-    const { name, category, unit, stock, threshold, price, supplierId, locationId } = req.body;
+    const { name, category, unit, stock, threshold, cost, price, supplierId, locationId } = req.body;
     if (!name || !category) return res.status(400).json({ message: 'name and category are required' });
     const { insertId } = await query(
-      'INSERT INTO inventory_items (name,category,unit,stock,threshold,price,supplier_id,location_id) VALUES (?,?,?,?,?,?,?,?)',
-      [name, category, unit || 'Bottles', stock || 0, threshold || 5, price || 0, supplierId || null, locationId || 1]
+      'INSERT INTO inventory_items (name,category,unit,stock,threshold,cost,price,supplier_id,location_id) VALUES (?,?,?,?,?,?,?,?,?)',
+      [name, category, unit || 'Bottles', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, locationId || 1]
     );
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=?', [insertId]);
     res.status(201).json(rows[0]);
@@ -71,12 +72,12 @@ async function create(req, res, next) {
  */
 async function update(req, res, next) {
   try {
-    const { name, category, unit, stock, threshold, price, supplierId } = req.body;
+    const { name, category, unit, stock, threshold, cost, price, supplierId } = req.body;
     const { rowCount } = await query(
       `UPDATE inventory_items
-       SET name=?,category=?,unit=?,stock=?,threshold=?,price=?,supplier_id=?,updated_at=NOW()
+       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,updated_at=NOW()
        WHERE id=?`,
-      [name, category, unit, stock, threshold, price, supplierId || null, req.params.id]
+      [name, category, unit, stock, threshold, cost || 0, price, supplierId || null, req.params.id]
     );
     if (!rowCount) return res.status(404).json({ message: 'Item not found' });
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=?', [req.params.id]);
@@ -127,6 +128,48 @@ async function restock(req, res, next) {
   } catch (err) {
     await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
+  }
+}
+
+/* PATCH /api/inventory/:id/adjustment
+ * Post-launch correction only. Opening stock and purchases must use their own workflows.
+ */
+async function adjustStock(req, res, next) {
+  const client = await getClient();
+  try {
+    const quantity = Number(req.body.quantity);
+    const reason = String(req.body.reason || '').trim();
+    if (!Number.isInteger(quantity) || quantity === 0) return res.status(400).json({ message: 'quantity must be a non-zero whole number' });
+    if (reason.length < 5) return res.status(400).json({ message: 'A correction reason of at least 5 characters is required' });
+
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM inventory_items WHERE id=? FOR UPDATE', [req.params.id]);
+    if (!rows.length) throw new Error('Item not found');
+    const item = rows[0];
+    const beforeStock = Number(item.stock);
+    const afterStock = beforeStock + quantity;
+    if (afterStock < 0) throw new Error('Adjustment would make stock negative');
+
+    const amount = Math.abs(quantity) * Number(item.cost || 0);
+    if (amount > 0) {
+      const journalId = await JournalEngine.generate('STOCK_ADJUSTMENT', amount, `ADJ-${item.id}-${Date.now()}`, `Stock correction: ${item.name} — ${reason}`, client, { quantity });
+      if (!journalId) throw new Error('Set up Inventory Asset and Inventory Adjustment accounts before posting a stock adjustment');
+    }
+
+    await client.query('UPDATE inventory_items SET stock=?, updated_at=NOW() WHERE id=?', [afterStock, item.id]);
+    await client.query(
+      'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
+      [item.id, 'adjustment', quantity, beforeStock, afterStock, req.user?.id || null, reason]
+    );
+    const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=?', [item.id]);
+    await client.query('COMMIT');
+    res.json(updatedRows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    const status = err.message === 'Item not found' ? 404 : 400;
+    res.status(status).json({ message: err.message || 'Failed to adjust stock' });
   } finally {
     client.release();
   }
@@ -216,12 +259,13 @@ async function bulkImport(req, res, next) {
         const unit = String(row.unit || 'Bottles').trim();
         const stock = Number(row.stock) || 0;
         const threshold = Number(row.threshold) || 5;
+        const cost = Number(row.cost) || 0;
         const price = Number(row.price) || 0;
         const supplierId = row.supplierId ? Number(row.supplierId) : null;
 
         const { insertId } = await query(
-          'INSERT INTO inventory_items (name,category,unit,stock,threshold,price,supplier_id) VALUES (?,?,?,?,?,?,?)',
-          [name, category, unit, stock, threshold, price, supplierId]
+          'INSERT INTO inventory_items (name,category,unit,stock,threshold,cost,price,supplier_id) VALUES (?,?,?,?,?,?,?,?)',
+          [name, category, unit, stock, threshold, cost, price, supplierId]
         );
         created.push({ row: rowNum, id: insertId, name });
       } catch (rowErr) {
@@ -238,4 +282,4 @@ async function bulkImport(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getAll, getLowStock, getOne, create, update, remove, restock, sell, bulkImport };
+module.exports = { getAll, getLowStock, getOne, create, update, remove, restock, adjustStock, sell, bulkImport };

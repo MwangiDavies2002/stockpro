@@ -12,6 +12,7 @@ router.post('/',            adminOnly, ctrl.create);
 router.put('/:id',          adminOnly, ctrl.update);
 router.delete('/:id',       adminOnly, ctrl.remove);
 router.patch('/:id/restock',adminOnly, ctrl.restock);
+router.patch('/:id/adjustment', adminOnly, ctrl.adjustStock);
 router.patch('/:id/sell',   ctrl.sell);
 router.post('/import', adminOnly, ctrl.bulkImport);
 

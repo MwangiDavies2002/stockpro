@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Eye, CheckCircle, XCircle, Clock, Truck } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { toast } from 'sonner';
+import { inventoryApi, ordersApi, suppliersApi } from '../lib/api';
 
 export interface OrderItem {
   itemId: number;
@@ -21,37 +22,8 @@ export interface Order {
   date: string;
   total: number;
   notes?: string;
+  transaction_type?: 'purchase' | 'opening_stock';
 }
-
-const MOCK_ORDERS: Order[] = [
-  {
-    id: 1, supplier: 'EABL Kenya', supplierId: 1,
-    items: [{ itemId:1, name:'Tusker Lager', quantity:48, unitPrice:160 }, { itemId:2, name:'White Cap', quantity:24, unitPrice:145 }],
-    status: 'delivered', date: '2025-04-20', total: 11040, notes: 'Monthly restock',
-  },
-  {
-    id: 2, supplier: 'Diageo Kenya', supplierId: 2,
-    items: [{ itemId:3, name:'Johnnie Walker Black', quantity:6, unitPrice:1900 }],
-    status: 'approved', date: '2025-04-22', total: 11400,
-  },
-  {
-    id: 3, supplier: 'Beverage World', supplierId: 3,
-    items: [{ itemId:6, name:'Soda Water', quantity:48, unitPrice:40 }, { itemId:10, name:'Red Bull', quantity:24, unitPrice:290 }],
-    status: 'pending', date: '2025-04-25', total: 8880,
-  },
-  {
-    id: 4, supplier: 'EABL Kenya', supplierId: 1,
-    items: [{ itemId:9, name:'Pilsner Urquell', quantity:24, unitPrice:180 }],
-    status: 'cancelled', date: '2025-04-18', total: 4320,
-  },
-];
-
-const MOCK_SUPPLIERS = [
-  { id:1, name:'EABL Kenya' },
-  { id:2, name:'Diageo Kenya' },
-  { id:3, name:'Beverage World' },
-  { id:4, name:'Wine World KE' },
-];
 
 const STATUS_CONFIG = {
   pending:   { label:'Pending',   color:'bg-amber-50 text-amber-700',  icon: Clock       },
@@ -60,15 +32,39 @@ const STATUS_CONFIG = {
   cancelled: { label:'Cancelled', color:'bg-red-50 text-red-700',      icon: XCircle     },
 };
 
-const EMPTY_ORDER = { supplierId: 1, notes: '', items: [{ itemId:0, name:'', quantity:1, unitPrice:0 }] };
+type NewOrder = { supplierId: number; transactionType: 'purchase' | 'opening_stock'; notes: string; items: OrderItem[] };
+const EMPTY_ORDER: NewOrder = { supplierId: 0, transactionType: 'purchase', notes: '', items: [{ itemId:0, name:'', quantity:1, unitPrice:0 }] };
 
 export default function OrdersPage() {
   const user = { name:'Admin', role:'admin', email:'admin@bar.co.ke' };
-  const [orders, setOrders]         = useState<Order[]>(MOCK_ORDERS);
+  const [orders, setOrders]         = useState<Order[]>([]);
+  const [suppliers, setSuppliers]   = useState<{ id: number; name: string }[]>([]);
+  const [inventory, setInventory]   = useState<{ id: number; name: string; cost: number }[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modalOpen, setModalOpen]   = useState(false);
   const [viewOrder, setViewOrder]   = useState<Order | null>(null);
-  const [newOrder, setNewOrder]     = useState(EMPTY_ORDER);
+  const [newOrder, setNewOrder]     = useState<NewOrder>(EMPTY_ORDER);
+  const [saving, setSaving]         = useState(false);
+
+  function mapOrder(order: any): Order {
+    return {
+      id: order.id, supplier: order.supplier_name || 'Opening stock', supplierId: order.supplier_id || 0,
+      items: (order.items || []).map((line: any) => ({ itemId: line.item_id, name: line.item_name, quantity: Number(line.quantity), unitPrice: Number(line.unit_price) })),
+      status: order.status, date: String(order.created_at || '').slice(0, 10), total: Number(order.total), notes: order.notes,
+      transaction_type: order.transaction_type || 'purchase',
+    };
+  }
+
+  async function loadData() {
+    try {
+      const [ordersResult, suppliersResult, inventoryResult] = await Promise.all([ordersApi.getAll(), suppliersApi.getAll(), inventoryApi.getAll()]);
+      setOrders(ordersResult.data.map(mapOrder));
+      setSuppliers(suppliersResult.data);
+      setInventory(inventoryResult.data);
+    } catch { toast.error('Unable to load purchase orders'); }
+  }
+
+  useEffect(() => { void loadData(); }, []);
 
   const filtered = orders.filter(o => statusFilter === 'all' || o.status === statusFilter);
 
@@ -83,29 +79,33 @@ export default function OrdersPage() {
     }));
   }
 
-  function handleCreateOrder() {
-    const supplier = MOCK_SUPPLIERS.find(s => s.id === newOrder.supplierId);
-    if (!supplier) return;
-    const total = newOrder.items.reduce((a,i) => a + i.quantity * i.unitPrice, 0);
-    const order: Order = {
-      id: Date.now(),
-      supplier: supplier.name,
-      supplierId: newOrder.supplierId,
-      items: newOrder.items,
-      status: 'pending',
-      date: new Date().toISOString().split('T')[0],
-      total,
-      notes: newOrder.notes,
-    };
-    setOrders(prev => [order, ...prev]);
-    setModalOpen(false);
-    setNewOrder(EMPTY_ORDER);
-    toast.success('Order created successfully');
+  function selectItem(idx: number, itemId: number) {
+    const item = inventory.find((candidate) => candidate.id === itemId);
+    updateLine(idx, 'itemId', itemId);
+    updateLine(idx, 'name', item?.name || '');
+    if (item) updateLine(idx, 'unitPrice', Number(item.cost || 0));
   }
 
-  function updateStatus(id: number, status: Order['status']) {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    toast.success(`Order marked as ${status}`);
+  async function handleCreateOrder() {
+    if (newOrder.transactionType === 'purchase' && !newOrder.supplierId) return toast.error('Choose a supplier');
+    if (newOrder.items.some((line) => !line.itemId || line.quantity < 1 || line.unitPrice < 0)) return toast.error('Complete every order line');
+    setSaving(true);
+    try {
+      const { data } = await ordersApi.create({ supplierId: newOrder.supplierId || undefined, transactionType: newOrder.transactionType, notes: newOrder.notes, items: newOrder.items.map(({ itemId, quantity, unitPrice }) => ({ itemId, quantity, unitPrice })) });
+      setOrders((current) => [mapOrder(data), ...current]);
+      setModalOpen(false); setNewOrder(EMPTY_ORDER);
+      toast.success(newOrder.transactionType === 'opening_stock' ? 'Opening stock created — approve and deliver to post it' : 'Purchase order created');
+    } catch (error: any) { toast.error(error.response?.data?.message || 'Failed to create order'); }
+    finally { setSaving(false); }
+  }
+
+  async function updateStatus(id: number, status: Order['status']) {
+    try {
+      const { data } = await ordersApi.updateStatus(id, status);
+      setOrders((current) => current.map((order) => order.id === id ? mapOrder({ ...order, ...data, items: order.items }) : order));
+      setViewOrder((current) => current?.id === id ? { ...current, status } : current);
+      toast.success(`Order marked as ${status}`);
+    } catch (error: any) { toast.error(error.response?.data?.message || 'Could not update order'); }
   }
 
   return (
@@ -170,7 +170,7 @@ export default function OrdersPage() {
                   return (
                     <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">ORD-{order.id}</td>
-                      <td className="px-4 py-3 text-gray-700">{order.supplier}</td>
+                      <td className="px-4 py-3 text-gray-700">{order.supplier}{order.transaction_type === 'opening_stock' && <span className="ml-2 text-xs text-purple-700">Opening stock</span>}</td>
                       <td className="px-4 py-3 text-gray-500">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</td>
                       <td className="px-4 py-3 font-medium">KES {order.total.toLocaleString()}</td>
                       <td className="px-4 py-3 text-gray-500">{order.date}</td>
@@ -270,12 +270,20 @@ export default function OrdersPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Supplier</label>
+                <select value={newOrder.transactionType}
+                  onChange={e => setNewOrder(o => ({ ...o, transactionType: e.target.value as 'purchase' | 'opening_stock', supplierId: e.target.value === 'opening_stock' ? 0 : o.supplierId }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                  <option value="purchase">Purchase order</option><option value="opening_stock">Opening stock</option>
+                </select>
+              </div>
+              {newOrder.transactionType === 'purchase' && <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Transaction type</label>
                 <select value={newOrder.supplierId}
                   onChange={e => setNewOrder(o => ({ ...o, supplierId: +e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                  {MOCK_SUPPLIERS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  <option value={0}>Select supplier</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-              </div>
+              </div>}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-gray-700">Order Items</label>
@@ -285,9 +293,10 @@ export default function OrdersPage() {
                 </div>
                 {newOrder.items.map((line, i) => (
                   <div key={i} className="grid grid-cols-3 gap-2 mb-2">
-                    <input placeholder="Item name" value={line.name}
-                      onChange={e => updateLine(i, 'name', e.target.value)}
-                      className="col-span-3 sm:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    <select value={line.itemId} onChange={e => selectItem(i, +e.target.value)}
+                      className="col-span-3 sm:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                      <option value={0}>Select item</option>{inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
                     <input type="number" placeholder="Qty" min={1} value={line.quantity}
                       onChange={e => updateLine(i, 'quantity', +e.target.value)}
                       className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
@@ -309,7 +318,7 @@ export default function OrdersPage() {
             </div>
             <div className="flex gap-2 justify-end mt-5">
               <button onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button onClick={handleCreateOrder} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark">Create Order</button>
+              <button onClick={handleCreateOrder} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark disabled:opacity-60">{saving ? 'Saving...' : 'Create Order'}</button>
             </div>
           </div>
         </div>

@@ -8,5 +8,6 @@ router.get('/stock',            ctrl.getStock);
 router.get('/usage',            ctrl.getUsage);
 router.get('/sale-size-groups', ctrl.getSaleSizeGroups);
 router.get('/sales-trend',      ctrl.getSalesTrend);
+router.get('/ledger',           ctrl.getLedger);
 
 module.exports = router;

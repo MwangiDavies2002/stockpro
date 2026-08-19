@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   unit        VARCHAR(30)   NOT NULL DEFAULT 'Bottles',
   stock       INTEGER       NOT NULL DEFAULT 0 CHECK (stock >= 0),
   threshold   INTEGER       NOT NULL DEFAULT 5,
+  cost        NUMERIC(10,2) NOT NULL DEFAULT 0,
   price       NUMERIC(10,2) NOT NULL DEFAULT 0,
   sold        INTEGER       NOT NULL DEFAULT 0,
   supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
@@ -93,15 +94,15 @@ INSERT INTO suppliers (name, email, phone) VALUES
   ('Wine World KE',  'orders@wineworld.co.ke', '0733445566')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO inventory_items (name, category, unit, stock, threshold, price, sold) VALUES
-  ('Tusker Lager',         'Beers',     'Bottles', 48, 20,  200,  234),
-  ('White Cap',            'Beers',     'Bottles', 8,  15,  180,  189),
-  ('Johnnie Walker Black', 'Spirits',   'Bottles', 5,  10, 2200,   42),
-  ('Gilbeys Gin',          'Spirits',   'Bottles', 22, 8,   950,   78),
-  ('KWV Pinotage',         'Wines',     'Bottles', 11, 6,   750,   33),
-  ('Soda Water',           'Mixers',    'Bottles', 3,  12,   50,  310),
-  ('Lime Wedges',          'Garnishes', 'Pieces',  40, 30,    5,  450),
-  ('Konyagi',              'Spirits',   'Bottles', 30, 10,  650,  115),
-  ('Pilsner Urquell',      'Beers',     'Bottles', 25, 10,  220,   97),
-  ('Red Bull',             'Mixers',    'Bottles', 7,  15,  350,  180)
+INSERT INTO inventory_items (name, category, unit, stock, threshold, cost, price, sold) VALUES
+  ('Tusker Lager',         'Beers',     'Bottles', 48, 20, 200,  200,  234),
+  ('White Cap',            'Beers',     'Bottles', 8,  15, 180,  180,  189),
+  ('Johnnie Walker Black', 'Spirits',   'Bottles', 5,  10,2200, 2200,   42),
+  ('Gilbeys Gin',          'Spirits',   'Bottles', 22, 8,  950,  950,   78),
+  ('KWV Pinotage',         'Wines',     'Bottles', 11, 6,  750,  750,   33),
+  ('Soda Water',           'Mixers',    'Bottles', 3,  12,  50,   50,  310),
+  ('Lime Wedges',          'Garnishes', 'Pieces',  40, 30,   5,    5,  450),
+  ('Konyagi',              'Spirits',   'Bottles', 30, 10, 650,  650,  115),
+  ('Pilsner Urquell',      'Beers',     'Bottles', 25, 10, 220,  220,   97),
+  ('Red Bull',             'Mixers',    'Bottles', 7,  15, 350,  350,  180)
 ON CONFLICT DO NOTHING;

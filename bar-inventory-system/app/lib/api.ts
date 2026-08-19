@@ -61,10 +61,12 @@ const inventoryApi = {
   delete: (id: number) => api.delete(`/inventory/${id}`),
   restock: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/restock`, { quantity: qty }),
+  adjustStock: (id: number, data: { quantity: number; reason: string }) =>
+    api.patch(`/inventory/${id}/adjustment`, data),
   sell: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/sell`, { quantity: qty }),
   getLowStock: () => api.get('/inventory/low-stock'),
-  bulkImport: (items: any[]) => api.post('/inventory/import', { items }),
+  bulkImport: (items: InventoryItemPayload[]) => api.post('/inventory/import', { items }),
 };
 
 /* ── Orders ────────────────────────────────────────────── */
@@ -110,6 +112,7 @@ const reportsApi = {
   getMpesaGroups: () => api.get('/reports/sale-size-groups'),
   getSalesTrend: (days: number) =>
     api.get('/reports/sales-trend', { params: { days } }),
+  getLedger: () => api.get('/reports/ledger'),
 };
 
 /* ── M-Pesa ────────────────────────────────────────────── */
@@ -141,6 +144,60 @@ const usersApi = {
   delete: (id: number) => api.delete(`/users/${id}`),
 };
 
+const locationsApi = {
+  getAll: () => api.get('/locations'),
+  getSummary: (id: number) => api.get(`/locations/${id}/summary`),
+  create: (data: { name: string; address?: string }) => api.post('/locations', data),
+  update: (id: number, data: any) => api.put(`/locations/${id}`, data),
+  delete: (id: number) => api.delete(`/locations/${id}`),
+};
+ 
+const customersApi = {
+  getAll: () => api.get('/customers'),
+  getOne: (id: number) => api.get(`/customers/${id}`),
+  getStatement: (id: number) => api.get(`/customers/${id}/statement`),
+  create: (data: { name: string; phone?: string; creditLimit?: number }) => api.post('/customers', data),
+  update: (id: number, data: any) => api.put(`/customers/${id}`, data),
+  recordPayment: (id: number, data: { amount: number; method?: string; notes?: string }) =>
+    api.post(`/customers/${id}/payments`, data),
+};
+
+const accountsApi = {
+  getAll: (params?: any) => api.get('/accounts', { params }),
+  getOne: (id: string | number) => api.get(`/accounts/${id}`),
+  getBook: (id: string | number, params?: any) => api.get(`/accounts/${id}/book`, { params }),
+  create: (data: any) => api.post('/accounts', data),
+  update: (id: number, data: any) => api.put(`/accounts/${id}`, data),
+  delete: (id: number) => api.delete(`/accounts/${id}`),
+  ensureOpeningBalanceEquity: () => api.post('/accounts/opening-balance-equity'),
+};
+
+const journalEntryApi = {
+  getAll: () => api.get('/journal-entries'),
+  getOne: (id: string | number) => api.get(`/journal-entries/${id}`),
+  create: (data: any) => api.post('/journal-entries', data),
+};
+
+const treasuryApi = {
+  getAll: () => api.get('/treasury'),
+  getOne: (id: number) => api.get(`/treasury/${id}`),
+  create: (data: any) => api.post('/treasury', data),
+  update: (id: number, data: any) => api.put(`/treasury/${id}`, data),
+  getTransactions: (id: number) => api.get(`/treasury/${id}/transactions`),
+  deposit: (id: number, data: { amount: number; reference?: string; description?: string }) =>
+    api.post(`/treasury/${id}/deposit`, data),
+  withdraw: (id: number, data: { amount: number; reference?: string; description?: string }) =>
+    api.post(`/treasury/${id}/withdraw`, data),
+  transfer: (data: { fromTreasuryId: number; toTreasuryId: number; amount: number; reference?: string; description?: string }) =>
+    api.post('/treasury/transfer', data),
+};
+
+const settingsApi = {
+  getAll: () => api.get('/accounting-settings'),
+  update: (key: string, data: { account_id?: number; treasury_id?: number }) =>
+    api.put(`/accounting-settings/${key}`, data),
+};
+ 
 /* ── Types ─────────────────────────────────────────────── */
 export interface InventoryItemPayload {
   name: string;
@@ -148,15 +205,16 @@ export interface InventoryItemPayload {
   unit: string;
   stock: number;
   threshold: number;
+  cost: number;
   price: number;
   supplierId?: number;
 }
 
 export interface OrderPayload {
-  supplierId: number;
+  supplierId?: number;
   items: { itemId: number; quantity: number; unitPrice: number }[];
   notes?: string;
-  status?: string;
+  transactionType?: 'purchase' | 'opening_stock';
 }
 
 export interface SupplierPayload {
@@ -167,5 +225,5 @@ export interface SupplierPayload {
   itemsSupplied?: string[];
 }
 
-export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, usersApi, shiftsApi };
+export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, usersApi, shiftsApi, locationsApi, customersApi, accountsApi, treasuryApi, settingsApi, journalEntryApi };
 export default api;
