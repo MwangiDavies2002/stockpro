@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { calculateLine } = require('../src/utils/purchaseMath');
@@ -29,8 +29,8 @@ after(async () => { if (connection) { await connection.rollback(); connection.re
 beforeEach(async () => {
   for (const table of tables) await run(`DELETE FROM ${table}`);
   await run("INSERT INTO suppliers (id,name) VALUES (1,'Test supplier')");
-  await run("INSERT INTO locations (id,name) VALUES (1,'Test location'),(2,'Other location')");
-  await run("INSERT INTO inventory_items (id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,'Test lager','Beers','Bottles',10,50,90,1,'SKU-TEST','123456789'),(2,'Other item','Beers','Bottles',2,10,20,2,'OTHER','987654321')");
+  await run("INSERT INTO locations (id,business_id,name) VALUES (1,1,'Test location'),(2,1,'Other location')");
+  await run("INSERT INTO inventory_items (id,business_id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,1,'Test lager','Beers','Bottles',10,50,90,1,'SKU-TEST','123456789'),(2,1,'Other item','Beers','Bottles',2,10,20,2,'OTHER','987654321')");
   await run(`INSERT INTO chart_of_accounts (id,account_code,account_name,account_type,normal_balance,active)
              VALUES (1,'1200','Inventory Asset','Assets','Debit',TRUE),
                     (2,'2000','Accounts Payable','Liabilities','Credit',TRUE),
@@ -41,7 +41,7 @@ const payload = (status = 'delivered') => ({ supplierId: 1, locationId: 1, purch
 async function invoke(fn, body, params = {}, query = {}) {
   let code = 200, result, failure;
   const response = { status(n) { code = n; return this; }, json(data) { result = data; return this; } };
-  await fn({ body, params, query, user: { id: 1 } }, response, err => { failure = err; });
+  await fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; });
   if (failure) throw failure;
   return { code, result };
 }
@@ -125,3 +125,4 @@ test('reference data is location scoped and can back product creation', async ()
   assert.equal(product.result.category_id, child.result.id);
   assert.equal(product.result.brand_id, brand.result.id);
 });
+

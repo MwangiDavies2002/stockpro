@@ -1,4 +1,4 @@
-const { query, getClient } = require('../config/db');
+﻿const { query, getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
 const JournalEngine = require('../models/JournalEngine');
 const { getBusinessId } = require('../utils/tenant');
@@ -37,8 +37,8 @@ async function resolveReferences(body, businessId = 1) {
 async function getAll(req, res, next) {
   try {
     const { category, search, locationId } = req.query;
-    let sql = 'SELECT i.*, s.name AS supplier_name, l.name AS location_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id LEFT JOIN locations l ON l.id=i.location_id WHERE 1=1';
-    const params = [];
+    let sql = 'SELECT i.*, s.name AS supplier_name, l.name AS location_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id AND s.business_id=i.business_id LEFT JOIN locations l ON l.id=i.location_id AND l.business_id=i.business_id WHERE i.business_id=?';
+    const params = [getBusinessId(req)];
     if (category) { params.push(category); sql += ' AND i.category=?'; }
     if (search)   { params.push(...Array(3).fill(`%${search}%`)); sql += ' AND (i.name LIKE ? OR i.sku LIKE ? OR i.barcode LIKE ?)'; }
     if (locationId) { params.push(locationId); sql += ' AND i.location_id=?'; }
@@ -55,7 +55,8 @@ async function getAll(req, res, next) {
 async function getLowStock(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT * FROM inventory_items WHERE business_id=? AND stock <= threshold ORDER BY stock ASC'
+      'SELECT * FROM inventory_items WHERE business_id=? AND stock <= threshold ORDER BY stock ASC',
+      [getBusinessId(req)]
     );
     res.json(rows);
   } catch (err) { next(err); }
@@ -68,8 +69,8 @@ async function getLowStock(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT i.*, s.name AS supplier_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id WHERE i.id=?',
-      [req.params.id]
+      'SELECT i.*, s.name AS supplier_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id AND s.business_id=i.business_id WHERE i.id=? AND i.business_id=?',
+      [req.params.id, getBusinessId(req)]
     );
     if (!rows.length) return res.status(404).json({ message: 'Item not found' });
     res.json(rows[0]);
@@ -144,7 +145,7 @@ async function restock(req, res, next) {
     await client.query('BEGIN');
     await client.query(
       'UPDATE inventory_items SET stock=stock+?,updated_at=NOW() WHERE id=? AND business_id=?',
-      [quantity, req.params.id]
+      [quantity, req.params.id, getBusinessId(req)]
     );
     const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
 
@@ -183,7 +184,7 @@ async function adjustStock(req, res, next) {
 
     const amount = Math.abs(quantity) * Number(item.cost || 0);
     if (amount > 0) {
-      const journalId = await JournalEngine.generate('STOCK_ADJUSTMENT', amount, `ADJ-${item.id}-${Date.now()}`, `Stock correction: ${item.name} — ${reason}`, client, { quantity });
+      const journalId = await JournalEngine.generate('STOCK_ADJUSTMENT', amount, `ADJ-${item.id}-${Date.now()}`, `Stock correction: ${item.name} â€” ${reason}`, client, { quantity });
       if (!journalId) throw new Error('Set up Inventory Asset and Inventory Adjustment accounts before posting a stock adjustment');
     }
 
@@ -192,7 +193,7 @@ async function adjustStock(req, res, next) {
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
       [item.id, 'adjustment', quantity, beforeStock, afterStock, req.user?.id || null, reason]
     );
-    const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [item.id]);
+    const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [item.id, getBusinessId(req)]);
     await client.query('COMMIT');
     res.json(updatedRows[0]);
   } catch (err) {
@@ -223,8 +224,8 @@ async function sell(req, res, next) {
     await client.query('BEGIN');
     const total = (item.price || 0) * quantity;
     const { insertId: saleId } = await client.query(
-      'INSERT INTO sales (total, created_by, notes) VALUES (?,?,?)',
-      [total, req.user?.id || null, req.body.note || 'Sale recorded']
+      'INSERT INTO sales (business_id,total,created_by,notes) VALUES (?,?,?,?)',
+      [getBusinessId(req), total, req.user?.id || null, req.body.note || 'Sale recorded']
     );
     const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [saleId, getBusinessId(req)]);
 
@@ -235,7 +236,7 @@ async function sell(req, res, next) {
 
     await client.query(
       'UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=? AND business_id=?',
-      [quantity, quantity, req.params.id]
+      [quantity, quantity, req.params.id, getBusinessId(req)]
     );
     const { rows: [updatedItem] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
 
@@ -262,7 +263,7 @@ async function sell(req, res, next) {
 /**
  * Bulk-create inventory items from a parsed spreadsheet.
  * Expects body: { items: [{ name, category, unit, stock, threshold, price, supplierId }] }
- * Inserts each row independently — one bad row doesn't block the rest.
+ * Inserts each row independently â€” one bad row doesn't block the rest.
  * Returns a summary of created rows and any per-row errors.
  */
 async function bulkImport(req, res, next) {
@@ -312,3 +313,4 @@ async function bulkImport(req, res, next) {
 }
 
 module.exports = { getAll, getLowStock, getOne, create, update, remove, restock, adjustStock, sell, bulkImport };
+

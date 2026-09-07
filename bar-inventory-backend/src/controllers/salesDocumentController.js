@@ -1,4 +1,4 @@
-const { query, getClient } = require('../config/db');
+﻿const { query, getClient } = require('../config/db');
 const JournalEngine = require('../models/JournalEngine');
 const { sendLowStockAlert } = require('../utils/notifications');
 const { calculateSalesLine, calculateTotals, badRequest } = require('../utils/salesMath');
@@ -223,7 +223,7 @@ async function postCreditNote(client, documentId, header, lines, totals, userId,
       [line.itemId, 'adjustment', line.quantity, line.product.stock, updated.stock, userId, `Credit note #${documentId} for invoice #${header.referenceInvoiceId}`]
     );
   }
-  const invoice = await client.query('SELECT customer_id FROM sales_documents WHERE id=?', [header.referenceInvoiceId]);
+  const invoice = await client.query('SELECT customer_id FROM sales_documents WHERE id=? AND business_id=?', [header.referenceInvoiceId, businessId]);
   const customerId = invoice.rows[0]?.customer_id;
   if (customerId) await client.query('UPDATE customers SET balance=GREATEST(balance-?,0) WHERE id=?', [totals.total, customerId]);
   await client.query('UPDATE sales_documents SET status=? WHERE id=?', ['issued', documentId]);
@@ -275,3 +275,4 @@ async function addPayment(req, res, next) {
 }
 
 module.exports = { list, getOne, create, convert, addPayment };
+

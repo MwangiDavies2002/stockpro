@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const database = require('../src/config/db');
@@ -22,16 +22,16 @@ after(async () => { if (connection) { await connection.rollback(); connection.re
 
 beforeEach(async () => {
   for (const table of tables) await run(`DELETE FROM ${table}`);
-  await run("INSERT INTO locations (id,name) VALUES (1,'Main')");
-  await run("INSERT INTO customers (id,name,credit_limit,balance,active) VALUES (1,'Walk-in',100000,0,TRUE)");
-  await run("INSERT INTO inventory_items (id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,'Test product','General','Unit',10,40,100,1,'SKU1','BAR1')");
+  await run("INSERT INTO locations (id,business_id,name) VALUES (1,1,'Main')");
+  await run("INSERT INTO customers (id,business_id,name,credit_limit,balance,active) VALUES (1,1,'Walk-in',100000,0,TRUE)");
+  await run("INSERT INTO inventory_items (id,business_id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,1,'Test product','General','Unit',10,40,100,1,'SKU1','BAR1')");
   await run("INSERT INTO accounting_settings (setting_key,account_id) VALUES ('sales_receivable',1),('sales_revenue',2),('inventory_cogs',3),('inventory_asset',4),('payment_cash',1)");
 });
 
 async function invoke(fn, body, params = {}, query = {}) {
   let code = 200, result, failure;
   const response = { status(n) { code = n; return this; }, json(data) { result = data; return this; } };
-  await fn({ body, params, query, user: { id: 1 } }, response, err => { failure = err; });
+  await fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; });
   if (failure) throw failure;
   return { code, result };
 }
@@ -68,3 +68,4 @@ test('credit note must reference an invoice and reverses stock', async () => {
   assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock, 10);
   await assert.rejects(invoke(salesDocuments.create, { ...payload('credit_note'), referenceInvoiceId: invoice.result.id }), /exceeds/);
 });
+

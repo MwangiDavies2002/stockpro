@@ -1,4 +1,4 @@
-const { query } = require('../config/db');
+﻿const { query } = require('../config/db');
 const { getBusinessId } = require('../utils/tenant');
 
 const config = {
@@ -208,10 +208,11 @@ async function remove(req, res, next) {
     const cfg = pick(req.params.type);
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) throw badRequest('Invalid reference record');
-    const { rowCount } = await query(`DELETE FROM ${cfg.table} WHERE id=? AND business_id=? AND business_id=?`, [id, getBusinessId(req)]);
+    const { rowCount } = await query(`DELETE FROM ${cfg.table} WHERE id=? AND business_id=?`, [id, getBusinessId(req)]);
     if (!rowCount) return res.status(404).json({ message: 'Record not found' });
     res.json({ message: 'Record deleted' });
   } catch (err) { next(err); }
 }
 
 module.exports = { getAll, create, update, remove };
+
