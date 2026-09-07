@@ -3,18 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Search, Plus, Download, Upload, FileDown } from 'lucide-react';
+import { Search, Plus, Download, Upload, FileDown, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import InventoryTable from '../components/InventoryTable';
 import type { InventoryItem } from '../components/InventoryTable';
-import { inventoryApi, authApi } from '../lib/api';
+import { inventoryApi, authApi, locationsApi, referenceDataApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
-const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'];
-const UNITS = ['Bottles', 'Cases', 'Liters', 'Pieces'];
+type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
+type Location = { id: number; name: string; active?: boolean };
 
-const EMPTY_FORM = { name:'', category:'Beers', unit:'Bottles', stock:0, threshold:5, cost:0, price:0, sold:0 };
+const EMPTY_FORM = { name:'', category:'', unit:'', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0 };
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -22,6 +22,10 @@ export default function InventoryPage() {
   const isAdmin = user?.role === 'admin';
 
   const [items, setItems]           = useState<InventoryItem[]>([]);
+  const [locations, setLocations]   = useState<Location[]>([]);
+  const [units, setUnits]           = useState<RefRow[]>([]);
+  const [categories, setCategories] = useState<RefRow[]>([]);
+  const [brands, setBrands]         = useState<RefRow[]>([]);
   const [search, setSearch]         = useState('');
   const [catFilter, setCatFilter]   = useState('All');
   const [modalOpen, setModalOpen]   = useState(false);
@@ -32,6 +36,8 @@ export default function InventoryPage() {
   const [adjustmentQty, setAdjustmentQty] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [form, setForm]             = useState(EMPTY_FORM);
+  const [quickAdd, setQuickAdd]     = useState<null | 'units' | 'categories' | 'brands'>(null);
+  const [quickForm, setQuickForm]   = useState({ name: '', shortName: '', allowDecimal: false, description: '' });
   const [saving, setSaving]         = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +53,20 @@ export default function InventoryPage() {
     }
   }, []);
 
+  const loadReferenceData = useCallback(async (nextLocationId: string) => {
+    if (!nextLocationId) return;
+    try {
+      const [u, c, b] = await Promise.all([
+        referenceDataApi.getAll('units', { locationId: Number(nextLocationId) }),
+        referenceDataApi.getAll('categories', { locationId: Number(nextLocationId) }),
+        referenceDataApi.getAll('brands', { locationId: Number(nextLocationId) }),
+      ]);
+      setUnits(u.data); setCategories(c.data); setBrands(b.data);
+    } catch {
+      toast.error('Failed to load product setup data');
+    }
+  }, []);
+
   useEffect(() => {
     const token = Cookies.get('token');
     if (!token) {
@@ -54,12 +74,21 @@ export default function InventoryPage() {
       return;
     }
     authApi.me()
-      .then((res) => setUser(res.data))
+      .then(async (res) => {
+        setUser(res.data);
+        const locs = await locationsApi.getAll();
+        const active = locs.data.filter((l: Location) => l.active !== false && Number(l.active) !== 0);
+        setLocations(active);
+        if (active[0]) {
+          setForm(current => ({ ...current, locationId: String(active[0].id) }));
+          await loadReferenceData(String(active[0].id));
+        }
+      })
       .catch(() => {
         Cookies.remove('token');
         router.push('/login');
       });
-  }, [router]);
+  }, [router, loadReferenceData]);
 
   useEffect(() => {
     void loadItems();
@@ -72,25 +101,35 @@ export default function InventoryPage() {
 
   function openAdd() {
     setEditItem(null);
-    setForm(EMPTY_FORM);
+    const nextLocationId = form.locationId || (locations[0] ? String(locations[0].id) : '');
+    setForm({ ...EMPTY_FORM, locationId: nextLocationId });
+    void loadReferenceData(nextLocationId);
     setModalOpen(true);
   }
   function openEdit(item: InventoryItem) {
     setEditItem(item);
-    setForm({ name:item.name, category:item.category, unit:item.unit, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold });
+    const nextLocationId = String((item as any).location_id || form.locationId || locations[0]?.id || '');
+    setForm({ name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold });
+    void loadReferenceData(nextLocationId);
     setModalOpen(true);
   }
 
   async function handleSave() {
     if (!form.name.trim()) return toast.error('Item name is required');
+    if (!form.locationId) return toast.error('Business location is required');
+    if (!form.categoryId || !form.unitId) return toast.error('Category and unit are required');
     setSaving(true);
     try {
+      const selectedCategory = categories.find(c => String(c.id) === form.categoryId);
+      const selectedUnit = units.find(u => String(u.id) === form.unitId);
+      const selectedBrand = brands.find(b => String(b.id) === form.brandId);
+      const payload = { ...form, locationId: Number(form.locationId), categoryId: Number(form.categoryId), unitId: Number(form.unitId), brandId: form.brandId ? Number(form.brandId) : null, category: selectedCategory?.name || form.category, unit: selectedUnit?.name || form.unit, brand: selectedBrand?.name || form.brand };
       if (editItem) {
-        const { data } = await inventoryApi.update(editItem.id, form);
+        const { data } = await inventoryApi.update(editItem.id, payload);
         setItems((prev) => prev.map((i) => i.id === editItem.id ? data : i));
         toast.success('Item updated');
       } else {
-        const { data } = await inventoryApi.create(form);
+        const { data } = await inventoryApi.create(payload);
         setItems((prev) => [...prev, data]);
         toast.success('Item added');
       }
@@ -127,6 +166,28 @@ export default function InventoryPage() {
       setRestockItem(null);
     } catch {
       toast.error('Failed to restock');
+    }
+  }
+
+  async function createQuickReference(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quickAdd || !form.locationId) return;
+    try {
+      const { data } = await referenceDataApi.create(quickAdd, {
+        locationId: Number(form.locationId),
+        name: quickForm.name.trim(),
+        shortName: quickForm.shortName.trim(),
+        allowDecimal: quickForm.allowDecimal,
+        description: quickForm.description.trim(),
+      });
+      if (quickAdd === 'units') { setUnits(current => [...current, data]); setForm(current => ({ ...current, unitId: String(data.id), unit: data.name })); }
+      if (quickAdd === 'categories') { setCategories(current => [...current, data]); setForm(current => ({ ...current, categoryId: String(data.id), category: data.name })); }
+      if (quickAdd === 'brands') { setBrands(current => [...current, data]); setForm(current => ({ ...current, brandId: String(data.id), brand: data.name })); }
+      setQuickAdd(null);
+      setQuickForm({ name: '', shortName: '', allowDecimal: false, description: '' });
+      toast.success('Saved');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save');
     }
   }
 
@@ -168,7 +229,7 @@ export default function InventoryPage() {
 
   function downloadTemplate() {
     const template = [
-      { name: 'Tusker Lager', category: 'Beers', unit: 'Bottles', stock: 48, threshold: 20, cost: 180, price: 200 },
+      { name: 'Sample Product', category: '', unit: '', stock: 48, threshold: 20, cost: 180, price: 200 },
     ];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
@@ -197,7 +258,7 @@ export default function InventoryPage() {
         sheetRows.map((r) => ({
           name: String(r.name ?? r.Name ?? '').trim(),
           category: String(r.category ?? r.Category ?? '').trim(),
-          unit: String(r.unit ?? r.Unit ?? 'Bottles').trim(),
+          unit: String(r.unit ?? r.Unit ?? '').trim(),
           stock: Number(r.stock ?? r.Stock ?? 0),
           threshold: Number(r.threshold ?? r.Threshold ?? 5),
           cost: Number(r.cost ?? r.Cost ?? 0),
@@ -305,7 +366,7 @@ export default function InventoryPage() {
             onChange={(e) => setCatFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           >
-            {CATEGORIES.map((c) => (
+            {['All', ...Array.from(new Set(items.map((i) => i.category).filter(Boolean)))].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -328,20 +389,36 @@ export default function InventoryPage() {
               <h2 className="text-lg font-semibold">{editItem ? 'Edit Item' : 'Add Item'}</h2>
               <div className="space-y-3">
                 <div>
+                  <label htmlFor="item-location" className="text-xs font-medium text-gray-600 mb-1 block">Business Location</label>
+                  <select id="item-location" value={form.locationId} onChange={(e) => { setForm({...form, locationId: e.target.value, categoryId: '', unitId: '', brandId: '', category: '', unit: '', brand: ''}); void loadReferenceData(e.target.value); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">Select location</option>
+                    {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                  </select>
+                </div>
+                <div>
                   <label htmlFor="item-name" className="text-xs font-medium text-gray-600 mb-1 block">Item Name</label>
                   <input id="item-name" type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label htmlFor="item-category" className="text-xs font-medium text-gray-600 mb-1 block">Category</label>
-                  <select id="item-category" value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    {CATEGORIES.filter((c) => c !== 'All').map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <div className="flex gap-2"><select id="item-category" value={form.categoryId} onChange={(e) => { const row = categories.find(c => String(c.id) === e.target.value); setForm({...form, categoryId: e.target.value, category: row?.name || ''}); }} className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">Select category</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.parent_name ? `${c.parent_name} / ${c.name}` : c.name}</option>)}
+                  </select><button type="button" aria-label="Add category" onClick={() => setQuickAdd('categories')} disabled={!form.locationId} className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><Plus className="w-4 h-4"/></button></div>
                 </div>
                 <div>
                   <label htmlFor="item-unit" className="text-xs font-medium text-gray-600 mb-1 block">Unit</label>
-                  <select id="item-unit" value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  <div className="flex gap-2"><select id="item-unit" value={form.unitId} onChange={(e) => { const row = units.find(u => String(u.id) === e.target.value); setForm({...form, unitId: e.target.value, unit: row?.name || ''}); }} className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">Select unit</option>
+                    {units.map((u) => <option key={u.id} value={u.id}>{u.name}{u.short_name ? ` (${u.short_name})` : ''}</option>)}
+                  </select><button type="button" aria-label="Add unit" onClick={() => setQuickAdd('units')} disabled={!form.locationId} className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><Plus className="w-4 h-4"/></button></div>
+                </div>
+                <div>
+                  <label htmlFor="item-brand" className="text-xs font-medium text-gray-600 mb-1 block">Brand</label>
+                  <div className="flex gap-2"><select id="item-brand" value={form.brandId} onChange={(e) => { const row = brands.find(b => String(b.id) === e.target.value); setForm({...form, brandId: e.target.value, brand: row?.name || ''}); }} className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">No brand</option>
+                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select><button type="button" aria-label="Add brand" onClick={() => setQuickAdd('brands')} disabled={!form.locationId} className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><Plus className="w-4 h-4"/></button></div>
                 </div>
                 <div>
                   <label htmlFor="item-stock" className="text-xs font-medium text-gray-600 mb-1 block">Stock Quantity</label>
@@ -353,11 +430,11 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <label htmlFor="item-cost" className="text-xs font-medium text-gray-600 mb-1 block">Cost (KES)</label>
-                  <input id="item-cost" type="number" placeholder="0" value={form.cost} onChange={(e) => setForm({...form, cost: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-cost" type="number" placeholder="0" value={form.cost} onChange={(e) => setForm({...form, cost: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label htmlFor="item-price" className="text-xs font-medium text-gray-600 mb-1 block">Price (KES)</label>
-                  <input id="item-price" type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-price" type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -365,6 +442,31 @@ export default function InventoryPage() {
                 <button type="button" onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
               </div>
             </div>
+          </div>
+        )}
+
+        {quickAdd && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+            <form onSubmit={createQuickReference} className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Add {quickAdd === 'units' ? 'Unit' : quickAdd === 'categories' ? 'Category' : 'Brand'}</h2>
+                <button type="button" aria-label="Close" onClick={() => setQuickAdd(null)}><X className="w-4 h-4" /></button>
+              </div>
+              <label className="block text-sm">Name *<input required maxLength={150} value={quickForm.name} onChange={(e) => setQuickForm({...quickForm, name: e.target.value})} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></label>
+              {quickAdd === 'units' && (
+                <>
+                  <label className="block text-sm">Short name / abbreviation<input maxLength={30} value={quickForm.shortName} onChange={(e) => setQuickForm({...quickForm, shortName: e.target.value})} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={quickForm.allowDecimal} onChange={(e) => setQuickForm({...quickForm, allowDecimal: e.target.checked})} />Allow decimal</label>
+                </>
+              )}
+              {quickAdd !== 'units' && (
+                <label className="block text-sm">Short description / note<textarea rows={3} value={quickForm.description} onChange={(e) => setQuickForm({...quickForm, description: e.target.value})} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" /></label>
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setQuickAdd(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
+                <button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Save</button>
+              </div>
+            </form>
           </div>
         )}
 

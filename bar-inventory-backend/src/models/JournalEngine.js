@@ -8,7 +8,9 @@ const JournalEngine = {
    */
   generate: async (type, amount, reference, description, client = null, data = null) => {
     // 1. Get mappings
-    const { rows: settings } = await Setting.getAll();
+    const { rows: settings } = client
+      ? await client.query('SELECT * FROM accounting_settings')
+      : await Setting.getAll();
     const map = {};
     const treasuryMap = {};
     settings.forEach(s => {
@@ -17,7 +19,7 @@ const JournalEngine = {
     });
 
     const lines = [];
-    const posting_date = new Date().toISOString().split('T')[0];
+    const posting_date = data?.postingDate || new Date().toISOString().split('T')[0];
 
     const getTreasuryGL = async (treasuryId) => {
       if (!treasuryId) return null;
@@ -150,13 +152,16 @@ const JournalEngine = {
         }
         break;
 
-      case 'PURCHASE':
-        if (map.inventory_asset && map.purchases_payable) {
-          // Debit Inventory Asset, Credit Accounts Payable
-          lines.push({ account_id: map.inventory_asset, debit: amount, description: 'Inventory Purchase' });
+      case 'PURCHASE': {
+        const expenseAmount = Number(data?.expenseAmount || 0);
+        const assetAmount = Number((Number(amount) - expenseAmount).toFixed(2));
+        if (map.purchases_payable && (!assetAmount || map.inventory_asset) && (!expenseAmount || map.purchases_expense)) {
+          if (assetAmount) lines.push({ account_id: map.inventory_asset, debit: assetAmount, description: 'Inventory Purchase' });
+          if (expenseAmount) lines.push({ account_id: map.purchases_expense, debit: expenseAmount, description: 'Purchase Expense' });
           lines.push({ account_id: map.purchases_payable, credit: amount, description: 'Accounts Payable' });
         }
         break;
+      }
 
       case 'OPENING_STOCK':
         // Opening stock is an initial equity contribution, not a supplier liability.

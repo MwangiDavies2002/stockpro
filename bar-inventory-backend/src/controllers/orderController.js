@@ -1,5 +1,6 @@
 const { query, getClient } = require('../config/db');
 const JournalEngine = require('../models/JournalEngine');
+const { ensurePurchaseAccountingMappings } = require('../utils/accountingDefaults');
 
 /* GET /api/orders */
 /**
@@ -59,51 +60,71 @@ async function getOne(req, res, next) {
  * Create a new order with `items` array. Uses a DB transaction.
  */
 async function create(req, res, next) {
-  const { supplierId, items = [], notes, transactionType = 'purchase' } = req.body;
-  if (!items.length) return res.status(400).json({ message: 'Order must have at least one item' });
-  if (!['purchase', 'opening_stock'].includes(transactionType)) {
-    return res.status(400).json({ message: 'transactionType must be purchase or opening_stock' });
-  }
-  if (transactionType === 'purchase' && !supplierId) {
-    return res.status(400).json({ message: 'A supplier is required for a purchase order' });
-  }
-  for (const line of items) {
-    if (!Number.isInteger(Number(line.itemId)) || Number(line.itemId) <= 0 ||
-        !Number.isInteger(Number(line.quantity)) || Number(line.quantity) <= 0 ||
-        !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0) {
-      return res.status(400).json({ message: 'Each line needs an item, a positive whole quantity, and a non-negative unit price' });
-    }
-  }
-
-  const client = await getClient();
+  const { supplierId, items = [], notes, transactionType = 'purchase', referenceNo,
+    purchaseDate, locationId, payTerm, status = 'pending' } = req.body;
+  const enhanced = purchaseDate !== undefined;
+  let lines;
   try {
-    await client.query('BEGIN');
-    const total = items.reduce((a, i) => a + Number(i.quantity) * Number(i.unitPrice), 0);
-    const insertRes = await client.query(
-      'INSERT INTO orders (supplier_id,notes,total,created_by,transaction_type) VALUES ($1,$2,$3,$4,$5)',
-      [supplierId || null, notes || null, total, req.user?.id || null, transactionType]
-    );
-    const orderId = insertRes.insertId;
-
-    for (const line of items) {
-      const { rows: itemRows } = await client.query('SELECT name FROM inventory_items WHERE id=?', [line.itemId]);
-      if (!itemRows.length) throw new Error(`Inventory item ${line.itemId} was not found`);
-      await client.query(
-        'INSERT INTO order_items (order_id,item_id,item_name,quantity,unit_price) VALUES ($1,$2,$3,$4,$5)',
-        [orderId, line.itemId, itemRows[0].name, Number(line.quantity), Number(line.unitPrice)]
-      );
+    if (!Array.isArray(items) || !items.length) throw badRequest('Order must have at least one item');
+    if (!['purchase', 'opening_stock'].includes(transactionType)) throw badRequest('Invalid transaction type');
+    if (transactionType === 'purchase' && !supplierId) throw badRequest('A supplier is required');
+    if (!['pending', 'approved', 'delivered'].includes(status)) throw badRequest('Invalid purchase status');
+    if (!enhanced && status !== 'pending') throw badRequest('Use the purchase form to receive stock immediately');
+    if (enhanced && (!Number.isInteger(Number(locationId)) || Number(locationId) <= 0 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(purchaseDate) ||
+        !Number.isFinite(Date.parse(purchaseDate)) || new Date(purchaseDate).toISOString().slice(0,10) !== purchaseDate)) {
+      throw badRequest('A valid purchase date and business location are required');
     }
-
-    const { rows: [freshOrder] } = await client.query('SELECT * FROM orders WHERE id=$1', [orderId]);
+    if (String(referenceNo || '').length > 100 || String(payTerm || '').length > 100) throw badRequest('Reference and pay term must be at most 100 characters');
+    const seen = new Set();
+    lines = items.map(line => {
+      const itemId = Number(line.itemId);
+      if (!Number.isInteger(itemId) || itemId <= 0 || seen.has(itemId)) throw badRequest('Each product must appear once with a valid ID');
+      seen.add(itemId);
+      if (!['asset', 'expense'].includes(line.accountType || 'asset')) throw badRequest('Invalid account type');
+      return { ...require('../utils/purchaseMath').calculateLine({ ...line, costBeforeDiscount: enhanced ? line.costBeforeDiscount : line.unitPrice }),
+        itemId, accountType: line.accountType || 'asset' };
+    });
+  } catch (err) { return next(err); }
+  let client;
+  try {
+    client = await getClient();
+    await client.query('BEGIN');
+    if (supplierId) {
+      const supplier = await client.query('SELECT id FROM suppliers WHERE id=?', [supplierId]);
+      if (!supplier.rows.length) throw badRequest('Supplier does not exist');
+    }
+    if (enhanced) {
+      const location = await client.query('SELECT id FROM locations WHERE id=?', [locationId]);
+      if (!location.rows.length) throw badRequest('Business location does not exist');
+    }
+    const total = Number(lines.reduce((sum, line) => sum + line.netCost, 0).toFixed(2));
+    if (total > 9999999999.99) throw badRequest('Purchase total exceeds the supported amount');
+    const result = await client.query(
+      'INSERT INTO orders (supplier_id,notes,total,created_by,transaction_type,status,reference_no,purchase_date,location_id,pay_term) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [supplierId || null, notes || null, total, req.user.id, transactionType, status, referenceNo || null, purchaseDate || null, locationId || null, payTerm || null]);
+    const orderId = result.insertId;
+    for (const line of [...lines].sort((a,b) => a.itemId-b.itemId)) {
+      const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? FOR UPDATE', [line.itemId]);
+      if (!item) throw badRequest('Product no longer exists');
+      if (enhanced && Number(item.location_id) !== Number(locationId)) throw badRequest(`${item.name} belongs to another business location`);
+      await client.query(
+        'INSERT INTO order_items (order_id,item_id,item_name,quantity,unit_price,cost_before_discount,discount_percent,tax_percent,subtotal,net_cost,profit_margin,selling_price,account_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [orderId, line.itemId, item.name, line.quantity, line.unitPrice, line.before, line.discount, line.tax, line.subtotal, line.netCost, line.margin, enhanced ? line.sellingPrice : null, line.accountType]);
+      if (enhanced) await client.query('UPDATE inventory_items SET previous_unit_price=?, previous_discount=? WHERE id=?', [line.before, line.discount, line.itemId]);
+    }
+    const { rows: [order] } = await client.query('SELECT * FROM orders WHERE id=?', [orderId]);
+    if (status === 'delivered') await receiveOrder(client, order, req.user.id);
+    const { rows: savedLines } = await client.query('SELECT * FROM order_items WHERE order_id=?', [orderId]);
     await client.query('COMMIT');
-    res.status(201).json({ ...freshOrder, items });
+    res.status(201).json({ ...order, items: savedLines });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     next(err);
-  } finally {
-    client.release();
-  }
+  } finally { client?.release(); }
 }
+
+function badRequest(message) { return Object.assign(new Error(message), { status: 400 }); }
 
 /* PUT /api/orders/:id */
 /**
@@ -166,39 +187,7 @@ async function updateStatus(req, res, next) {
     await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2 ', [status, req.params.id]);
 
     if (status === 'delivered') {
-      const { rows: items } = await client.query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
-
-      for (const line of items) {
-        if (line.item_id) {
-          const check = await client.query('SELECT stock, cost FROM inventory_items WHERE id=? FOR UPDATE', [line.item_id]);
-          if (!check.rows.length) throw new Error(`Inventory item ${line.item_id} was not found`);
-          const beforeStock = Number(check.rows[0].stock);
-          const beforeCost = Number(check.rows[0].cost || 0);
-          const receivedQty = Number(line.quantity);
-          const receivedCost = Number(line.unit_price);
-          if (order.transaction_type === 'opening_stock' && beforeStock !== 0) {
-            throw new Error(`Opening stock can only be delivered for an item with zero stock (${line.item_name})`);
-          }
-          const newCost = order.transaction_type === 'opening_stock'
-            ? receivedCost
-            : ((beforeStock * beforeCost) + (receivedQty * receivedCost)) / (beforeStock + receivedQty);
-
-          await client.query('UPDATE inventory_items SET stock = stock + ?, cost = ?, updated_at=NOW() WHERE id = ?', [receivedQty, newCost, line.item_id]);
-
-          const { rows: [updated] } = await client.query('SELECT stock FROM inventory_items WHERE id=?', [line.item_id]);
-          await client.query(
-            'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
-            [line.item_id, order.transaction_type === 'opening_stock' ? 'opening_stock' : 'restock', receivedQty, beforeStock, updated.stock, req.user?.id || null, `Order #${order.id} delivered`]
-          );
-        }
-      }
-      const journalType = order.transaction_type === 'opening_stock' ? 'OPENING_STOCK' : 'PURCHASE';
-      const journalId = await JournalEngine.generate(journalType, order.total, `Order #${order.id}`, order.transaction_type === 'opening_stock' ? 'Opening stock' : `Purchase from supplier #${order.supplier_id}`, client);
-      if (!journalId) {
-        throw new Error(order.transaction_type === 'opening_stock'
-          ? 'Set up Inventory Asset and Opening Balance Equity accounts before delivering opening stock'
-          : 'Set up Inventory Asset and Accounts Payable before delivering a purchase order');
-      }
+      await receiveOrder(client, order, req.user?.id || null);
     }
 
     const { rows: [freshOrder] } = await client.query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
@@ -210,6 +199,45 @@ async function updateStatus(req, res, next) {
   } finally {
     client.release();
   }
+}
+
+async function receiveOrder(client, order, userId) {
+      const { rows: items } = await client.query('SELECT * FROM order_items WHERE order_id=$1', [order.id]);
+
+      for (const line of items) {
+        if (line.item_id) {
+          const check = await client.query('SELECT stock, cost, location_id FROM inventory_items WHERE id=? FOR UPDATE', [line.item_id]);
+          if (!check.rows.length) throw new Error(`Inventory item ${line.item_id} was not found`);
+          if (order.location_id && Number(check.rows[0].location_id) !== Number(order.location_id)) throw badRequest('Product location changed; cannot receive this purchase');
+          const beforeStock = Number(check.rows[0].stock);
+          const beforeCost = Number(check.rows[0].cost || 0);
+          const receivedQty = Number(line.quantity);
+          const receivedCost = Number(line.unit_price);
+          if (order.transaction_type === 'opening_stock' && beforeStock !== 0) {
+            throw new Error(`Opening stock can only be delivered for an item with zero stock (${line.item_name})`);
+          }
+          const newCost = order.transaction_type === 'opening_stock'
+            ? receivedCost
+            : ((beforeStock * beforeCost) + (receivedQty * receivedCost)) / (beforeStock + receivedQty);
+
+          await client.query('UPDATE inventory_items SET stock = stock + ?, cost = ?, price = COALESCE(?, price), updated_at=NOW() WHERE id = ?', [receivedQty, newCost, line.selling_price, line.item_id]);
+
+          const { rows: [updated] } = await client.query('SELECT stock FROM inventory_items WHERE id=?', [line.item_id]);
+          await client.query(
+            'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
+            [line.item_id, order.transaction_type === 'opening_stock' ? 'opening_stock' : 'restock', receivedQty, beforeStock, updated.stock, userId, `Order #${order.id} delivered`]
+          );
+        }
+      }
+      const journalType = order.transaction_type === 'opening_stock' ? 'OPENING_STOCK' : 'PURCHASE';
+      const expenseAmount = items.filter(line => line.account_type === 'expense').reduce((sum, line) => sum + Number(line.net_cost ?? Number(line.quantity) * Number(line.unit_price)), 0);
+      if (journalType === 'PURCHASE') await ensurePurchaseAccountingMappings(client);
+      const journalId = Number(order.total) === 0 ? true : await JournalEngine.generate(journalType, order.total, `Order #${order.id}`, order.transaction_type === 'opening_stock' ? 'Opening stock' : `Purchase from supplier #${order.supplier_id}`, client, { expenseAmount, postingDate: order.purchase_date });
+      if (!journalId) {
+        throw new Error(order.transaction_type === 'opening_stock'
+          ? 'Set up Inventory Asset and Opening Balance Equity accounts before delivering opening stock'
+          : 'Set up Inventory Asset, Purchase Expense (for expense lines), and Accounts Payable before receiving a purchase');
+      }
 }
 
 module.exports = { getAll, getOne, create, update, remove, updateStatus };

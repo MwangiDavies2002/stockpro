@@ -26,3 +26,46 @@ Import the same repository again with `bar-inventory-system` as its Root Directo
 ## Production check
 
 Log in, create a test product, and confirm the browser can call the API without a CORS error. Then run the purchase and sale test cycle before entering live transactions.
+
+
+## Purchase entry migration
+
+Before deploying this version of the API, run `npm run migrate:purchases` from
+`bar-inventory-backend` with the target database environment configured. The
+repeatable migration adds SKU/barcode, previous purchase references, purchase
+headers and line calculations, and widens line unit costs to four decimal places.
+It preserves existing records.
+
+Administrators can open `/purchases` from the left sidebar. Products are scoped
+to the selected business location because the existing inventory model stores
+each product row at one location. Received purchases update stock immediately;
+pending purchases can be approved and received from the purchase list.
+Receipt, weighted inventory cost, selling price, stock log and accounting entries
+are committed together. The migration creates default purchase mappings when
+they are missing: Inventory Asset, Accounts Payable, and Purchase Expense.
+Administrators can still change those accounts in Accounting Settings. Tax is
+included in the selected asset/expense amount.
+
+Margin uses markup on discounted unit cost: selling price including tax equals
+`discounted cost * (1 + margin / 100) * (1 + tax / 100)`. Editing selling price
+recalculates the margin; zero-cost lines retain an editable selling price with
+a zero reference margin. Quantities are whole units, matching existing stock.
+Total Items sums quantities. Subtotals and line tax are rounded to two decimals.
+
+Validation: `npm run test:purchases` in the backend runs eight database integration
+tests against connection-local temporary tables, leaving business records untouched.
+Run the migration first. `npm run build` in the frontend validates the production app.
+
+## Sales A/R migration
+
+Run `npm run migrate:sales-ar` from `bar-inventory-backend` after the reference
+data migration. It creates the shared `sales_documents` structure for quotations,
+sales orders, proformas, invoices, POS documents, and credit notes. Line items
+are stored in `sales_document_items`, payments in `sales_document_payments`, and
+discount rules in `discounts`.
+
+Only invoices and POS documents post to accounting and deduct stock. Quotations,
+sales orders, and proformas are non-posting documents that can be converted
+forward through `converted_from_id`. Credit notes require `reference_invoice_id`,
+restore stock, reduce the customer balance, and cannot credit a product quantity
+above the original invoice quantity.

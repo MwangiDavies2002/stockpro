@@ -25,6 +25,9 @@ const accountRoutes = require('./src/routes/accountRoutes');
 const treasuryRoutes = require('./src/routes/treasuryRoutes');
 const settingRoutes = require('./src/routes/settingRoutes');
 const journalEntryRoutes = require('./src/routes/journalEntryRoutes');
+const referenceDataRoutes = require('./src/routes/referenceData');
+const salesDocumentRoutes = require('./src/routes/salesDocuments');
+const discountRoutes = require('./src/routes/discounts');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -75,6 +78,9 @@ app.use('/api/accounts', accountRoutes);
 app.use('/api/treasury', treasuryRoutes);
 app.use('/api/accounting-settings', settingRoutes);
 app.use('/api/journal-entries', journalEntryRoutes);
+app.use('/api/reference-data', referenceDataRoutes);
+app.use('/api/sales-documents', salesDocumentRoutes);
+app.use('/api/discounts', discountRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Development-only routes

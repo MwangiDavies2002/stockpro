@@ -1,16 +1,17 @@
 const { query, getClient } = require('../config/db');
+const { getBusinessId } = require('../utils/tenant');
 const JournalEngine = require('../models/JournalEngine');
 
 async function getAll(req, res, next) {
   try {
-    const { rows } = await query('SELECT * FROM customers ORDER BY name');
+    const { rows } = await query('SELECT * FROM customers WHERE business_id=? ORDER BY name', [getBusinessId(req)]);
     res.json(rows);
   } catch (err) { next(err); }
 }
 
 async function getOne(req, res, next) {
   try {
-    const { rows } = await query('SELECT * FROM customers WHERE id=?', [req.params.id]);
+    const { rows } = await query('SELECT * FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!rows.length) return res.status(404).json({ message: 'Customer not found' });
     res.json(rows[0]);
   } catch (err) { next(err); }
@@ -21,10 +22,10 @@ async function create(req, res, next) {
     const { name, phone, creditLimit } = req.body;
     if (!name) return res.status(400).json({ message: 'name is required' });
     const { insertId } = await query(
-      'INSERT INTO customers (name, phone, credit_limit) VALUES (?,?,?)',
-      [name, phone || null, creditLimit || 0]
+      'INSERT INTO customers (business_id, name, phone, credit_limit) VALUES (?,?,?,?)',
+      [getBusinessId(req), name, phone || null, creditLimit || 0]
     );
-    const { rows } = await query('SELECT * FROM customers WHERE id=?', [insertId]);
+    const { rows } = await query('SELECT * FROM customers WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
 }
@@ -33,11 +34,11 @@ async function update(req, res, next) {
   try {
     const { name, phone, creditLimit, active } = req.body;
     const { rowCount } = await query(
-      'UPDATE customers SET name=?, phone=?, credit_limit=?, active=? WHERE id=?',
-      [name, phone || null, creditLimit || 0, active ?? true, req.params.id]
+      'UPDATE customers SET name=?, phone=?, credit_limit=?, active=? WHERE id=? AND business_id=?',
+      [name, phone || null, creditLimit || 0, active ?? true, req.params.id, getBusinessId(req)]
     );
     if (!rowCount) return res.status(404).json({ message: 'Customer not found' });
-    const { rows } = await query('SELECT * FROM customers WHERE id=?', [req.params.id]);
+    const { rows } = await query('SELECT * FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     res.json(rows[0]);
   } catch (err) { next(err); }
 }
@@ -49,14 +50,14 @@ async function update(req, res, next) {
 async function statement(req, res, next) {
   try {
     const { rows: sales } = await query(
-      "SELECT id, total, created_at, notes FROM sales WHERE customer_id=? ORDER BY created_at DESC",
+      "SELECT id, total, created_at, notes FROM sales WHERE customer_id=? AND business_id=? ORDER BY created_at DESC",
       [req.params.id]
     );
     const { rows: payments } = await query(
-      'SELECT id, amount, method, notes, created_at FROM customer_payments WHERE customer_id=? ORDER BY created_at DESC',
+      'SELECT id, amount, method, notes, created_at FROM customer_payments WHERE customer_id=? AND business_id=? ORDER BY created_at DESC',
       [req.params.id]
     );
-    const { rows: customerRows } = await query('SELECT * FROM customers WHERE id=?', [req.params.id]);
+    const { rows: customerRows } = await query('SELECT * FROM customers WHERE id=?', [req.params.id, getBusinessId(req)]);
     if (!customerRows.length) return res.status(404).json({ message: 'Customer not found' });
     res.json({ customer: customerRows[0], sales, payments });
   } catch (err) { next(err); }
@@ -75,7 +76,7 @@ async function recordPayment(req, res, next) {
       return res.status(400).json({ message: 'amount must be greater than 0' });
     }
 
-    const custRes = await client.query('SELECT balance FROM customers WHERE id=?', [req.params.id]);
+    const custRes = await client.query('SELECT balance FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!custRes.rows.length) {
       client.release();
       return res.status(404).json({ message: 'Customer not found' });
@@ -83,10 +84,10 @@ async function recordPayment(req, res, next) {
 
     await client.query('BEGIN');
     await client.query(
-      'INSERT INTO customer_payments (customer_id, amount, method, notes, created_by) VALUES (?,?,?,?,?)',
-      [req.params.id, amount, method || 'cash', notes || null, req.user?.id || null]
+      'INSERT INTO customer_payments (business_id, customer_id, amount, method, notes, created_by) VALUES (?,?,?,?,?,?)',
+      [getBusinessId(req), req.params.id, amount, method || 'cash', notes || null, req.user?.id || null]
     );
-    await client.query('UPDATE customers SET balance = balance - ? WHERE id=?', [amount, req.params.id]);
+    await client.query('UPDATE customers SET balance = balance - ? WHERE id=? AND business_id=?', [amount, req.params.id, getBusinessId(req)]);
     
     // Journal Entry for Debt Payment
     const paymentData = {};
@@ -97,7 +98,7 @@ async function recordPayment(req, res, next) {
 
     await JournalEngine.generate('DEBT_PAYMENT', amount, `Payment from Cust #${req.params.id}`, notes || 'Customer Payment', client, paymentData);
 
-    const { rows } = await client.query('SELECT * FROM customers WHERE id=?', [req.params.id]);
+    const { rows } = await client.query('SELECT * FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {

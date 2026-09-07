@@ -1,6 +1,33 @@
 const { query, getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
 const JournalEngine = require('../models/JournalEngine');
+const { getBusinessId } = require('../utils/tenant');
+
+function badRequest(message) { return Object.assign(new Error(message), { status: 400 }); }
+
+async function resolveReferences(body, businessId = 1) {
+  const locationId = Number(body.locationId || body.location_id || 1);
+  if (!Number.isInteger(locationId) || locationId <= 0) throw badRequest('Business location is required');
+  const refs = { locationId, category: String(body.category || '').trim(), unit: String(body.unit || '').trim(), brand: String(body.brand || '').trim(), categoryId: body.categoryId || null, unitId: body.unitId || null, brandId: body.brandId || null };
+
+  const lookups = [
+    ['categoryId', 'categories', 'category'],
+    ['unitId', 'units', 'unit'],
+    ['brandId', 'brands', 'brand'],
+  ];
+  for (const [idKey, table, textKey] of lookups) {
+    if (!refs[idKey]) continue;
+    const id = Number(refs[idKey]);
+    if (!Number.isInteger(id) || id <= 0) throw badRequest(`${textKey} is invalid`);
+    const { rows } = await query(`SELECT id, name FROM ${table} WHERE id=? AND location_id=? AND business_id=?`, [id, locationId, businessId]);
+    if (!rows.length) throw badRequest(`${textKey} must belong to the selected business location`);
+    refs[idKey] = id;
+    refs[textKey] = rows[0].name;
+  }
+  if (!refs.category) throw badRequest('Category is required');
+  if (!refs.unit) refs.unit = 'Unit';
+  return refs;
+}
 
 /* GET /api/inventory */
 /**
@@ -13,7 +40,7 @@ async function getAll(req, res, next) {
     let sql = 'SELECT i.*, s.name AS supplier_name, l.name AS location_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id LEFT JOIN locations l ON l.id=i.location_id WHERE 1=1';
     const params = [];
     if (category) { params.push(category); sql += ' AND i.category=?'; }
-    if (search)   { params.push(`%${search}%`); sql += ' AND i.name LIKE ?'; }
+    if (search)   { params.push(...Array(3).fill(`%${search}%`)); sql += ' AND (i.name LIKE ? OR i.sku LIKE ? OR i.barcode LIKE ?)'; }
     if (locationId) { params.push(locationId); sql += ' AND i.location_id=?'; }
     sql += ' ORDER BY i.name';
     const { rows } = await query(sql, params);
@@ -28,7 +55,7 @@ async function getAll(req, res, next) {
 async function getLowStock(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT * FROM inventory_items WHERE stock <= threshold ORDER BY stock ASC'
+      'SELECT * FROM inventory_items WHERE business_id=? AND stock <= threshold ORDER BY stock ASC'
     );
     res.json(rows);
   } catch (err) { next(err); }
@@ -55,13 +82,14 @@ async function getOne(req, res, next) {
  */
 async function create(req, res, next) {
   try {
-    const { name, category, unit, stock, threshold, cost, price, supplierId, locationId } = req.body;
-    if (!name || !category) return res.status(400).json({ message: 'name and category are required' });
+    const { name, stock, threshold, cost, price, supplierId, sku, barcode } = req.body;
+    if (!String(name || '').trim()) return res.status(400).json({ message: 'name and category are required' });
+    const refs = await resolveReferences(req.body, getBusinessId(req));
     const { insertId } = await query(
-      'INSERT INTO inventory_items (name,category,unit,stock,threshold,cost,price,supplier_id,location_id) VALUES (?,?,?,?,?,?,?,?,?)',
-      [name, category, unit || 'Bottles', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, locationId || 1]
+      'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [getBusinessId(req), String(name).trim(), refs.category, refs.unit, stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || null, barcode?.trim() || null, refs.categoryId, refs.unitId, refs.brandId]
     );
-    const { rows } = await query('SELECT * FROM inventory_items WHERE id=?', [insertId]);
+    const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
 }
@@ -72,15 +100,16 @@ async function create(req, res, next) {
  */
 async function update(req, res, next) {
   try {
-    const { name, category, unit, stock, threshold, cost, price, supplierId } = req.body;
+    const { name, stock, threshold, cost, price, supplierId } = req.body;
+    const refs = await resolveReferences(req.body, getBusinessId(req));
     const { rowCount } = await query(
       `UPDATE inventory_items
-       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,updated_at=NOW()
-       WHERE id=?`,
-      [name, category, unit, stock, threshold, cost || 0, price, supplierId || null, req.params.id]
+       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,location_id=?,category_id=?,unit_id=?,brand_id=?,updated_at=NOW()
+       WHERE id=? AND business_id=?`,
+      [String(name || '').trim(), refs.category, refs.unit, stock, threshold, cost || 0, price, supplierId || null, refs.locationId, refs.categoryId, refs.unitId, refs.brandId, req.params.id, getBusinessId(req)]
     );
     if (!rowCount) return res.status(404).json({ message: 'Item not found' });
-    const { rows } = await query('SELECT * FROM inventory_items WHERE id=?', [req.params.id]);
+    const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     res.json(rows[0]);
   } catch (err) { next(err); }
 }
@@ -91,7 +120,7 @@ async function update(req, res, next) {
  */
 async function remove(req, res, next) {
   try {
-    const { rowCount } = await query('DELETE FROM inventory_items WHERE id=?', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!rowCount) return res.status(404).json({ message: 'Item not found' });
     res.json({ message: 'Item deleted' });
   } catch (err) { next(err); }
@@ -108,16 +137,16 @@ async function restock(req, res, next) {
     const { quantity, note } = req.body;
     if (!quantity || quantity < 1) return res.status(400).json({ message: 'quantity must be >= 1' });
 
-    const check = await client.query('SELECT stock, threshold, name FROM inventory_items WHERE id=?', [req.params.id]);
+    const check = await client.query('SELECT stock, threshold, name FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!check.rows.length) return res.status(404).json({ message: 'Item not found' });
     const beforeStock = check.rows[0].stock;
 
     await client.query('BEGIN');
     await client.query(
-      'UPDATE inventory_items SET stock=stock+?,updated_at=NOW() WHERE id=?',
+      'UPDATE inventory_items SET stock=stock+?,updated_at=NOW() WHERE id=? AND business_id=?',
       [quantity, req.params.id]
     );
-    const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=?', [req.params.id]);
+    const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
 
     await client.query(
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
@@ -145,7 +174,7 @@ async function adjustStock(req, res, next) {
     if (reason.length < 5) return res.status(400).json({ message: 'A correction reason of at least 5 characters is required' });
 
     await client.query('BEGIN');
-    const { rows } = await client.query('SELECT * FROM inventory_items WHERE id=? FOR UPDATE', [req.params.id]);
+    const { rows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE', [req.params.id, getBusinessId(req)]);
     if (!rows.length) throw new Error('Item not found');
     const item = rows[0];
     const beforeStock = Number(item.stock);
@@ -158,12 +187,12 @@ async function adjustStock(req, res, next) {
       if (!journalId) throw new Error('Set up Inventory Asset and Inventory Adjustment accounts before posting a stock adjustment');
     }
 
-    await client.query('UPDATE inventory_items SET stock=?, updated_at=NOW() WHERE id=?', [afterStock, item.id]);
+    await client.query('UPDATE inventory_items SET stock=?, updated_at=NOW() WHERE id=? AND business_id=?', [afterStock, item.id, getBusinessId(req)]);
     await client.query(
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
       [item.id, 'adjustment', quantity, beforeStock, afterStock, req.user?.id || null, reason]
     );
-    const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=?', [item.id]);
+    const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [item.id]);
     await client.query('COMMIT');
     res.json(updatedRows[0]);
   } catch (err) {
@@ -186,7 +215,7 @@ async function sell(req, res, next) {
     const quantity = Number(req.body.quantity || 1);
     if (!Number.isInteger(quantity) || quantity < 1) return res.status(400).json({ message: 'quantity must be a positive integer' });
 
-    const check = await client.query('SELECT stock, threshold, name, price FROM inventory_items WHERE id=?', [req.params.id]);
+    const check = await client.query('SELECT stock, threshold, name, price FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!check.rows.length) return res.status(404).json({ message: 'Item not found' });
     const item = check.rows[0];
     if (item.stock < quantity) return res.status(400).json({ message: 'Insufficient stock' });
@@ -197,7 +226,7 @@ async function sell(req, res, next) {
       'INSERT INTO sales (total, created_by, notes) VALUES (?,?,?)',
       [total, req.user?.id || null, req.body.note || 'Sale recorded']
     );
-    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=?', [saleId]);
+    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [saleId, getBusinessId(req)]);
 
     await client.query(
       'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price) VALUES (?,?,?,?,?)',
@@ -205,10 +234,10 @@ async function sell(req, res, next) {
     );
 
     await client.query(
-      'UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=?',
+      'UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=? AND business_id=?',
       [quantity, quantity, req.params.id]
     );
-    const { rows: [updatedItem] } = await client.query('SELECT * FROM inventory_items WHERE id=?', [req.params.id]);
+    const { rows: [updatedItem] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
 
     await client.query(
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',

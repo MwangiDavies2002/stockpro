@@ -34,6 +34,7 @@ const SETTING_GROUPS = [
   {
     title: 'Purchases Mappings',
     items: [
+      { key: 'purchases_expense', label: 'Purchase Expense', type: 'account' },
       { key: 'purchases_payable', label: 'Accounts Payable', type: 'account' },
       { key: 'purchases_vat_input', label: 'VAT Input', type: 'account' },
     ]

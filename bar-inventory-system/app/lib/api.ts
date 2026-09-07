@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
@@ -34,25 +34,27 @@ api.interceptors.response.use(
   }
 );
 
-/* ── Auth ──────────────────────────────────────────────── */
+/* â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * Auth API helpers
  */
 export const authApi = {
   register: (data: { name: string; email: string; password: string; role: string }) =>
     api.post('/auth/register', data),
+  onboardBusiness: (data: BusinessRegistrationPayload) =>
+    api.post('/auth/business-registration', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
 };
 
-/* ── Inventory ─────────────────────────────────────────── */
+/* â”€â”€ Inventory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * Inventory API helpers
  */
 const inventoryApi = {
-  getAll: (params?: { category?: string; search?: string }) =>
+  getAll: (params?: { category?: string; search?: string; locationId?: number }) =>
     api.get('/inventory', { params }),
   getOne: (id: number) => api.get(`/inventory/${id}`),
   create: (data: InventoryItemPayload) => api.post('/inventory', data),
@@ -69,7 +71,7 @@ const inventoryApi = {
   bulkImport: (items: InventoryItemPayload[]) => api.post('/inventory/import', { items }),
 };
 
-/* ── Orders ────────────────────────────────────────────── */
+/* â”€â”€ Orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * Orders API helpers
  */
@@ -89,7 +91,7 @@ const shiftsApi = {
   close: (id: number, actualCash: number) => api.patch(`/shifts/${id}/close`, { actualCash }),
   getAll: () => api.get('/shifts'),
 };
-/* ── Suppliers ─────────────────────────────────────────── */
+/* â”€â”€ Suppliers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * Suppliers API helpers
  */
@@ -102,7 +104,7 @@ const suppliersApi = {
   delete: (id: number) => api.delete(`/suppliers/${id}`),
 };
 
-/* ── Reports ───────────────────────────────────────────── */
+/* â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * Reports API helpers
  */
@@ -115,7 +117,7 @@ const reportsApi = {
   getLedger: () => api.get('/reports/ledger'),
 };
 
-/* ── M-Pesa ────────────────────────────────────────────── */
+/* â”€â”€ M-Pesa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /**
  * M-Pesa related API helpers
  */
@@ -197,12 +199,52 @@ const settingsApi = {
   update: (key: string, data: { account_id?: number; treasury_id?: number }) =>
     api.put(`/accounting-settings/${key}`, data),
 };
+
+const salesDocumentsApi = {
+  getAll: (params?: { type?: string; locationId?: number }) => api.get('/sales-documents', { params }),
+  getOne: (id: number) => api.get(`/sales-documents/${id}`),
+  create: (data: SalesDocumentPayload) => api.post('/sales-documents', data),
+  convert: (id: number, targetType: string) => api.post(`/sales-documents/${id}/convert`, { targetType }),
+  addPayment: (id: number, data: { amount: number; method?: string; referenceNo?: string; notes?: string }) =>
+    api.post(`/sales-documents/${id}/payments`, data),
+};
+
+const discountsApi = {
+  getAll: (params?: { locationId?: number }) => api.get('/discounts', { params }),
+  create: (data: DiscountPayload) => api.post('/discounts', data),
+  update: (id: number, data: DiscountPayload) => api.put(`/discounts/${id}`, data),
+  delete: (id: number) => api.delete(`/discounts/${id}`),
+};
+
+const referenceDataApi = {
+  getAll: (type: ReferenceType, params?: { locationId?: number; search?: string }) =>
+    api.get(`/reference-data/${type}`, { params }),
+  create: (type: ReferenceType, data: ReferenceDataPayload) =>
+    api.post(`/reference-data/${type}`, data),
+  update: (type: ReferenceType, id: number, data: ReferenceDataPayload) =>
+    api.put(`/reference-data/${type}/${id}`, data),
+  delete: (type: ReferenceType, id: number) =>
+    api.delete(`/reference-data/${type}/${id}`),
+};
  
-/* ── Types ─────────────────────────────────────────────── */
+/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+export interface BusinessRegistrationPayload {
+  business: { name: string; startDate?: string; currency: string; logoUrl?: string; website?: string; contactNumber?: string; alternateContactNumber?: string; country: string; state: string; city: string; zipCode: string; landmark: string; timezone: string; locale?: string };
+  settings: { businessType: string; businessTypeOther?: string; defaultTaxRate?: number; taxNumber?: string; sellingPriceTaxType: string; stockAccountingMethod: string; defaultBusinessLocation: string; defaultLowStockThreshold?: number; featurePosOffline?: boolean; featureMultiCurrencySales?: boolean; featureBarcodeScanning?: boolean; featureServiceRepair?: boolean; financialYearStartMonth: number };
+  owner: { prefix?: string; firstName: string; lastName?: string; username: string; email: string; password: string; confirmPassword: string };
+}
+
 export interface InventoryItemPayload {
+  sku?: string;
+  barcode?: string;
+  locationId?: number;
+  categoryId?: number | null;
+  unitId?: number | null;
+  brandId?: number | null;
   name: string;
   category: string;
   unit: string;
+  brand?: string;
   stock: number;
   threshold: number;
   cost: number;
@@ -210,9 +252,28 @@ export interface InventoryItemPayload {
   supplierId?: number;
 }
 
+export type ReferenceType = 'units' | 'categories' | 'brands';
+
+export interface ReferenceDataPayload {
+  locationId: number;
+  name: string;
+  shortName?: string;
+  allowDecimal?: boolean;
+  baseUnitId?: number | null;
+  multiplier?: number | null;
+  code?: string;
+  description?: string;
+  parentId?: number | null;
+}
+
 export interface OrderPayload {
+  referenceNo?: string;
+  purchaseDate?: string;
+  status?: string;
+  locationId?: number;
+  payTerm?: string;
   supplierId?: number;
-  items: { itemId: number; quantity: number; unitPrice: number }[];
+  items: { itemId: number; quantity: number; unitPrice: number; costBeforeDiscount?: number; discountPercent?: number; taxPercent?: number; profitMargin?: number; sellingPrice?: number; accountType?: string }[];
   notes?: string;
   transactionType?: 'purchase' | 'opening_stock';
 }
@@ -225,5 +286,32 @@ export interface SupplierPayload {
   itemsSupplied?: string[];
 }
 
-export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, usersApi, shiftsApi, locationsApi, customersApi, accountsApi, treasuryApi, settingsApi, journalEntryApi };
+export interface SalesDocumentPayload {
+  type: 'quotation' | 'sales_order' | 'proforma' | 'invoice' | 'pos' | 'credit_note';
+  customerId?: number | null;
+  referenceNo?: string;
+  date?: string;
+  locationId: number;
+  status?: string;
+  convertedFromId?: number | null;
+  referenceInvoiceId?: number | null;
+  notes?: string;
+  payment?: { amount: number; method?: string; referenceNo?: string };
+  items: { itemId: number; quantity: number; unitPrice: number; discountPercent?: number; taxPercent?: number }[];
+}
+
+export interface DiscountPayload {
+  locationId: number;
+  name: string;
+  discountType: 'percent' | 'fixed';
+  value: number;
+  appliesTo: 'product' | 'category' | 'customer';
+  productId?: number | null;
+  categoryId?: number | null;
+  customerId?: number | null;
+  active?: boolean;
+}
+
+export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
 export default api;
+

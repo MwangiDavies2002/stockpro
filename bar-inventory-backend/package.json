@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate": "node src/config/migrate.js"
+    "migrate": "node src/config/migrate.js",
+    "migrate:purchases": "node migrate-purchases.js",
+    "migrate:reference-data": "node migrate-reference-data.js",
+    "migrate:sales-ar": "node migrate-sales-ar.js",
+    "test:purchases": "node --test test/purchases.test.js",
+    "test:sales-ar": "node --test test/salesDocuments.test.js",
+    "migrate:tenants": "node migrate-tenant-onboarding.js"
   },
   "dependencies": {
     "axios": "^1.6.8",

@@ -13,7 +13,11 @@ import {
   BookOpen,
   BookText,
   Settings,
-  Plus
+  Plus,
+  Tags,
+  Ruler,
+  Badge,
+  FileText
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { authApi } from '../lib/api';
@@ -23,13 +27,36 @@ const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard',  icon: LayoutDashboard, adminOnly: false },
   {href:'/pos',               label:'POS',   icon:CreditCard,                       adminOnly:false},
   { href: '/inventory', label: 'Inventory',  icon: Package,         adminOnly: false },
-  //{ href: '/orders',    label: 'Orders',     icon: ShoppingCart,    adminOnly: false },
+  { href: '/purchases', label: 'Purchases', icon: ShoppingCart, adminOnly: true },
+  {
+    label: 'Sales A/R',
+    icon: Receipt,
+    adminOnly: false,
+    subItems: [
+      { href: '/sales-ar/quotation', label: 'Quotations', icon: FileText },
+      { href: '/sales-ar/sales_order', label: 'Sales Orders', icon: ShoppingCart },
+      { href: '/sales-ar/proforma', label: 'Proformas', icon: Receipt },
+      { href: '/sales-ar/invoice', label: 'Invoices', icon: Receipt },
+      { href: '/sales-ar/credit_note', label: 'Credit Notes', icon: BookText },
+      { href: '/discounts', label: 'Discounts', icon: Tags },
+    ]
+  },
   { href: '/reports',   label: 'Reports',    icon: BarChart3,       adminOnly: false },
   { href: '/users',     label: 'Users',      icon: Users,           adminOnly: true  },
   {href: '/sales', label:'Sales', icon:Receipt, adminOnly:false},
   { href: '/locations', label: 'Locations', icon: MapPin, adminOnly: true },
   { href: '/customers',  label: 'Customers',  icon: Users2, adminOnly: false },
   { href: '/account/account',  label: 'Treasury',   icon: Wallet, adminOnly: true  },
+  {
+    label: 'Setup',
+    icon: Settings,
+    adminOnly: true,
+    subItems: [
+      { href: '/setup/units', label: 'Units', icon: Ruler },
+      { href: '/setup/categories', label: 'Categories', icon: Tags },
+      { href: '/setup/brands', label: 'Brands', icon: Badge },
+    ]
+  },
   { 
     label: 'Accounting', 
     icon: BookOpen, 
@@ -49,15 +76,15 @@ interface NavbarProps {
 }
 
 /**
- * Top navigation bar component. Shows navigation links, alerts and user menu.
+ * Left navigation sidebar component. Shows navigation links, alerts and user menu.
  */
 export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [accountingMenuOpen, setAccountingMenuOpen] = useState(false);
-  const [mobileAccountingOpen, setMobileAccountingOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState(user ?? null);
 
   const isAdmin = currentUser?.role === 'admin';
@@ -90,9 +117,9 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
 
   const visibleItems = isAdmin ? NAV_ITEMS : NAV_ITEMS.filter((item) => ['/pos', '/customers'].includes(item.href as string));
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
+    <nav className="app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:w-60 md:border-r md:overflow-y-auto">
+      <div className="mx-auto px-4 md:py-5">
+        <div className="flex items-center justify-between h-14 md:h-auto md:flex-col md:items-stretch md:gap-6">
 
           {/* Logo */}
           <div className="flex items-center gap-3">
@@ -103,7 +130,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
           </div>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex md:flex-col md:items-stretch gap-1">
             {visibleItems.map((item) => {
               if (item.subItems) {
                 const isActive = item.subItems.some(sub => pathname === sub.href);
@@ -111,7 +138,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                   <div key={item.label} className="relative">
                     <button
                       type="button"
-                      onClick={() => setAccountingMenuOpen(!accountingMenuOpen)}
+                      onClick={() => setOpenMenu(openMenu === item.label ? null : item.label)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors
                         ${isActive
                           ? 'bg-brand/10 text-brand'
@@ -123,13 +150,13 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                       <ChevronDown className="w-3 h-3" />
                     </button>
 
-                    {accountingMenuOpen && (
-                      <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                    {openMenu === item.label && (
+                      <div className="mt-1 ml-3 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
                         {item.subItems.map((sub) => (
                           <Link
                             key={sub.href}
                             href={sub.href}
-                            onClick={() => setAccountingMenuOpen(false)}
+                            onClick={() => setOpenMenu(null)}
                             className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors
                               ${pathname === sub.href
                                 ? 'bg-brand/10 text-brand'
@@ -230,7 +257,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                 <div key={item.label} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setMobileAccountingOpen(!mobileAccountingOpen)}
+                    onClick={() => setMobileOpenMenu(mobileOpenMenu === item.label ? null : item.label)}
                     className={`flex items-center justify-between w-full px-3 py-2.5 rounded-md text-sm font-medium transition-colors
                       ${isActive ? 'bg-brand/10 text-brand' : 'text-gray-700 hover:bg-gray-100'}`}
                   >
@@ -238,9 +265,9 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                       <item.icon className="w-4 h-4" />
                       {item.label}
                     </div>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${mobileAccountingOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3 h-3 transition-transform ${mobileOpenMenu === item.label ? 'rotate-180' : ''}`} />
                   </button>
-                  {mobileAccountingOpen && (
+                  {mobileOpenMenu === item.label && (
                     <div className="pl-9 space-y-1">
                       {item.subItems.map((sub) => (
                         <Link

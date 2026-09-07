@@ -6,7 +6,7 @@ import Cookies from 'js-cookie';
 import { Search, X, Banknote, Smartphone, Trash2, WifiOff, CloudUpload, Plus } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Receipt from '../components/Receipt';
-import { inventoryApi, salesApi, authApi, shiftsApi, customersApi } from '../lib/api';
+import { inventoryApi, salesApi, salesDocumentsApi, authApi, shiftsApi, customersApi } from '../lib/api';
 import { toast } from 'sonner';
 
 interface Product {
@@ -28,6 +28,7 @@ interface CartLine {
 }
 
 const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'];
+const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export default function POSPage() {
   const router = useRouter();
@@ -343,11 +344,18 @@ export default function POSPage() {
 
     // ── Online path: normal atomic sale ──
     try {
-      const { data } = await salesApi.create(salePayload);
+      const { data } = await salesDocumentsApi.create({
+        type: 'pos',
+        customerId: method === 'credit' ? customerId : null,
+        date: todayISO(),
+        locationId: 1,
+        payment: method === 'credit' ? undefined : { amount: subtotal, method },
+        items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price })),
+      });
       setReceiptData({
-        saleId: data.sale.id,
-        items: data.items,
-        total: Number(data.sale.total),
+        saleId: data.sale_id || data.saleId || data.id,
+        items: data.items.map((item: any) => ({ item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price })),
+        total: Number(data.total),
         paymentMethod: method,
         cashierName: user?.name,
       });
