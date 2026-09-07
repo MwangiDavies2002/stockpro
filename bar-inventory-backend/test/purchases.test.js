@@ -28,7 +28,7 @@ before(async () => {
 after(async () => { if (connection) { await connection.rollback(); connection.release(); } await database.db.end(); });
 beforeEach(async () => {
   for (const table of tables) await run(`DELETE FROM ${table}`);
-  await run("INSERT INTO suppliers (id,name) VALUES (1,'Test supplier')");
+  await run("INSERT INTO suppliers (id,business_id,name) VALUES (1,1,'Test supplier')");
   await run("INSERT INTO locations (id,business_id,name) VALUES (1,1,'Test location'),(2,1,'Other location')");
   await run("INSERT INTO inventory_items (id,business_id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,1,'Test lager','Beers','Bottles',10,50,90,1,'SKU-TEST','123456789'),(2,1,'Other item','Beers','Bottles',2,10,20,2,'OTHER','987654321')");
   await run(`INSERT INTO chart_of_accounts (id,account_code,account_name,account_type,normal_balance,active)
@@ -125,4 +125,5 @@ test('reference data is location scoped and can back product creation', async ()
   assert.equal(product.result.category_id, child.result.id);
   assert.equal(product.result.brand_id, brand.result.id);
 });
+
 

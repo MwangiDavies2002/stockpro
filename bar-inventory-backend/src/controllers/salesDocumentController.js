@@ -195,29 +195,29 @@ async function postInvoice(client, documentId, header, lines, totals, paidAmount
   const updatedItems = [];
   for (const line of lines) {
     await client.query('INSERT INTO sale_items (sale_id,item_id,item_name,quantity,unit_price) VALUES (?,?,?,?,?)', [saleId, line.itemId, line.itemName, line.quantity, line.unitPrice]);
-    await client.query('UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=?', [line.quantity, line.quantity, line.itemId]);
+    await client.query('UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=? AND business_id=?', [line.quantity, line.quantity, line.itemId, businessId]);
     totalCogs += Number(line.product.cost || 0) * line.quantity;
-    const { rows: [updated] } = await client.query('SELECT * FROM inventory_items WHERE id=?', [line.itemId]);
+    const { rows: [updated] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [line.itemId, businessId]);
     updatedItems.push(updated);
     await client.query(
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
       [line.itemId, 'sale', -line.quantity, line.product.stock, updated.stock, userId, `Sales document #${documentId}`]
     );
   }
-  if (header.customerId && totals.total > paidAmount) await client.query('UPDATE customers SET balance=balance+? WHERE id=?', [Number((totals.total - paidAmount).toFixed(2)), header.customerId]);
+  if (header.customerId && totals.total > paidAmount) await client.query('UPDATE customers SET balance=balance+? WHERE id=? AND business_id=?', [Number((totals.total - paidAmount).toFixed(2)), header.customerId, businessId]);
   if (paidAmount > 0) {
     await client.query('INSERT INTO sales_document_payments (document_id,amount,method,reference_no,notes,created_by) VALUES (?,?,?,?,?,?)', [documentId, paidAmount, header.payment?.method || 'cash', header.payment?.referenceNo || null, 'Opening payment', userId]);
   }
   const journalType = paymentMethod === 'credit' ? 'CREDIT_SALE' : paymentMethod === 'mpesa' ? 'MPESA_SALE' : paymentMethod === 'bank' ? 'BANK_SALE' : 'CASH_SALE';
   await JournalEngine.generate(journalType, totals.total, `Sales document #${documentId}`, header.notes || 'Sales invoice', client, { cogsAmount: totalCogs, postingDate: header.documentDate });
-  await client.query('UPDATE sales_documents SET sale_id=? WHERE id=?', [saleId, documentId]);
+  await client.query('UPDATE sales_documents SET sale_id=? WHERE id=? AND business_id=?', [saleId, documentId, businessId]);
   client.updatedItems = updatedItems;
 }
 
 async function postCreditNote(client, documentId, header, lines, totals, userId, businessId = 1) {
   for (const line of lines) {
-    await client.query('UPDATE inventory_items SET stock=stock+?,sold=GREATEST(sold-?,0),updated_at=NOW() WHERE id=?', [line.quantity, line.quantity, line.itemId]);
-    const { rows: [updated] } = await client.query('SELECT * FROM inventory_items WHERE id=?', [line.itemId]);
+    await client.query('UPDATE inventory_items SET stock=stock+?,sold=GREATEST(sold-?,0),updated_at=NOW() WHERE id=? AND business_id=?', [line.quantity, line.quantity, line.itemId, businessId]);
+    const { rows: [updated] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [line.itemId, businessId]);
     await client.query(
       'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
       [line.itemId, 'adjustment', line.quantity, line.product.stock, updated.stock, userId, `Credit note #${documentId} for invoice #${header.referenceInvoiceId}`]
@@ -225,8 +225,8 @@ async function postCreditNote(client, documentId, header, lines, totals, userId,
   }
   const invoice = await client.query('SELECT customer_id FROM sales_documents WHERE id=? AND business_id=?', [header.referenceInvoiceId, businessId]);
   const customerId = invoice.rows[0]?.customer_id;
-  if (customerId) await client.query('UPDATE customers SET balance=GREATEST(balance-?,0) WHERE id=?', [totals.total, customerId]);
-  await client.query('UPDATE sales_documents SET status=? WHERE id=?', ['issued', documentId]);
+  if (customerId) await client.query('UPDATE customers SET balance=GREATEST(balance-?,0) WHERE id=? AND business_id=?', [totals.total, customerId, businessId]);
+  await client.query('UPDATE sales_documents SET status=? WHERE id=? AND business_id=?', ['issued', documentId, businessId]);
 }
 
 async function convert(req, res, next) {

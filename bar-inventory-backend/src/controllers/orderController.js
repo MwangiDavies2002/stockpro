@@ -1,6 +1,7 @@
 const { query, getClient } = require('../config/db');
 const JournalEngine = require('../models/JournalEngine');
 const { ensurePurchaseAccountingMappings } = require('../utils/accountingDefaults');
+const { getBusinessId } = require('../utils/tenant');
 
 /* GET /api/orders */
 /**
@@ -12,10 +13,10 @@ async function getAll(req, res, next) {
     const { status } = req.query;
     let sql = `SELECT o.*, s.name AS supplier_name, u.name AS created_by_name
                FROM orders o
-               LEFT JOIN suppliers s ON s.id=o.supplier_id
+               LEFT JOIN suppliers s ON s.id=o.supplier_id AND s.business_id=o.business_id
                LEFT JOIN users     u ON u.id=o.created_by
-               WHERE 1=1`;
-    const params = [];
+               WHERE o.business_id=?`;
+    const params = [getBusinessId(req)];
     if (status) { params.push(status); sql += ' AND o.status=?'; }
     sql += ' ORDER BY o.created_at DESC';
     const { rows: orders } = await query(sql, params);
@@ -46,8 +47,8 @@ async function getAll(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const { rows } = await query(
-      `SELECT o.*, s.name AS supplier_name FROM orders o LEFT JOIN suppliers s ON s.id=o.supplier_id WHERE o.id=$1`,
-      [req.params.id]
+      `SELECT o.*, s.name AS supplier_name FROM orders o LEFT JOIN suppliers s ON s.id=o.supplier_id AND s.business_id=o.business_id WHERE o.id=$1 AND o.business_id=$2`,
+      [req.params.id, getBusinessId(req)]
     );
     if (!rows.length) return res.status(404).json({ message: 'Order not found' });
     const { rows: items } = await query('SELECT * FROM order_items WHERE order_id=$1', [req.params.id]);
@@ -91,30 +92,30 @@ async function create(req, res, next) {
     client = await getClient();
     await client.query('BEGIN');
     if (supplierId) {
-      const supplier = await client.query('SELECT id FROM suppliers WHERE id=?', [supplierId]);
+      const supplier = await client.query('SELECT id FROM suppliers WHERE id=? AND business_id=?', [supplierId, getBusinessId(req)]);
       if (!supplier.rows.length) throw badRequest('Supplier does not exist');
     }
     if (enhanced) {
-      const location = await client.query('SELECT id FROM locations WHERE id=?', [locationId]);
+      const location = await client.query('SELECT id FROM locations WHERE id=? AND business_id=?', [locationId, getBusinessId(req)]);
       if (!location.rows.length) throw badRequest('Business location does not exist');
     }
     const total = Number(lines.reduce((sum, line) => sum + line.netCost, 0).toFixed(2));
     if (total > 9999999999.99) throw badRequest('Purchase total exceeds the supported amount');
     const result = await client.query(
-      'INSERT INTO orders (supplier_id,notes,total,created_by,transaction_type,status,reference_no,purchase_date,location_id,pay_term) VALUES (?,?,?,?,?,?,?,?,?,?)',
-      [supplierId || null, notes || null, total, req.user.id, transactionType, status, referenceNo || null, purchaseDate || null, locationId || null, payTerm || null]);
+      'INSERT INTO orders (business_id,supplier_id,notes,total,created_by,transaction_type,status,reference_no,purchase_date,location_id,pay_term) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+      [getBusinessId(req), supplierId || null, notes || null, total, req.user.id, transactionType, status, referenceNo || null, purchaseDate || null, locationId || null, payTerm || null]);
     const orderId = result.insertId;
     for (const line of [...lines].sort((a,b) => a.itemId-b.itemId)) {
-      const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? FOR UPDATE', [line.itemId]);
+      const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE', [line.itemId, getBusinessId(req)]);
       if (!item) throw badRequest('Product no longer exists');
       if (enhanced && Number(item.location_id) !== Number(locationId)) throw badRequest(`${item.name} belongs to another business location`);
       await client.query(
         'INSERT INTO order_items (order_id,item_id,item_name,quantity,unit_price,cost_before_discount,discount_percent,tax_percent,subtotal,net_cost,profit_margin,selling_price,account_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [orderId, line.itemId, item.name, line.quantity, line.unitPrice, line.before, line.discount, line.tax, line.subtotal, line.netCost, line.margin, enhanced ? line.sellingPrice : null, line.accountType]);
-      if (enhanced) await client.query('UPDATE inventory_items SET previous_unit_price=?, previous_discount=? WHERE id=?', [line.before, line.discount, line.itemId]);
+      if (enhanced) await client.query('UPDATE inventory_items SET previous_unit_price=?, previous_discount=? WHERE id=? AND business_id=?', [line.before, line.discount, line.itemId, getBusinessId(req)]);
     }
-    const { rows: [order] } = await client.query('SELECT * FROM orders WHERE id=?', [orderId]);
-    if (status === 'delivered') await receiveOrder(client, order, req.user.id);
+    const { rows: [order] } = await client.query('SELECT * FROM orders WHERE id=? AND business_id=?', [orderId, getBusinessId(req)]);
+    if (status === 'delivered') await receiveOrder(client, order, req.user.id, getBusinessId(req));
     const { rows: savedLines } = await client.query('SELECT * FROM order_items WHERE order_id=?', [orderId]);
     await client.query('COMMIT');
     res.status(201).json({ ...order, items: savedLines });
@@ -134,11 +135,11 @@ async function update(req, res, next) {
   try {
     const { notes } = req.body;
    const { rowCount } = await query(
-  'UPDATE orders SET notes=$1,updated_at=NOW() WHERE id=$2',
-  [notes, req.params.id]
+  'UPDATE orders SET notes=$1,updated_at=NOW() WHERE id=$2 AND business_id=$3',
+  [notes, req.params.id, getBusinessId(req)]
 );
     if (!rowCount) return res.status(404).json({ message: 'Order not found' });
-    const { rows } = await query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
+    const { rows } = await query('SELECT * FROM orders WHERE id=$1 AND business_id=$2', [req.params.id, getBusinessId(req)]);
     res.json(rows[0]);
   } catch (err) { next(err); }
 }
@@ -148,12 +149,12 @@ async function update(req, res, next) {
  */
 async function remove(req, res, next) {
   try {
-    const check = await query('SELECT status FROM orders WHERE id=$1', [req.params.id]);
+    const check = await query('SELECT status FROM orders WHERE id=$1 AND business_id=$2', [req.params.id, getBusinessId(req)]);
     if (!check.rows.length) return res.status(404).json({ message: 'Order not found' });
     if (check.rows[0].status === 'delivered') {
       return res.status(400).json({ message: 'Cannot delete a delivered order' });
     }
-    await query('DELETE FROM orders WHERE id=$1', [req.params.id]);
+    await query('DELETE FROM orders WHERE id=$1 AND business_id=$2', [req.params.id, getBusinessId(req)]);
     res.json({ message: 'Order deleted' });
   } catch (err) { next(err); }
 }
@@ -172,7 +173,7 @@ async function updateStatus(req, res, next) {
     }
 
     await client.query('BEGIN');
-    const { rows: lockedOrders } = await client.query('SELECT * FROM orders WHERE id=? FOR UPDATE', [req.params.id]);
+    const { rows: lockedOrders } = await client.query('SELECT * FROM orders WHERE id=? AND business_id=? FOR UPDATE', [req.params.id, getBusinessId(req)]);
     if (!lockedOrders.length) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Order not found' });
@@ -184,13 +185,13 @@ async function updateStatus(req, res, next) {
       return res.status(400).json({ message: `Cannot change a ${order.status} order to ${status}` });
     }
 
-    await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2 ', [status, req.params.id]);
+    await client.query('UPDATE orders SET status=$1,updated_at=NOW() WHERE id=$2 AND business_id=$3 ', [status, req.params.id, getBusinessId(req)]);
 
     if (status === 'delivered') {
-      await receiveOrder(client, order, req.user?.id || null);
+      await receiveOrder(client, order, req.user?.id || null, getBusinessId(req));
     }
 
-    const { rows: [freshOrder] } = await client.query('SELECT * FROM orders WHERE id=$1', [req.params.id]);
+    const { rows: [freshOrder] } = await client.query('SELECT * FROM orders WHERE id=$1 AND business_id=$2', [req.params.id, getBusinessId(req)]);
     await client.query('COMMIT');
     res.json(freshOrder);
   } catch (err) {
@@ -201,12 +202,12 @@ async function updateStatus(req, res, next) {
   }
 }
 
-async function receiveOrder(client, order, userId) {
+async function receiveOrder(client, order, userId, businessId = 1) {
       const { rows: items } = await client.query('SELECT * FROM order_items WHERE order_id=$1', [order.id]);
 
       for (const line of items) {
         if (line.item_id) {
-          const check = await client.query('SELECT stock, cost, location_id FROM inventory_items WHERE id=? FOR UPDATE', [line.item_id]);
+          const check = await client.query('SELECT stock, cost, location_id FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE', [line.item_id, businessId]);
           if (!check.rows.length) throw new Error(`Inventory item ${line.item_id} was not found`);
           if (order.location_id && Number(check.rows[0].location_id) !== Number(order.location_id)) throw badRequest('Product location changed; cannot receive this purchase');
           const beforeStock = Number(check.rows[0].stock);
@@ -220,9 +221,9 @@ async function receiveOrder(client, order, userId) {
             ? receivedCost
             : ((beforeStock * beforeCost) + (receivedQty * receivedCost)) / (beforeStock + receivedQty);
 
-          await client.query('UPDATE inventory_items SET stock = stock + ?, cost = ?, price = COALESCE(?, price), updated_at=NOW() WHERE id = ?', [receivedQty, newCost, line.selling_price, line.item_id]);
+          await client.query('UPDATE inventory_items SET stock = stock + ?, cost = ?, price = COALESCE(?, price), updated_at=NOW() WHERE id = ? AND business_id=?', [receivedQty, newCost, line.selling_price, line.item_id, businessId]);
 
-          const { rows: [updated] } = await client.query('SELECT stock FROM inventory_items WHERE id=?', [line.item_id]);
+          const { rows: [updated] } = await client.query('SELECT stock FROM inventory_items WHERE id=? AND business_id=?', [line.item_id, businessId]);
           await client.query(
             'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
             [line.item_id, order.transaction_type === 'opening_stock' ? 'opening_stock' : 'restock', receivedQty, beforeStock, updated.stock, userId, `Order #${order.id} delivered`]

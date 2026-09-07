@@ -51,13 +51,13 @@ async function statement(req, res, next) {
   try {
     const { rows: sales } = await query(
       "SELECT id, total, created_at, notes FROM sales WHERE customer_id=? AND business_id=? ORDER BY created_at DESC",
-      [req.params.id]
+      [req.params.id, getBusinessId(req)]
     );
     const { rows: payments } = await query(
       'SELECT id, amount, method, notes, created_at FROM customer_payments WHERE customer_id=? AND business_id=? ORDER BY created_at DESC',
-      [req.params.id]
+      [req.params.id, getBusinessId(req)]
     );
-    const { rows: customerRows } = await query('SELECT * FROM customers WHERE id=?', [req.params.id, getBusinessId(req)]);
+    const { rows: customerRows } = await query('SELECT * FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!customerRows.length) return res.status(404).json({ message: 'Customer not found' });
     res.json({ customer: customerRows[0], sales, payments });
   } catch (err) { next(err); }

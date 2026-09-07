@@ -2,6 +2,7 @@ const { getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
 const JournalEngine = require('../models/JournalEngine');
 const Setting = require('../models/Setting');
+const { getBusinessId } = require('../utils/tenant');
 
 /* POST /api/sales */
 /**
@@ -33,8 +34,8 @@ async function create(req, res, next) {
     const stockChecks = [];
     for (const line of items) {
       const { rows } = await client.query(
-        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=?',
-        [line.itemId]
+        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=? AND business_id=?',
+        [line.itemId, getBusinessId(req)]
       );
       if (!rows.length) {
         client.release();
@@ -68,7 +69,7 @@ async function create(req, res, next) {
         client.release();
         return res.status(400).json({ message: 'A customer is required for credit sales' });
       }
-      const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=?', [customerId]);
+      const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=? AND business_id=?', [customerId, getBusinessId(req)]);
       if (!custRes.rows.length) {
         client.release();
         return res.status(404).json({ message: 'Customer not found' });
@@ -90,8 +91,8 @@ async function create(req, res, next) {
 
     const saleNote = note || (paymentMethod ? `Sale via ${paymentMethod}` : 'Sale recorded');
     const { insertId: saleId } = await client.query(
-      'INSERT INTO sales (total, created_by, notes, payment_method, location_id, customer_id) VALUES (?,?,?,?,?,?)',
-      [total, req.user?.id || null, saleNote, paymentMethod || 'cash', locationId || 1, customerId || null]
+      'INSERT INTO sales (business_id,total,created_by,notes,payment_method,location_id,customer_id) VALUES (?,?,?,?,?,?,?)',
+      [getBusinessId(req), total, req.user?.id || null, saleNote, paymentMethod || 'cash', locationId || 1, customerId || null]
     );
 
     const updatedItems = [];
@@ -109,8 +110,8 @@ async function create(req, res, next) {
       );
 
       const { rows: [updated] } = await client.query(
-        'SELECT * FROM inventory_items WHERE id=?',
-        [item.id]
+        'SELECT * FROM inventory_items WHERE id=? AND business_id=?',
+        [item.id, getBusinessId(req)]
       );
 
       await client.query(
@@ -122,7 +123,7 @@ async function create(req, res, next) {
     }
 
     if (paymentMethod === 'credit') {
-      await client.query('UPDATE customers SET balance = balance + ? WHERE id=?', [total, customerId]);
+      await client.query('UPDATE customers SET balance = balance + ? WHERE id=? AND business_id=?', [total, customerId, getBusinessId(req)]);
       // 2. Journal Entry for Credit Sale
       await JournalEngine.generate('CREDIT_SALE', total, `Sale #${saleId}`, saleNote, client, { cogsAmount: totalCogs });
     } else {
@@ -134,7 +135,7 @@ async function create(req, res, next) {
       await JournalEngine.generate(type, total, `Sale #${saleId}`, saleNote, client, { cogsAmount: totalCogs });
     }
 
-    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=?', [saleId]);
+    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [saleId, getBusinessId(req)]);
     const { rows: saleItems } = await client.query('SELECT * FROM sale_items WHERE sale_id=?', [saleId]);
 
     await client.query('COMMIT');
@@ -166,8 +167,10 @@ async function getAll(req, res, next) {
       `SELECT s.*, u.name AS created_by_name
        FROM sales s
        LEFT JOIN users u ON u.id = s.created_by
+       WHERE s.business_id=?
        ORDER BY s.created_at DESC
-       LIMIT 200`
+       LIMIT 200`,
+      [getBusinessId(req)]
     );
     const ids = sales.map((s) => s.id);
     let items = [];
@@ -195,7 +198,7 @@ async function getAll(req, res, next) {
 async function getOne(req, res, next) {
   const client = await getClient();
   try {
-    const { rows } = await client.query('SELECT * FROM sales WHERE id=?', [req.params.id]);
+    const { rows } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!rows.length) return res.status(404).json({ message: 'Sale not found' });
     const { rows: items } = await client.query('SELECT * FROM sale_items WHERE sale_id=?', [req.params.id]);
     res.json({ ...rows[0], items });

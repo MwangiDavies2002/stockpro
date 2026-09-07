@@ -1,11 +1,12 @@
 const { query } = require('../config/db');
 const Journal = require('../models/Journal');
+const { getBusinessId } = require('../utils/tenant');
 
 /* GET /api/reports/stock */
 /**
  * Report: current stock levels with a status of LOW/OK per item.
  */
-async function getStock(_req, res, next) {
+async function getStock(req, res, next) {
   try {
     const { rows } = await query(`
       SELECT
@@ -13,9 +14,10 @@ async function getStock(_req, res, next) {
         CASE WHEN i.stock <= i.threshold THEN 'LOW' ELSE 'OK' END AS status,
         s.name AS supplier_name
       FROM inventory_items i
-      LEFT JOIN suppliers s ON s.id = i.supplier_id
+      LEFT JOIN suppliers s ON s.id = i.supplier_id AND s.business_id = i.business_id
+      WHERE i.business_id = ?
       ORDER BY i.stock ASC
-    `);
+    `, [getBusinessId(req)]);
     res.json(rows);
   } catch (err) { next(err); }
 }
@@ -40,11 +42,12 @@ async function getUsage(req, res, next) {
                 SUM(si.quantity * si.unit_price) AS revenue
          FROM sale_items si
          JOIN sales s ON s.id = si.sale_id
-         WHERE s.created_at >= DATE_SUB(NOW(), INTERVAL $1 DAY)
+         WHERE s.business_id = ? AND s.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
          GROUP BY si.item_id
        ) u ON u.item_id = i.id
+       WHERE i.business_id = ?
        ORDER BY revenue DESC`,
-      [days]
+      [getBusinessId(req), days, getBusinessId(req)]
     );
     res.json(rows);
   } catch (err) { next(err); }
@@ -55,7 +58,7 @@ async function getUsage(req, res, next) {
  * Report: sales bucketed by transaction size (Micro/Small/Medium/Large),
  * derived from the real sales table.
  */
-async function getSaleSizeGroups(_req, res, next) {
+async function getSaleSizeGroups(req, res, next) {
   try {
     const { rows } = await query(`
       SELECT
@@ -69,8 +72,9 @@ async function getSaleSizeGroups(_req, res, next) {
         SUM(total)   AS total,
         AVG(total)   AS avg_amount
       FROM sales
+      WHERE business_id = ?
       GROUP BY price_group
-    `);
+    `, [getBusinessId(req)]);
     res.json(rows);
   } catch (err) { next(err); }
 }
@@ -89,10 +93,10 @@ async function getSalesTrend(req, res, next) {
          SUM(total)       AS revenue,
          COUNT(*)         AS transactions
        FROM sales
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL $1 DAY)
+       WHERE business_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
        GROUP BY DATE(created_at)
        ORDER BY date ASC`,
-      [days]
+      [getBusinessId(req), days]
     );
     res.json(rows);
   } catch (err) { next(err); }

@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/db');
+const { getBusinessId } = require('../utils/tenant');
 
 /* GET /api/users */
 /**
@@ -8,7 +9,8 @@ const { query } = require('../config/db');
 async function getAll(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT id, name, email, role, phone, active, created_at FROM users ORDER BY created_at ASC'
+      'SELECT id, business_id, name, email, username, role, is_owner, phone, active, created_at FROM users WHERE business_id=? ORDER BY created_at ASC',
+      [getBusinessId(req)]
     );
     res.json(rows);
   } catch (err) { next(err); }
@@ -21,8 +23,8 @@ async function getAll(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT id, name, email, role, phone, active, created_at FROM users WHERE id=?',
-      [req.params.id]
+      'SELECT id, business_id, name, email, username, role, is_owner, phone, active, created_at FROM users WHERE id=? AND business_id=?',
+      [req.params.id, getBusinessId(req)]
     );
     if (!rows.length) return res.status(404).json({ message: 'User not found' });
     res.json(rows[0]);
@@ -48,13 +50,13 @@ async function create(req, res, next) {
 
     const hash = await bcrypt.hash(password, 12);
     const { insertId } = await query(
-      'INSERT INTO users (name,email,password,role,phone) VALUES (?,?,?,?,?)',
-      [name, email, hash, role || 'employee', phone || null]
+      'INSERT INTO users (business_id,name,email,password,role,phone) VALUES (?,?,?,?,?,?)',
+      [getBusinessId(req), name, email, hash, role || 'employee', phone || null]
     );
 
     const { rows } = await query(
-      'SELECT id, name, email, role, phone, active, created_at FROM users WHERE id=?',
-      [insertId]
+      'SELECT id, business_id, name, email, username, role, is_owner, phone, active, created_at FROM users WHERE id=? AND business_id=?',
+      [insertId, getBusinessId(req)]
     );
     res.status(201).json(rows[0]);
   } catch (err) { next(err); }
@@ -67,7 +69,7 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const { name, email, password, role, phone, active } = req.body;
-    const check = await query('SELECT id FROM users WHERE id=?', [req.params.id]);
+    const check = await query('SELECT id FROM users WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!check.rows.length) return res.status(404).json({ message: 'User not found' });
 
     if (password) {
@@ -76,19 +78,19 @@ async function update(req, res, next) {
       }
       const hash = await bcrypt.hash(password, 12);
       await query(
-        'UPDATE users SET name=?,email=?,password=?,role=?,phone=?,active=?,updated_at=NOW() WHERE id=?',
-        [name, email, hash, role, phone || null, active ?? true, req.params.id]
+        'UPDATE users SET name=?,email=?,password=?,role=?,phone=?,active=?,updated_at=NOW() WHERE id=? AND business_id=?',
+        [name, email, hash, role, phone || null, active ?? true, req.params.id, getBusinessId(req)]
       );
     } else {
       await query(
-        'UPDATE users SET name=?,email=?,role=?,phone=?,active=?,updated_at=NOW() WHERE id=?',
-        [name, email, role, phone || null, active ?? true, req.params.id]
+        'UPDATE users SET name=?,email=?,role=?,phone=?,active=?,updated_at=NOW() WHERE id=? AND business_id=?',
+        [name, email, role, phone || null, active ?? true, req.params.id, getBusinessId(req)]
       );
     }
 
     const { rows } = await query(
-      'SELECT id, name, email, role, phone, active, created_at FROM users WHERE id=?',
-      [req.params.id]
+      'SELECT id, business_id, name, email, username, role, is_owner, phone, active, created_at FROM users WHERE id=? AND business_id=?',
+      [req.params.id, getBusinessId(req)]
     );
     res.json(rows[0]);
   } catch (err) { next(err); }
@@ -100,13 +102,13 @@ async function update(req, res, next) {
  */
 async function toggleActive(req, res, next) {
   try {
-    const { rows } = await query('SELECT active FROM users WHERE id=?', [req.params.id]);
+    const { rows } = await query('SELECT active FROM users WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!rows.length) return res.status(404).json({ message: 'User not found' });
     const newActive = !rows[0].active;
-    await query('UPDATE users SET active=?,updated_at=NOW() WHERE id=?', [newActive, req.params.id]);
+    await query('UPDATE users SET active=?,updated_at=NOW() WHERE id=? AND business_id=?', [newActive, req.params.id, getBusinessId(req)]);
     const { rows: updated } = await query(
-      'SELECT id, name, email, role, phone, active, created_at FROM users WHERE id=?',
-      [req.params.id]
+      'SELECT id, business_id, name, email, username, role, is_owner, phone, active, created_at FROM users WHERE id=? AND business_id=?',
+      [req.params.id, getBusinessId(req)]
     );
     res.json(updated[0]);
   } catch (err) { next(err); }
@@ -123,17 +125,17 @@ async function remove(req, res, next) {
       return res.status(400).json({ message: "You can't delete your own account" });
     }
 
-    const target = await query('SELECT role FROM users WHERE id=?', [req.params.id]);
+    const target = await query('SELECT role FROM users WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!target.rows.length) return res.status(404).json({ message: 'User not found' });
 
     if (target.rows[0].role === 'admin') {
-      const admins = await query("SELECT COUNT(*) AS count FROM users WHERE role='admin'");
+      const admins = await query("SELECT COUNT(*) AS count FROM users WHERE role='admin' AND business_id=?", [getBusinessId(req)]);
       if (admins.rows[0].count <= 1) {
         return res.status(400).json({ message: 'Cannot delete the last remaining admin' });
       }
     }
 
-    await query('DELETE FROM users WHERE id=?', [req.params.id]);
+    await query('DELETE FROM users WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     res.json({ message: 'User deleted' });
   } catch (err) { next(err); }
 }
