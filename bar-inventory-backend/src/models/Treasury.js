@@ -1,20 +1,22 @@
 const { query } = require('../config/db');
+const { getBusinessId } = require('../utils/tenant');
 
 const Treasury = {
-  findAll: async () => {
-    return query('SELECT * FROM treasury ORDER BY name');
+  findAll: async (businessId) => {
+    return query('SELECT * FROM treasury WHERE business_id=? ORDER BY name', [businessId]);
   },
 
-  findById: async (id) => {
-    return query('SELECT * FROM treasury WHERE id = ?', [id]);
+  findById: async (id, businessId) => {
+    return query('SELECT * FROM treasury WHERE id = ? AND business_id=?', [id, businessId]);
   },
 
-  create: async (data) => {
+  create: async (data, businessId) => {
     const { insertId } = await query(
       `INSERT INTO treasury 
-      (name, type, account_number, linked_gl_account, opening_balance, current_balance, status, notes) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (business_id, name, type, account_number, linked_gl_account, opening_balance, current_balance, status, notes) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        businessId,
         data.name,
         data.type,
         data.account_number || null,
@@ -25,15 +27,15 @@ const Treasury = {
         data.notes || null
       ]
     );
-    return Treasury.findById(insertId);
+    return Treasury.findById(insertId, businessId);
   },
 
-  update: async (id, data) => {
+  update: async (id, data, businessId) => {
     await query(
       `UPDATE treasury SET 
       name = ?, type = ?, account_number = ?, linked_gl_account = ?, 
       status = ?, notes = ?, updated_at = NOW() 
-      WHERE id = ?`,
+      WHERE id = ? AND business_id=?`,
       [
         data.name,
         data.type,
@@ -41,10 +43,10 @@ const Treasury = {
         data.linked_gl_account || null,
         data.status || 'active',
         data.notes || null,
-        id
+        id, businessId
       ]
     );
-    return Treasury.findById(id);
+    return Treasury.findById(id, businessId);
   },
 
   updateBalance: async (id, amount) => {

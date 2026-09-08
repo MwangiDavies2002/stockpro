@@ -112,9 +112,17 @@ async function addBusinessColumn(conn, table, defaultBusinessId) {
     if (!(await indexExists(conn, 'users', 'uq_users_username'))) await conn.query('CREATE UNIQUE INDEX uq_users_username ON users (username)');
   }
 
-  for (const table of ['locations','inventory_items','customers','suppliers','orders','sales','categories','units','brands','discounts','sales_documents','customer_payments','inventory_stock_log','shifts']) {
+  for (const table of ['locations','inventory_items','customers','suppliers','orders','sales','categories','units','brands','discounts','sales_documents','customer_payments','inventory_stock_log','shifts','treasury','chart_of_accounts','journal_entries']) {
     await addBusinessColumn(conn, table, defaultBusinessId);
   }
+
+  await addColumn(conn, 'businesses', 'kra_pin VARCHAR(20) NULL');
+  await addColumn(conn, 'businesses', 'etims_enabled TINYINT(1) NOT NULL DEFAULT 0');
+  await addColumn(conn, 'businesses', 'etims_mode VARCHAR(20) NOT NULL DEFAULT \'sandbox\'');
+  await addColumn(conn, 'businesses', 'etims_api_url VARCHAR(255) NULL');
+  await addColumn(conn, 'businesses', 'etims_username VARCHAR(180) NULL');
+  await addColumn(conn, 'businesses', 'etims_password_encrypted TEXT NULL');
+  await addColumn(conn, 'businesses', 'etims_device_serial VARCHAR(120) NULL');
 
   if (await tableExists(conn, 'locations')) {
     const [rows] = await conn.query('SELECT COUNT(*) AS count FROM locations WHERE business_id=?', [defaultBusinessId]);

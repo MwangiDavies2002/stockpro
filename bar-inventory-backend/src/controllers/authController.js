@@ -75,7 +75,10 @@ async function register(req, res, next) {
     if (confirmPassword && confirmPassword !== password) return res.status(400).json({ message: 'Passwords do not match' });
     const existing = await query('SELECT id FROM users WHERE email=?', [email]);
     if (existing.rows.length) return res.status(409).json({ message: 'Email already registered' });
-    const businessId = req.body.businessId || await getDefaultBusinessId();
+    if (!req.user?.business_id) {
+      return res.status(400).json({ message: 'Create a shop through business registration' });
+    }
+    const businessId = req.user.business_id;
     const hash = await bcrypt.hash(password, 12);
     const { insertId } = await query(
       'INSERT INTO users (business_id,name,email,password,role,phone) VALUES (?,?,?,?,?,?)',

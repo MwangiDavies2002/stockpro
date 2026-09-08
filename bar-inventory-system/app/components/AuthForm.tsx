@@ -35,22 +35,16 @@ export default function AuthForm() {
    */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === 'register') {
+      router.push('/register-business');
+      return;
+    }
     setLoading(true);
     try {
       if (mode === 'login') {
         const { data } = await authApi.login({ email: form.email, password: form.password });
         Cookies.set('token', data.token, { expires: 7 });
         toast.success('Welcome back!');
-        router.push('/');
-      } else {
-        if (form.password !== form.confirmPassword) {
-          toast.error('Passwords do not match');
-          setLoading(false);
-          return;
-        }
-        const { data } = await authApi.register({ name: form.name, email: form.email, password: form.password, role: form.role });
-        Cookies.set('token', data.token, { expires: 7 });
-        toast.success('Account created!');
         router.push('/');
       }
     } catch (err: any) {

@@ -20,7 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import Cookies from 'js-cookie';
-import { authApi } from '../lib/api';
+import { authApi, treasuryApi } from '../lib/api';
 import { toast } from 'sonner';
 
 const NAV_ITEMS = [
@@ -86,8 +86,13 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState(user ?? null);
+  const [treasuryConfigured, setTreasuryConfigured] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    if (isAdmin) treasuryApi.getAll().then((res) => setTreasuryConfigured(Array.isArray(res.data) && res.data.length > 0)).catch(() => setTreasuryConfigured(false));
+  }, [isAdmin]);
 
   // Try to load current user if not provided (client-side) and a token exists
   useEffect(() => {
@@ -115,7 +120,8 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
     toast.success('Logged out successfully');
   }
 
-  const visibleItems = isAdmin ? NAV_ITEMS : NAV_ITEMS.filter((item) => ['/pos', '/customers'].includes(item.href as string));
+  const visibleItems = (isAdmin ? NAV_ITEMS : NAV_ITEMS.filter((item) => ['/pos', '/customers'].includes(item.href as string)))
+    .filter((item) => item.href !== '/account/account' || treasuryConfigured);
   return (
     <nav className="app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:w-60 md:border-r md:overflow-y-auto">
       <div className="mx-auto px-4 md:py-5">

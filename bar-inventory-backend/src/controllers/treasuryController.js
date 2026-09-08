@@ -2,10 +2,11 @@ const Treasury = require('../models/Treasury');
 const TreasuryTransaction = require('../models/TreasuryTransaction');
 const { getClient } = require('../config/db');
 const Journal = require('../models/Journal');
+const { getBusinessId } = require('../utils/tenant');
 
 exports.getTreasuries = async (req, res) => {
   try {
-    const { rows } = await Treasury.findAll();
+    const { rows } = await Treasury.findAll(getBusinessId(req));
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -14,7 +15,7 @@ exports.getTreasuries = async (req, res) => {
 
 exports.getTreasury = async (req, res) => {
   try {
-    const { rows } = await Treasury.findById(req.params.id);
+    const { rows } = await Treasury.findById(req.params.id, getBusinessId(req));
     if (rows.length === 0) return res.status(404).json({ error: 'Treasury not found' });
     res.json(rows[0]);
   } catch (err) {
@@ -30,7 +31,7 @@ exports.createTreasury = async (req, res) => {
 
   if (openingBalance === 0) {
     try {
-      const { rows } = await Treasury.create(req.body);
+      const { rows } = await Treasury.create(req.body, getBusinessId(req));
       return res.status(201).json(rows[0]);
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -63,9 +64,9 @@ exports.createTreasury = async (req, res) => {
 
     const { insertId } = await client.query(
       `INSERT INTO treasury
-       (name, type, account_number, linked_gl_account, opening_balance, current_balance, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.body.name, req.body.type, req.body.account_number || null, linkedAccountId,
+       (business_id, name, type, account_number, linked_gl_account, opening_balance, current_balance, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [getBusinessId(req), req.body.name, req.body.type, req.body.account_number || null, linkedAccountId,
         openingBalance, openingBalance, req.body.status || 'active', req.body.notes || null]
     );
     const reference = `OPEN-TREASURY-${insertId}`;
@@ -96,7 +97,7 @@ exports.createTreasury = async (req, res) => {
 
 exports.updateTreasury = async (req, res) => {
   try {
-    const { rows } = await Treasury.update(req.params.id, req.body);
+    const { rows } = await Treasury.update(req.params.id, req.body, getBusinessId(req));
     if (rows.length === 0) return res.status(404).json({ error: 'Treasury not found' });
     res.json(rows[0]);
   } catch (err) {

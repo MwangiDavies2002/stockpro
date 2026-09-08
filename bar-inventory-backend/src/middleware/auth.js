@@ -14,6 +14,9 @@ function authenticate(req, res, next) {
   const token = header.split(' ')[1];
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
+    if (!Number.isInteger(Number(req.user.business_id)) || Number(req.user.business_id) < 1) {
+      return res.status(401).json({ message: 'Account is not assigned to a shop' });
+    }
     next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });

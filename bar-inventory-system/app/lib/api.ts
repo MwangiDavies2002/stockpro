@@ -200,6 +200,11 @@ const settingsApi = {
     api.put(`/accounting-settings/${key}`, data),
 };
 
+export const etimsApi = {
+  getConfig: () => api.get('/etims/config'),
+  updateConfig: (data: { kraPin?: string; enabled: boolean; mode: 'sandbox' | 'production'; apiUrl?: string; username?: string; password?: string }) => api.put('/etims/config', data),
+};
+
 const salesDocumentsApi = {
   getAll: (params?: { type?: string; locationId?: number }) => api.get('/sales-documents', { params }),
   getOne: (id: number) => api.get(`/sales-documents/${id}`),

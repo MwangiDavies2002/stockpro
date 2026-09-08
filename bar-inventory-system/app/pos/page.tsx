@@ -27,7 +27,6 @@ interface CartLine {
   maxStock: number;
 }
 
-const CATEGORIES = ['All', 'Beers', 'Spirits', 'Wines', 'Mixers', 'Garnishes'];
 const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export default function POSPage() {
@@ -186,6 +185,7 @@ export default function POSPage() {
       p.name.toLowerCase().includes(search.toLowerCase())
     );
   }, [products, catFilter, search]);
+  const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()], [products]);
 
   function addToCart(product: Product) {
     if (product.stock <= 0) {
@@ -547,7 +547,7 @@ export default function POSPage() {
               />
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <button
                   key={c}
                   onClick={() => setCatFilter(c)}
