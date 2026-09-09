@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { Plus, MapPin, Edit2, Trash2, TrendingUp, Package, AlertTriangle } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { locationsApi, authApi } from '../lib/api';
+import { locationsApi, authApi, treasuryApi } from '../lib/api';
 import { toast } from 'sonner';
 
 interface Location {
@@ -22,7 +22,7 @@ interface Summary {
   sales30d: number;
 }
 
-const EMPTY = { name: '', address: '' };
+const EMPTY = { name: '', address: '', invoiceSchemePos:'Default', invoiceLayoutPos:'Default', invoiceSchemeSale:'Default', invoiceLayoutSale:'Default', locationType:'selling', paymentOptions: { Cash: '', Mpesa: '', Card: '', Cheque: '', 'Bank Transfer': '' } };
 
 export default function LocationsPage() {
   const router = useRouter();
@@ -35,6 +35,7 @@ export default function LocationsPage() {
   const [editLoc, setEditLoc] = useState<Location | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [treasuries, setTreasuries] = useState<any[]>([]);
 
   useEffect(() => {
     const token = Cookies.get('token');
@@ -49,6 +50,7 @@ export default function LocationsPage() {
 
   useEffect(() => {
     loadLocations();
+    treasuryApi.getAll().then(r => setTreasuries(r.data)).catch(() => setTreasuries([]));
   }, []);
 
   async function loadLocations() {
@@ -77,7 +79,7 @@ export default function LocationsPage() {
   function openAdd() { setEditLoc(null); setForm(EMPTY); setModalOpen(true); }
   function openEdit(loc: Location) {
     setEditLoc(loc);
-    setForm({ name: loc.name, address: loc.address || '' });
+    setForm({ ...EMPTY, name: loc.name, address: loc.address || '', paymentOptions: (loc as any).payment_options || EMPTY.paymentOptions });
     setModalOpen(true);
   }
 
@@ -193,6 +195,11 @@ export default function LocationsPage() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
+            <div className="grid grid-cols-2 gap-3 border-t pt-3">
+              {([['invoiceSchemePos','POS invoice scheme'],['invoiceLayoutPos','POS invoice layout'],['invoiceSchemeSale','Sales invoice scheme'],['invoiceLayoutSale','Sales invoice layout']] as const).map(([key,label]) => <label key={key} className="text-xs font-medium text-gray-600">{label}<select value={(form as any)[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="mt-1 w-full rounded-lg border px-2 py-2"><option>Default</option></select></label>)}
+              <label className="text-xs font-medium text-gray-600">Type<select value={form.locationType} onChange={e => setForm({ ...form, locationType: e.target.value })} className="mt-1 w-full rounded-lg border px-2 py-2"><option value="selling">Selling</option><option value="both">Selling & purchasing</option></select></label>
+            </div>
+            <div className="border-t pt-3"><p className="mb-2 text-sm font-semibold">Payment options and default treasury accounts</p>{Object.keys(form.paymentOptions).map(method => <label key={method} className="mb-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={!!(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.checked ? ((treasuries[0]?.id || '') as any) : '' } })}/><span className="w-28">{method}</span><select value={(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.value } })} className="flex-1 rounded border px-2 py-1"><option value="">Select treasury account</option>{treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>)}</div>
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Address (optional)</label>
               <input type="text" placeholder="e.g. Waiyaki Way, Nairobi" value={form.address}

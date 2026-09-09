@@ -1,0 +1,11 @@
+const os = require('node:os');
+const fs = require('node:fs');
+const path = require('node:path');
+const { openDatabase, apiRequest } = require('../electron/db');
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stockpro-offline-'));
+const db = openDatabase(dir);
+db.prepare("INSERT INTO inventory_items (name,category,stock,price,cost) VALUES ('Smoke Item','Test',10,5,2)").run();
+const products = apiRequest(db, { method: 'get', url: '/inventory' });
+apiRequest(db, { method: 'post', url: '/sales', data: { paymentMethod: 'cash', items: [{ itemId: products[0].id, quantity: 2, unitPrice: 5 }] } });
+if (db.prepare('SELECT stock FROM inventory_items WHERE id=?').get(products[0].id).stock !== 8) throw new Error('Inventory did not update');
+console.log('Offline SQLite smoke test passed');

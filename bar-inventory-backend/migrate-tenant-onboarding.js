@@ -123,6 +123,13 @@ async function addBusinessColumn(conn, table, defaultBusinessId) {
   await addColumn(conn, 'businesses', 'etims_username VARCHAR(180) NULL');
   await addColumn(conn, 'businesses', 'etims_password_encrypted TEXT NULL');
   await addColumn(conn, 'businesses', 'etims_device_serial VARCHAR(120) NULL');
+  await addColumn(conn, 'businesses', 'settings_json JSON NULL');
+  await addColumn(conn, 'locations', "invoice_scheme_pos VARCHAR(40) NOT NULL DEFAULT 'Default'");
+  await addColumn(conn, 'locations', "invoice_layout_pos VARCHAR(40) NOT NULL DEFAULT 'Default'");
+  await addColumn(conn, 'locations', "invoice_scheme_sale VARCHAR(40) NOT NULL DEFAULT 'Default'");
+  await addColumn(conn, 'locations', "invoice_layout_sale VARCHAR(40) NOT NULL DEFAULT 'Default'");
+  await addColumn(conn, 'locations', "location_type VARCHAR(30) NOT NULL DEFAULT 'selling'");
+  await addColumn(conn, 'locations', 'payment_options JSON NULL');
 
   if (await tableExists(conn, 'locations')) {
     const [rows] = await conn.query('SELECT COUNT(*) AS count FROM locations WHERE business_id=?', [defaultBusinessId]);

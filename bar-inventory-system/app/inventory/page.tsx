@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
 type Location = { id: number; name: string; active?: boolean };
 
-const EMPTY_FORM = { name:'', category:'', unit:'', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0 };
+const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0 };
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -228,9 +228,16 @@ export default function InventoryPage() {
   }
 
   function downloadTemplate() {
-    const template = [
-      { name: 'Sample Product', category: '', unit: '', stock: 48, threshold: 20, cost: 180, price: 200 },
-    ];
+    const template = [{
+      'Product Name': '', Brand: '', Unit: '', Category: '', 'Sub category': '', SKU: '',
+      'Barcode Type': 'C128', 'Manage Stock?': 1, 'Alert quantity': 5, 'Expires in': '', 'Expiry Period Unit': '',
+      'Applicable Tax': '', 'Selling Price Tax Type': 'inclusive', 'Product Type': 'single', 'Variation Name': '',
+      'Variation Values': '', 'Variation SKUs': '', 'Purchase Price (Including Tax)': '', 'Purchase Price (Excluding Tax)': '',
+      'Profit Margin %': '', 'Selling Price': '', 'Opening Stock': 0, 'Opening stock location': '', 'Expiry Date': '',
+      'Enable Product description, IMEI or Serial Number': 0, Weight: '', Rack: '', Row: '', Position: '', Image: '',
+      'Product Description': '', 'Custom Field1': '', 'Custom Field2': '', 'Custom Field3': '', 'Custom Field4': '',
+      'Not for selling': 0, 'Product locations': ''
+    }];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Products');
@@ -256,13 +263,13 @@ export default function InventoryPage() {
       const sheetRows = rows as Array<Record<string, unknown>>;
       const { data } = await inventoryApi.bulkImport(
         sheetRows.map((r) => ({
-          name: String(r.name ?? r.Name ?? '').trim(),
+          name: String(r.name ?? r.Name ?? r['Product Name'] ?? '').trim(),
           category: String(r.category ?? r.Category ?? '').trim(),
           unit: String(r.unit ?? r.Unit ?? '').trim(),
-          stock: Number(r.stock ?? r.Stock ?? 0),
-          threshold: Number(r.threshold ?? r.Threshold ?? 5),
-          cost: Number(r.cost ?? r.Cost ?? 0),
-          price: Number(r.price ?? r.Price ?? 0),
+          stock: Number(r.stock ?? r.Stock ?? r['Opening Stock'] ?? 0),
+          threshold: Number(r.threshold ?? r.Threshold ?? r['Alert quantity'] ?? 5),
+          cost: Number(r.cost ?? r.Cost ?? r['Purchase Price (Including Tax)'] ?? 0),
+          price: Number(r.price ?? r.Price ?? r['Selling Price'] ?? 0),
         }))
       );
 

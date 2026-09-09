@@ -4,6 +4,7 @@ const JournalEngine = require('../models/JournalEngine');
 const { getBusinessId } = require('../utils/tenant');
 
 function badRequest(message) { return Object.assign(new Error(message), { status: 400 }); }
+function generateSku() { return `SKU-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`; }
 
 async function resolveReferences(body, businessId = 1) {
   const locationId = Number(body.locationId || body.location_id || 1);
@@ -88,7 +89,7 @@ async function create(req, res, next) {
     const refs = await resolveReferences(req.body, getBusinessId(req));
     const { insertId } = await query(
       'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [getBusinessId(req), String(name).trim(), refs.category, refs.unit, stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || null, barcode?.trim() || null, refs.categoryId, refs.unitId, refs.brandId]
+      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, refs.categoryId, refs.unitId, refs.brandId]
     );
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
@@ -268,6 +269,7 @@ async function sell(req, res, next) {
  */
 async function bulkImport(req, res, next) {
   try {
+    const businessId = getBusinessId(req);
     const { items } = req.body;
     if (!Array.isArray(items) || !items.length) {
       return res.status(400).json({ message: 'No items to import' });
@@ -286,16 +288,17 @@ async function bulkImport(req, res, next) {
           errors.push({ row: rowNum, name: name || '(blank)', message: 'name and category are required' });
           continue;
         }
-        const unit = String(row.unit || 'Bottles').trim();
+        const unit = String(row.unit || 'Pieces').trim();
         const stock = Number(row.stock) || 0;
         const threshold = Number(row.threshold) || 5;
         const cost = Number(row.cost) || 0;
         const price = Number(row.price) || 0;
         const supplierId = row.supplierId ? Number(row.supplierId) : null;
+        const sku = String(row.sku || '').trim() || generateSku();
 
         const { insertId } = await query(
-          'INSERT INTO inventory_items (name,category,unit,stock,threshold,cost,price,supplier_id) VALUES (?,?,?,?,?,?,?,?)',
-          [name, category, unit, stock, threshold, cost, price, supplierId]
+          'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,sku) VALUES (?,?,?,?,?,?,?,?,?,?)',
+          [businessId, name, category, unit, stock, threshold, cost, price, supplierId, sku]
         );
         created.push({ row: rowNum, id: insertId, name });
       } catch (rowErr) {

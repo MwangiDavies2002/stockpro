@@ -1,6 +1,6 @@
 const Treasury = require('../models/Treasury');
 const TreasuryTransaction = require('../models/TreasuryTransaction');
-const { getClient } = require('../config/db');
+const { getClient, query } = require('../config/db');
 const Journal = require('../models/Journal');
 const { getBusinessId } = require('../utils/tenant');
 
@@ -31,21 +31,38 @@ exports.createTreasury = async (req, res) => {
 
   if (openingBalance === 0) {
     try {
-      const { rows } = await Treasury.create(req.body, getBusinessId(req));
+      let linked = Number(req.body.linked_gl_account) || null;
+      if (!linked) {
+        const { insertId } = await query(
+          `INSERT INTO chart_of_accounts (business_id,account_code,account_name,account_type,account_subtype,detail_type,normal_balance,active)
+           SELECT ?, CAST(COALESCE(MAX(CAST(account_code AS UNSIGNED)),1000)+1 AS CHAR), ?, 'Assets','Cash and cash equivalents','Treasury','Debit',TRUE
+           FROM chart_of_accounts WHERE business_id=? AND account_type='Assets'`,
+          [getBusinessId(req), `${req.body.name} (Treasury)`, getBusinessId(req)]
+        );
+        linked = insertId;
+      }
+      const { rows } = await Treasury.create({ ...req.body, linked_gl_account: linked }, getBusinessId(req));
       return res.status(201).json(rows[0]);
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   }
 
-  const linkedAccountId = Number(req.body.linked_gl_account);
-  if (!Number.isInteger(linkedAccountId) || linkedAccountId <= 0) {
-    return res.status(400).json({ error: 'A linked GL asset account is required for a non-zero opening balance' });
-  }
+  let linkedAccountId = Number(req.body.linked_gl_account) || null;
 
   const client = await getClient();
   try {
     await client.query('BEGIN');
+    if (!linkedAccountId) {
+      const businessId = getBusinessId(req);
+      const nextCode = await client.query("SELECT COALESCE(MAX(CAST(account_code AS UNSIGNED)), 1000) + 1 AS code FROM chart_of_accounts WHERE business_id=? AND account_type='Assets'", [businessId]);
+      const createdAccount = await client.query(
+        `INSERT INTO chart_of_accounts (business_id,account_code,account_name,account_type,account_subtype,detail_type,normal_balance,active)
+         VALUES (?,?,?,'Assets','Cash and cash equivalents','Treasury','Debit',TRUE)`,
+        [businessId, String(nextCode.rows[0].code), `${req.body.name} (Treasury)`]
+      );
+      linkedAccountId = createdAccount.insertId;
+    }
     const { rows: assetRows } = await client.query(
       "SELECT id FROM chart_of_accounts WHERE id = ? AND account_type = 'Assets' AND active = TRUE",
       [linkedAccountId]

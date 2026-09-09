@@ -1,12 +1,28 @@
 ﻿import axios from 'axios';
 import Cookies from 'js-cookie';
 
+declare global {
+  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown> } }
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000,
+  // Electron uses the secure preload bridge; browser/PWA keeps using REST.
+  adapter: typeof window !== 'undefined' && window.stockpro
+    ? async (config) => {
+        const data = await window.stockpro!.request({
+          method: config.method,
+          url: config.url,
+          data: config.data ? JSON.parse(config.data as string) : undefined,
+          params: config.params,
+        });
+        return { data, status: 200, statusText: 'OK', headers: {}, config };
+      }
+    : undefined,
 });
 
 // Attach JWT token to every request
@@ -203,6 +219,10 @@ const settingsApi = {
 export const etimsApi = {
   getConfig: () => api.get('/etims/config'),
   updateConfig: (data: { kraPin?: string; enabled: boolean; mode: 'sandbox' | 'production'; apiUrl?: string; username?: string; password?: string }) => api.put('/etims/config', data),
+};
+export const businessSettingsApi = {
+  get: () => api.get('/business-settings'),
+  update: (data: Record<string, unknown>) => api.put('/business-settings', data),
 };
 
 const salesDocumentsApi = {

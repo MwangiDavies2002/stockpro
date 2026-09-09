@@ -9,11 +9,12 @@ async function getAll(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { name, address } = req.body;
+    const { name, address, paymentOptions } = req.body;
     if (!name) return res.status(400).json({ message: 'name is required' });
     const { insertId } = await query(
-      'INSERT INTO locations (business_id, name, address) VALUES (?,?,?)',
-      [getBusinessId(req), name, address || null]
+      `INSERT INTO locations (business_id,name,address,invoice_scheme_pos,invoice_layout_pos,invoice_scheme_sale,invoice_layout_sale,location_type,payment_options)
+       VALUES (?,?,?,'Default','Default','Default','Default','selling',?)`,
+      [getBusinessId(req), name, address || null, paymentOptions ? JSON.stringify(paymentOptions) : null]
     );
     const { rows } = await query('SELECT * FROM locations WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
@@ -22,10 +23,10 @@ async function create(req, res, next) {
 
 async function update(req, res, next) {
   try {
-    const { name, address, active } = req.body;
+    const { name, address, active, paymentOptions } = req.body;
     const { rowCount } = await query(
-      'UPDATE locations SET name=?, address=?, active=? WHERE id=? AND business_id=?',
-      [name, address || null, active ?? true, req.params.id, getBusinessId(req)]
+      'UPDATE locations SET name=?, address=?, active=?, payment_options=? WHERE id=? AND business_id=?',
+      [name, address || null, active ?? true, paymentOptions ? JSON.stringify(paymentOptions) : null, req.params.id, getBusinessId(req)]
     );
     if (!rowCount) return res.status(404).json({ message: 'Location not found' });
     const { rows } = await query('SELECT * FROM locations WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);

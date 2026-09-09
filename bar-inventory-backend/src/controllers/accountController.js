@@ -1,9 +1,10 @@
 const Account = require('../models/Account');
 const { getClient } = require('../config/db');
+const { getBusinessId } = require('../utils/tenant');
 
 exports.getAccounts = async (req, res) => {
   try {
-    const { rows } = await Account.findAll();
+    const { rows } = await Account.findAll(getBusinessId(req));
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -12,7 +13,7 @@ exports.getAccounts = async (req, res) => {
 
 exports.getAccount = async (req, res) => {
   try {
-    const { rows } = await Account.findById(req.params.id);
+    const { rows } = await Account.findById(req.params.id, getBusinessId(req));
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found' });
     res.json(rows[0]);
   } catch (err) {
@@ -22,7 +23,7 @@ exports.getAccount = async (req, res) => {
 
 exports.createAccount = async (req, res) => {
   try {
-    const { rows } = await Account.create(req.body);
+    const { rows } = await Account.create(req.body, getBusinessId(req));
     res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,7 +32,7 @@ exports.createAccount = async (req, res) => {
 
 exports.updateAccount = async (req, res) => {
   try {
-    const { rows } = await Account.update(req.params.id, req.body);
+    const { rows } = await Account.update(req.params.id, req.body, getBusinessId(req));
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found' });
     res.json(rows[0]);
   } catch (err) {
@@ -41,7 +42,7 @@ exports.updateAccount = async (req, res) => {
 
 exports.deleteAccount = async (req, res) => {
   try {
-    await Account.delete(req.params.id);
+    await Account.delete(req.params.id, getBusinessId(req));
     res.json({ message: 'Account deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -63,17 +64,17 @@ exports.ensureOpeningBalanceEquity = async (req, res) => {
   try {
     await client.query('BEGIN');
     const { rows: existing } = await client.query(
-      "SELECT * FROM chart_of_accounts WHERE account_code = ? OR (account_type = 'Equity' AND account_name = ?) ORDER BY id LIMIT 1",
-      ['3000', 'Opening Balance Equity']
+      "SELECT * FROM chart_of_accounts WHERE business_id=? AND (account_code = ? OR (account_type = 'Equity' AND account_name = ?)) ORDER BY id LIMIT 1",
+      [getBusinessId(req), '3000', 'Opening Balance Equity']
     );
     let account = existing[0];
     if (!account) {
       const { insertId } = await client.query(
-        `INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_subtype, detail_type, normal_balance, active)
-         VALUES (?, ?, 'Equity', ?, ?, 'Credit', TRUE)`,
-        ['3000', 'Opening Balance Equity', 'Opening Balances', 'Opening Balance Equity']
+        `INSERT INTO chart_of_accounts (business_id, account_code, account_name, account_type, account_subtype, detail_type, normal_balance, active)
+         VALUES (?, ?, ?, 'Equity', ?, ?, 'Credit', TRUE)`,
+        [getBusinessId(req), '3000', 'Opening Balance Equity', 'Opening Balances', 'Opening Balance Equity']
       );
-      const { rows } = await client.query('SELECT * FROM chart_of_accounts WHERE id = ?', [insertId]);
+      const { rows } = await client.query('SELECT * FROM chart_of_accounts WHERE id = ? AND business_id=?', [insertId, getBusinessId(req)]);
       account = rows[0];
     }
     await client.query(

@@ -1,20 +1,21 @@
 const { query } = require('../config/db');
 
 const Account = {
-  findAll: async () => {
-    return query('SELECT * FROM chart_of_accounts ORDER BY account_code');
+  findAll: async (businessId) => {
+    return query('SELECT * FROM chart_of_accounts WHERE business_id=? ORDER BY account_code', [businessId]);
   },
 
-  findById: async (id) => {
-    return query('SELECT * FROM chart_of_accounts WHERE id = ?', [id]);
+  findById: async (id, businessId) => {
+    return query('SELECT * FROM chart_of_accounts WHERE id = ? AND business_id=?', [id, businessId]);
   },
 
-  create: async (data) => {
+  create: async (data, businessId) => {
     const { insertId } = await query(
       `INSERT INTO chart_of_accounts 
-      (account_code, account_name, parent_id, account_type, account_subtype, detail_type, normal_balance, active, details) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (business_id, account_code, account_name, parent_id, account_type, account_subtype, detail_type, normal_balance, active, details) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        businessId,
         data.account_code,
         data.account_name,
         data.parent_id || null,
@@ -26,16 +27,16 @@ const Account = {
         data.details ? JSON.stringify(data.details) : null
       ]
     );
-    return Account.findById(insertId);
+    return Account.findById(insertId, businessId);
   },
 
-  update: async (id, data) => {
+  update: async (id, data, businessId) => {
     await query(
       `UPDATE chart_of_accounts SET 
       account_code = ?, account_name = ?, parent_id = ?, account_type = ?, 
       account_subtype = ?, detail_type = ?, normal_balance = ?, active = ?, 
       details = ?, updated_at = NOW() 
-      WHERE id = ?`,
+      WHERE id = ? AND business_id=?`,
       [
         data.account_code,
         data.account_name,
@@ -46,14 +47,14 @@ const Account = {
         data.normal_balance,
         data.active !== undefined ? data.active : true,
         data.details ? JSON.stringify(data.details) : null,
-        id
+        id, businessId
       ]
     );
-    return Account.findById(id);
+    return Account.findById(id, businessId);
   },
 
-  delete: async (id) => {
-    return query('DELETE FROM chart_of_accounts WHERE id = ?', [id]);
+  delete: async (id, businessId) => {
+    return query('DELETE FROM chart_of_accounts WHERE id = ? AND business_id=?', [id, businessId]);
   },
 
   getBook: async (id, startDate, endDate, transactionType) => {
