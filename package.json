@@ -7,6 +7,7 @@
     "build:renderer": "npm --prefix bar-inventory-system run build:desktop",
     "start": "npm run build:renderer && electron .",
     "dist:win": "npm run build:renderer && electron-builder --win nsis",
+    "migrate:json": "node scripts/migrate-json-to-sqlite.js",
     "test:offline": "node scripts/offline-smoke-test.js"
   },
   "devDependencies": { "electron": "^35.0.0", "electron-builder": "^26.0.0" },
