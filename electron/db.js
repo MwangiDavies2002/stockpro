@@ -48,7 +48,7 @@ function apiRequest(db, request) {
   }
   if (method === 'get' && url === '/sales') return db.prepare('SELECT * FROM sales ORDER BY id DESC').all();
   if (method === 'get' && url === '/orders') return db.prepare('SELECT * FROM orders ORDER BY id DESC').all();
-  if (method === 'get' && url === '/inventory') return db.prepare('SELECT * FROM inventory_items ORDER BY name').all();
+  if (method === 'get' && url === '/inventory') return db.prepare('SELECT i.*, s.name AS supplier_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id ORDER BY i.name').all();
   if (method === 'get' && url === '/inventory/low-stock') return db.prepare('SELECT * FROM inventory_items WHERE stock <= threshold ORDER BY name').all();
   if (method === 'get' && url === '/shifts/current') return db.prepare("SELECT * FROM shifts WHERE status='open' ORDER BY id DESC LIMIT 1").get() || null;
   if (method === 'get' && url === '/auth/me') return request.user || db.prepare('SELECT * FROM users WHERE active=1 ORDER BY id LIMIT 1').get() || null;

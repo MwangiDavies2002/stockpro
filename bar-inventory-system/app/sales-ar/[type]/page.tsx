@@ -19,6 +19,7 @@ const meta: Record<DocType, { title: string; label: string }> = {
   invoice: { title: 'Invoices', label: 'Invoice' },
   credit_note: { title: 'Credit Notes', label: 'Credit Note' },
 };
+
 const field = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500';
 const money = (n: number) => n.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
