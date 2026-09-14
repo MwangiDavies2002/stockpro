@@ -130,6 +130,8 @@ const reportsApi = {
   getMpesaGroups: () => api.get('/reports/sale-size-groups'),
   getSalesTrend: (days: number) =>
     api.get('/reports/sales-trend', { params: { days } }),
+  getHourlySales: (days: number) =>
+    api.get('/reports/hourly-sales', { params: { days } }),
   getLedger: () => api.get('/reports/ledger'),
 };
 

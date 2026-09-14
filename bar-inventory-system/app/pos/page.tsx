@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Search, X, Banknote, Smartphone, Trash2, WifiOff, CloudUpload, Plus } from 'lucide-react';
+import { Search, X, Banknote, Smartphone, CreditCard, Trash2, WifiOff, CloudUpload, Plus, ScanLine } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Receipt from '../components/Receipt';
 import { inventoryApi, salesApi, salesDocumentsApi, authApi, shiftsApi, customersApi } from '../lib/api';
@@ -16,6 +16,8 @@ interface Product {
   unit: string;
   price: number;
   stock: number;
+  barcode?: string;
+  sku?: string;
 }
 
 interface CartLine {
@@ -36,6 +38,7 @@ export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [catFilter, setCatFilter] = useState('All');
   const [cart, setCart]         = useState<CartLine[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -53,6 +56,9 @@ export default function POSPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [newCustomerModalOpen, setNewCustomerModalOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', creditLimit: 0 });
+  const [ageVerified, setAgeVerified] = useState(false);
+  const [ageModalOpen, setAgeModalOpen] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<'cash' | 'mpesa' | 'card' | 'credit' | null>(null);
 
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSales, setPendingSales] = useState<any[]>([]);
@@ -280,7 +286,7 @@ export default function POSPage() {
     }
   }
 
-  async function checkout(method: 'cash' | 'mpesa' | 'credit', customerId?: number) {
+  async function checkout(method: 'cash' | 'mpesa' | 'card' | 'credit', customerId?: number) {
     if (checkoutLockRef.current) return;
     if (!cart.length) {
       toast.error('Cart is empty');
@@ -299,6 +305,14 @@ export default function POSPage() {
       paymentMethod: method,
       customerId: method === 'credit' ? customerId : undefined,
     };
+
+    if (!ageVerified) {
+      setPendingPayment(method);
+      setAgeModalOpen(true);
+      setCheckingOut(false);
+      checkoutLockRef.current = false;
+      return;
+    }
 
     // Credit sales need a live server check against the customer's
     // balance/limit, so they can't be queued offline like cash/M-Pesa can.
@@ -367,6 +381,15 @@ export default function POSPage() {
       setCheckingOut(false);
       checkoutLockRef.current = false;
     }
+  }
+
+  function scanBarcode() {
+    const code = barcodeInput.trim().toLowerCase();
+    if (!code) return;
+    const match = products.find((p) => p.barcode?.toLowerCase() === code || p.sku?.toLowerCase() === code);
+    if (!match) { toast.error('No product found for that barcode/SKU'); return; }
+    addToCart(match);
+    setBarcodeInput('');
   }
 
   async function handleAddCustomer() {
@@ -509,6 +532,13 @@ export default function POSPage() {
                 <Banknote className="w-4 h-4" /> Cash
               </button>
               <button
+                onClick={() => checkout('card')}
+                disabled={checkingOut || !cart.length}
+                className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+              >
+                <CreditCard className="w-4 h-4" /> Card
+              </button>
+              <button
                 onClick={() => checkout('mpesa')}
                 disabled={checkingOut || !cart.length}
                 className="flex items-center justify-center gap-2 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
@@ -536,6 +566,13 @@ export default function POSPage() {
         {/* ── Right: Product grid ───────────────────────── */}
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative w-full flex gap-2">
+              <ScanLine className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+              <input type="text" placeholder="Scan barcode or enter SKU..." value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') scanBarcode(); }}
+                className="flex-1 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <button onClick={scanBarcode} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">Scan / Add</button>
+            </div>
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               <input
@@ -597,6 +634,18 @@ export default function POSPage() {
       </main>
 
       {/* ── Credit sale: customer picker ─────────────────── */}
+      {ageModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Age verification required</h2>
+            <p className="text-sm text-gray-600">Confirm the customer is legally permitted to purchase alcohol before completing this sale.</p>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ageVerified} onChange={(e) => setAgeVerified(e.target.checked)} /> Customer is of legal drinking age</label>
+            <div className="flex gap-2"><button onClick={() => { setAgeModalOpen(false); setPendingPayment(null); }} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
+              <button disabled={!ageVerified} onClick={() => { setAgeModalOpen(false); const method = pendingPayment; setPendingPayment(null); if (method) checkout(method); }} className="flex-1 bg-green-600 disabled:opacity-50 text-white rounded-lg py-2 text-sm">Verify & Continue</button></div>
+          </div>
+        </div>
+      )}
+
       {creditModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">

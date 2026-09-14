@@ -59,6 +59,8 @@ export default function DashboardPage() {
   const [usage, setUsage]   = useState<UsageRow[]>([]);
   const [trend, setTrend]   = useState<TrendRow[]>([]);
   const [groups, setGroups] = useState<SizeGroup[]>([]);
+  const [hourly, setHourly] = useState<{ hour: number; revenue: number; transactions: number }[]>([]);
+  const [dailyTarget, setDailyTarget] = useState(120000);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,11 +85,12 @@ export default function DashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [stockRes, usageRes, trendRes, groupsRes] = await Promise.all([
+        const [stockRes, usageRes, trendRes, groupsRes, hourlyRes] = await Promise.all([
           reportsApi.getStock(),
           reportsApi.getUsage(14),
           reportsApi.getSalesTrend(14),
           reportsApi.getMpesaGroups(), // hits /reports/sale-size-groups
+          reportsApi.getHourlySales(3),
         ]);
         setStock(stockRes.data);
         setUsage(usageRes.data);
@@ -101,6 +104,7 @@ export default function DashboardPage() {
           count: Number(g.count),
           total: Number(g.total),
         })));
+        setHourly(hourlyRes.data.map((r: any) => ({ ...r, hour: Number(r.hour), revenue: Number(r.revenue), transactions: Number(r.transactions) })));
       } catch {
         toast.error('Failed to load dashboard data');
       } finally {
@@ -113,6 +117,9 @@ export default function DashboardPage() {
   const totalRevenue14d = usage.reduce((sum, u) => sum + Number(u.revenue), 0);
   const totalSold14d = usage.reduce((sum, u) => sum + Number(u.units_sold), 0);
   const activeCategories = new Set(stock.map((s) => s.category)).size;
+  const todayRevenue = trend.length ? Number(trend[trend.length - 1].revenue) : 0;
+  const targetProgress = Math.min(100, Math.round((todayRevenue / dailyTarget) * 100));
+  const topSelling = [...usage].sort((a, b) => Number(b.units_sold) - Number(a.units_sold)).slice(0, 5);
 
   const categoryData = Object.values(
     usage.reduce((acc: Record<string, { name: string; sold: number }>, u) => {
@@ -180,6 +187,17 @@ export default function DashboardPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-medium">Daily Sales Pace</h2><p className="text-xs text-gray-500">Target progress and revenue goal tracking</p></div><div className="flex items-center gap-2"><label className="text-xs text-gray-500">Target KES</label><input type="number" min={1} value={dailyTarget} onChange={(e) => setDailyTarget(Number(e.target.value) || 1)} className="w-28 border rounded px-2 py-1 text-sm" /></div></div>
+          <div className="flex justify-between text-xs mb-1"><span>Today: KES {todayRevenue.toLocaleString()}</span><span>{targetProgress}% of KES {dailyTarget.toLocaleString()}</span></div>
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-400 via-yellow-400 to-green-500" style={{ width: `${targetProgress}%` }} /></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Sales by the Hour</h2><span className="text-xs text-green-600">Last 3 days</span></div><ResponsiveContainer width="100%" height={220}><LineChart data={hourly}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="hour" tickFormatter={(v) => `${v}:00`} tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Line type="monotone" dataKey="revenue" stroke="#16a34a" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
+          <div className="bg-white border border-gray-200 rounded-xl p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Top Selling Products</h2><span className="text-xs text-green-600">Live rank</span></div><div className="space-y-2">{topSelling.map((item, i) => <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50"><span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-semibold">{i + 1}</span><div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{item.name}</div><div className="text-[11px] text-gray-500">{Number(item.units_sold).toLocaleString()} sold</div></div><span className="text-xs font-semibold text-green-700">KES {Number(item.revenue).toLocaleString()}</span></div>)}{!topSelling.length && <p className="text-sm text-gray-400">No sales yet</p>}</div></div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

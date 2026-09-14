@@ -102,6 +102,18 @@ async function getSalesTrend(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getHourlySales(req, res, next) {
+  try {
+    const days = parseInt(req.query.days) || 3;
+    const { rows } = await query(`
+      SELECT HOUR(created_at) AS hour, SUM(total) AS revenue, COUNT(*) AS transactions
+      FROM sales
+      WHERE business_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      GROUP BY HOUR(created_at) ORDER BY hour ASC`, [getBusinessId(req), days]);
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+
 async function getLedger(_req, res, next) {
   try {
     const { rows } = await Journal.findAll();
@@ -109,4 +121,4 @@ async function getLedger(_req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getLedger };
+module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getLedger };
