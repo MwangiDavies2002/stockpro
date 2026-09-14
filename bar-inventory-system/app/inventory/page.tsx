@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
 type Location = { id: number; name: string; active?: boolean };
 
-const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0 };
+const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0, imageUrl:'' };
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -109,7 +109,7 @@ export default function InventoryPage() {
   function openEdit(item: InventoryItem) {
     setEditItem(item);
     const nextLocationId = String((item as any).location_id || form.locationId || locations[0]?.id || '');
-    setForm({ name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold });
+    setForm({ name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold, imageUrl:(item as any).image_url || '' });
     void loadReferenceData(nextLocationId);
     setModalOpen(true);
   }
@@ -167,6 +167,15 @@ export default function InventoryPage() {
     } catch {
       toast.error('Failed to restock');
     }
+  }
+
+  function handleImage(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('Choose an image file');
+    if (file.size > 2 * 1024 * 1024) return toast.error('Image must be under 2MB');
+    const reader = new FileReader();
+    reader.onload = () => setForm(current => ({ ...current, imageUrl: String(reader.result || '') }));
+    reader.readAsDataURL(file);
   }
 
   async function createQuickReference(e: React.FormEvent) {
@@ -405,6 +414,10 @@ export default function InventoryPage() {
                 <div>
                   <label htmlFor="item-name" className="text-xs font-medium text-gray-600 mb-1 block">Item Name</label>
                   <input id="item-name" type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Product Picture</label>
+                  <div className="flex items-center gap-3"><label className="cursor-pointer px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"><Upload className="w-4 h-4 inline mr-2" />Choose image<input type="file" accept="image/*" className="hidden" onChange={(e) => handleImage(e.target.files?.[0])} /></label>{form.imageUrl && <img src={form.imageUrl} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}</div>
                 </div>
                 <div>
                   <label htmlFor="item-category" className="text-xs font-medium text-gray-600 mb-1 block">Category</label>

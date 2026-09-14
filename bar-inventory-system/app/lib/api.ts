@@ -262,6 +262,7 @@ export interface BusinessRegistrationPayload {
 }
 
 export interface InventoryItemPayload {
+  imageUrl?: string;
   sku?: string;
   barcode?: string;
   locationId?: number;

@@ -14,6 +14,7 @@ export interface InventoryItem {
   price: number;
   sold: number;
   supplierId?: number;
+  image_url?: string;
 }
 
 interface InventoryTableProps {
@@ -128,6 +129,7 @@ export default function InventoryTable({
             return (
               <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-red-50/30' : ''}`}>
                 <td className="px-4 py-3 font-medium text-gray-900">
+                  {item.image_url ? <img src={item.image_url} alt="" className="inline-block w-8 h-8 rounded object-cover mr-2 align-middle" /> : null}
                   {isLow && <AlertTriangle className="inline w-3 h-3 text-amber-500 mr-1" />}
                   {item.name}
                 </td>
@@ -194,7 +196,7 @@ export default function InventoryTable({
             <div key={item.id} className={`bg-white border border-gray-200 rounded-lg p-3 flex items-start justify-between ${isLow ? 'ring-2 ring-amber-200' : ''}`}>
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="font-medium text-gray-900">{item.name}</div>
+                  <div className="font-medium text-gray-900">{item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded object-cover inline-block mr-2 align-middle" />}{item.name}</div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>{item.category}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{item.unit} • KES {item.price.toLocaleString()}</div>

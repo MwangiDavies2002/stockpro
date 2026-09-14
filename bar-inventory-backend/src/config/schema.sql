@@ -37,10 +37,13 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   cost        NUMERIC(10,2) NOT NULL DEFAULT 0,
   price       NUMERIC(10,2) NOT NULL DEFAULT 0,
   sold        INTEGER       NOT NULL DEFAULT 0,
+  image_url   TEXT,
   supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 -- Orders
 CREATE TABLE IF NOT EXISTS orders (

@@ -84,12 +84,12 @@ async function getOne(req, res, next) {
  */
 async function create(req, res, next) {
   try {
-    const { name, stock, threshold, cost, price, supplierId, sku, barcode } = req.body;
+    const { name, stock, threshold, cost, price, supplierId, sku, barcode, imageUrl } = req.body;
     if (!String(name || '').trim()) return res.status(400).json({ message: 'name and category are required' });
     const refs = await resolveReferences(req.body, getBusinessId(req));
     const { insertId } = await query(
-      'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, refs.categoryId, refs.unitId, refs.brandId]
+      'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,image_url,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId]
     );
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
@@ -102,13 +102,13 @@ async function create(req, res, next) {
  */
 async function update(req, res, next) {
   try {
-    const { name, stock, threshold, cost, price, supplierId } = req.body;
+    const { name, stock, threshold, cost, price, supplierId, imageUrl } = req.body;
     const refs = await resolveReferences(req.body, getBusinessId(req));
     const { rowCount } = await query(
       `UPDATE inventory_items
-       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,location_id=?,category_id=?,unit_id=?,brand_id=?,updated_at=NOW()
+       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,location_id=?,image_url=?,category_id=?,unit_id=?,brand_id=?,updated_at=NOW()
        WHERE id=? AND business_id=?`,
-      [String(name || '').trim(), refs.category, refs.unit, stock, threshold, cost || 0, price, supplierId || null, refs.locationId, refs.categoryId, refs.unitId, refs.brandId, req.params.id, getBusinessId(req)]
+      [String(name || '').trim(), refs.category, refs.unit, stock, threshold, cost || 0, price, supplierId || null, refs.locationId, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId, req.params.id, getBusinessId(req)]
     );
     if (!rowCount) return res.status(404).json({ message: 'Item not found' });
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);

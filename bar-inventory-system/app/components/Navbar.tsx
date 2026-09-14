@@ -17,7 +17,7 @@ import {
   Tags,
   Ruler,
   Badge,
-  FileText
+  FileText, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { authApi, treasuryApi, accountsApi } from '../lib/api';
@@ -46,6 +46,7 @@ const NAV_ITEMS = [
   {href: '/sales', label:'Sales', icon:Receipt, adminOnly:false},
   { href: '/locations', label: 'Locations', icon: MapPin, adminOnly: true },
   { href: '/customers',  label: 'Customers',  icon: Users2, adminOnly: false },
+  { href: '/subscription', label: 'Packages', icon: CreditCard, adminOnly: false },
   { href: '/account/account',  label: 'Treasury',   icon: Wallet, adminOnly: true  },
   {
     label: 'Setup',
@@ -85,6 +86,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
   const [currentUser, setCurrentUser] = useState(user ?? null);
   const [treasuryConfigured, setTreasuryConfigured] = useState(false);
   const [accountsConfigured, setAccountsConfigured] = useState(false);
@@ -125,7 +127,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const visibleItems = (isAdmin ? NAV_ITEMS : NAV_ITEMS.filter((item) => ['/pos', '/customers'].includes(item.href as string)))
     .filter((item) => (item.href !== '/account/account' || treasuryConfigured) && (item.label !== 'Accounting' || accountsConfigured));
   return (
-    <nav className="app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:w-60 md:border-r md:overflow-y-auto">
+    <nav className={`app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:border-r md:overflow-y-auto transition-all duration-200 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
       <div className="mx-auto px-4 md:py-5">
         <div className="flex items-center justify-between h-14 md:h-auto md:flex-col md:items-stretch md:gap-6">
 
@@ -134,11 +136,12 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
             <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
               <Package className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm">StockPro</span>
+            {!collapsed && <span className="font-semibold text-gray-900 text-sm">StockPro</span>}
           </div>
 
           {/* Desktop nav */}
           <div className="hidden md:flex md:flex-col md:items-stretch gap-1">
+            <button type="button" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(v => !v)} className="flex items-center justify-center p-2 rounded-md text-gray-500 hover:bg-gray-100 mb-2">{collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}</button>
             {visibleItems.map((item) => {
               if (item.subItems) {
                 const isActive = item.subItems.some(sub => pathname === sub.href);
@@ -154,8 +157,8 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                         }`}
                     >
                       <item.icon className="w-4 h-4" />
-                      {item.label}
-                      <ChevronDown className="w-3 h-3" />
+                      {!collapsed && item.label}
+                      {!collapsed && <ChevronDown className="w-3 h-3" />}
                     </button>
 
                     {openMenu === item.label && (
@@ -172,7 +175,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                               }`}
                           >
                             <sub.icon className="w-4 h-4" />
-                            {sub.label}
+                            {!collapsed && sub.label}
                           </Link>
                         ))}
                       </div>
@@ -193,7 +196,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                     }`}
                 >
                   <item.icon className="w-4 h-4" />
-                  {item.label}
+                    {!collapsed && item.label}
                 </Link>
               );
             })}

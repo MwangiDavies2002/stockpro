@@ -117,4 +117,6 @@ textarea:focus-visible {
 
 @media (min-width: 768px) {
   body:has(.app-sidebar) { padding-left: 15rem; }
+  body:has(.app-sidebar.md\:w-16) { padding-left: 4rem; }
 }
+@media (max-width: 767px) { body:has(.app-sidebar) { padding-left: 0; } }

@@ -18,6 +18,7 @@ interface Product {
   stock: number;
   barcode?: string;
   sku?: string;
+  image_url?: string;
 }
 
 interface CartLine {
@@ -611,6 +612,7 @@ export default function POSPage() {
                   disabled={product.stock <= 0}
                   className="bg-white border border-gray-200 rounded-lg p-3 text-left hover:border-green-500 hover:shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
+                  {product.image_url && <img src={product.image_url} alt="" className="w-full h-28 object-cover rounded-md mb-2" />}
                   <p className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                   <div className="flex items-center justify-between mt-2">
