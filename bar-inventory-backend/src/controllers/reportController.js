@@ -114,6 +114,45 @@ async function getHourlySales(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getBenchmarks(req, res, next) {
+  try {
+    const businessId = getBusinessId(req);
+    const [own, network] = await Promise.all([
+      query(`SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*) AS transactions FROM sales WHERE business_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`, [businessId]),
+      query(`SELECT COALESCE(AVG(revenue),0) AS avg_revenue, COALESCE(AVG(transactions),0) AS avg_transactions, COUNT(*) AS businesses FROM (SELECT business_id, SUM(total) AS revenue, COUNT(*) AS transactions FROM sales WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY business_id) x`, []),
+    ]);
+    res.json({ own: own.rows[0], network: network.rows[0], optedIn: true });
+  } catch (err) { next(err); }
+}
+
+async function getProductPairs(req, res, next) {
+  try {
+    const { rows } = await query(`
+      SELECT a.item_name AS product_a, b.item_name AS product_b, COUNT(*) AS times_bought_together
+      FROM sale_items a JOIN sale_items b ON a.sale_id=b.sale_id AND a.item_id < b.item_id
+      JOIN sales s ON s.id=a.sale_id
+      WHERE s.business_id=? AND s.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+      GROUP BY a.item_id, b.item_id, a.item_name, b.item_name
+      ORDER BY times_bought_together DESC LIMIT 8`, [getBusinessId(req)]);
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+
+async function getLossAlerts(req, res, next) {
+  try {
+    const { rows } = await query(`
+      SELECT s.id AS sale_id, s.created_at, s.payment_method, si.item_name, si.quantity,
+             si.unit_price, i.cost, (i.cost - si.unit_price) * si.quantity AS estimated_loss
+      FROM sales s JOIN sale_items si ON si.sale_id=s.id JOIN inventory_items i ON i.id=si.item_id
+      WHERE s.business_id=? AND si.unit_price < i.cost AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ORDER BY estimated_loss DESC LIMIT 20`, [getBusinessId(req)]);
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+async function getStaffPerformance(req, res, next) {
+  try { const { rows } = await query(`SELECT u.id,u.name,u.email,COUNT(s.id) AS transactions,COALESCE(SUM(s.total),0) AS revenue,COALESCE(AVG(s.total),0) AS average_sale FROM users u LEFT JOIN sales s ON s.created_by=u.id AND s.business_id=? AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) WHERE u.business_id=? GROUP BY u.id,u.name,u.email ORDER BY revenue DESC`, [getBusinessId(req), getBusinessId(req)]); res.json(rows); } catch (err) { next(err); }
+}
+
 async function getLedger(_req, res, next) {
   try {
     const { rows } = await Journal.findAll();
@@ -121,4 +160,4 @@ async function getLedger(_req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getLedger };
+module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getBenchmarks, getProductPairs, getLossAlerts, getStaffPerformance, getLedger };

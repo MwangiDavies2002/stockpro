@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Cookies from 'js-cookie';
 import { Search, X, Banknote, Smartphone, CreditCard, Trash2, WifiOff, CloudUpload, Plus, ScanLine } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -352,6 +353,7 @@ export default function POSPage() {
       });
       toast.warning('Offline — sale saved locally, will sync when connection returns');
       clearCart();
+      setAgeVerified(false);
       setCheckingOut(false);
       checkoutLockRef.current = false;
       return;
@@ -375,6 +377,7 @@ export default function POSPage() {
         cashierName: user?.name,
       });
       clearCart();
+      setAgeVerified(false);
       await loadProducts();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Sale failed');
@@ -694,6 +697,7 @@ export default function POSPage() {
                         <p className="text-xs text-gray-500">
                           Balance: KSh {Number(c.balance).toLocaleString()} / KSh {Number(c.credit_limit).toLocaleString()}
                         </p>
+                        <p className="text-[11px] text-green-700 mt-1">{Number(c.points || 0).toLocaleString()} loyalty points · {c.tier || 'Member'}</p>
                       </div>
                       {over && <span className="text-[10px] text-red-600 font-medium">OVER LIMIT</span>}
                     </button>
@@ -717,6 +721,7 @@ export default function POSPage() {
             >
               Confirm Credit Sale
             </button>
+            <Link href="/loyalty/rewards" className="block text-center text-xs text-green-700 hover:underline">Open rewards for this customer</Link>
           </div>
         </div>
       )}

@@ -4,7 +4,8 @@ const JournalEngine = require('../models/JournalEngine');
 
 async function getAll(req, res, next) {
   try {
-    const { rows } = await query('SELECT * FROM customers WHERE business_id=? ORDER BY name', [getBusinessId(req)]);
+    const { rows } = await query(`SELECT c.*,COALESCE((SELECT SUM(s.total) DIV 100 FROM sales s WHERE s.customer_id=c.id AND s.business_id=c.business_id),0)-COALESCE((SELECT SUM(r.points) FROM loyalty_redemptions r WHERE r.customer_id=c.id AND r.business_id=c.business_id),0) AS points FROM customers c WHERE c.business_id=? ORDER BY c.name`, [getBusinessId(req)]);
+    rows.forEach(c => { c.tier = Number(c.points) >= 1000 ? 'VIP' : Number(c.points) >= 500 ? 'Gold' : Number(c.points) >= 100 ? 'Silver' : 'Member'; });
     res.json(rows);
   } catch (err) { next(err); }
 }

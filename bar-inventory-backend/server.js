@@ -30,6 +30,8 @@ const salesDocumentRoutes = require('./src/routes/salesDocuments');
 const discountRoutes = require('./src/routes/discounts');
 const etimsRoutes = require('./src/routes/etims');
 const businessSettingsRoutes = require('./src/routes/businessSettings');
+const subscriptionRoutes = require('./src/routes/subscriptions');
+const loyaltyRoutes = require('./src/routes/loyalty');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -85,6 +87,8 @@ app.use('/api/sales-documents', salesDocumentRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/etims', etimsRoutes);
 app.use('/api/business-settings', businessSettingsRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Development-only routes

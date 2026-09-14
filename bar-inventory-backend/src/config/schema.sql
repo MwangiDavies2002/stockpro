@@ -45,6 +45,25 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  business_id INT NOT NULL,
+  plan VARCHAR(30) NOT NULL,
+  amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  payment_method VARCHAR(20) NOT NULL,
+  phone VARCHAR(30),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  checkout_request_id VARCHAR(100) UNIQUE,
+  start_date DATETIME NULL,
+  end_date DATETIME NULL,
+  created_by INT,
+  approved_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_subscriptions_business (business_id)
+);
+
+CREATE TABLE IF NOT EXISTS loyalty_redemptions (id INT AUTO_INCREMENT PRIMARY KEY, business_id INT NOT NULL, customer_id INT NOT NULL, reward VARCHAR(150) NOT NULL, points INT NOT NULL, created_by INT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_loyalty_customer (business_id, customer_id));
+
 -- Orders
 CREATE TABLE IF NOT EXISTS orders (
   id          SERIAL PRIMARY KEY,

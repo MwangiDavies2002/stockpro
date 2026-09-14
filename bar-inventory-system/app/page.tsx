@@ -61,6 +61,8 @@ export default function DashboardPage() {
   const [groups, setGroups] = useState<SizeGroup[]>([]);
   const [hourly, setHourly] = useState<{ hour: number; revenue: number; transactions: number }[]>([]);
   const [dailyTarget, setDailyTarget] = useState(120000);
+  useEffect(() => { const saved = localStorage.getItem('stockpro_daily_target'); if (saved) setDailyTarget(Number(saved) || 120000); }, []);
+  useEffect(() => { localStorage.setItem('stockpro_daily_target', String(dailyTarget)); }, [dailyTarget]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

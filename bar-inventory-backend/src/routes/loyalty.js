@@ -1,0 +1,1 @@
+const router = require('express').Router(); const ctrl = require('../controllers/loyaltyController'); const { authenticate } = require('../middleware/auth'); router.use(authenticate); router.get('/customers', ctrl.getCustomers); router.get('/redemptions', ctrl.getRedemptions); router.post('/redeem', ctrl.redeem); module.exports = router;

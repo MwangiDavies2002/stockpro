@@ -105,6 +105,8 @@ async function callback(req, res, next) {
       [CheckoutRequestID, phone, amount, group, receipt]
     );
 
+    await query("UPDATE subscriptions SET status='approved', approved_at=NOW() WHERE checkout_request_id=? AND amount<=? AND status='pending'", [CheckoutRequestID, amount]);
+
     // Attempt to extract a reference from metadata to map to an inventory item
     const ref = get('AccountReference') || get('BillRefNumber') || get('Reference') || get('Item') || get('ItemName') || get('MpesaReference');
     if (ref) {

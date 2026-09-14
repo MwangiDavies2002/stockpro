@@ -9,6 +9,10 @@ router.get('/usage',            ctrl.getUsage);
 router.get('/sale-size-groups', ctrl.getSaleSizeGroups);
 router.get('/sales-trend',      ctrl.getSalesTrend);
 router.get('/hourly-sales',     ctrl.getHourlySales);
+router.get('/benchmarks',       ctrl.getBenchmarks);
+router.get('/product-pairs',    ctrl.getProductPairs);
+router.get('/loss-alerts',      ctrl.getLossAlerts);
+router.get('/staff-performance', ctrl.getStaffPerformance);
 router.get('/ledger',           ctrl.getLedger);
 
 module.exports = router;

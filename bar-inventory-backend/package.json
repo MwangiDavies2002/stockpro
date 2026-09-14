@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "npm run test:purchases && npm run test:sales-ar",
     "dev": "nodemon server.js",
     "migrate": "node src/config/migrate.js",
     "migrate:purchases": "node migrate-purchases.js",

@@ -132,6 +132,10 @@ const reportsApi = {
     api.get('/reports/sales-trend', { params: { days } }),
   getHourlySales: (days: number) =>
     api.get('/reports/hourly-sales', { params: { days } }),
+  getBenchmarks: () => api.get('/reports/benchmarks'),
+  getProductPairs: () => api.get('/reports/product-pairs'),
+  getLossAlerts: () => api.get('/reports/loss-alerts'),
+  getStaffPerformance: () => api.get('/reports/staff-performance'),
   getLedger: () => api.get('/reports/ledger'),
 };
 
@@ -217,6 +221,13 @@ const settingsApi = {
   update: (key: string, data: { account_id?: number; treasury_id?: number }) =>
     api.put(`/accounting-settings/${key}`, data),
 };
+const subscriptionsApi = {
+  getAll: () => api.get('/subscriptions'),
+  getCurrent: () => api.get('/subscriptions/current'),
+  create: (data: { plan: string; amount: number; paymentMethod: 'mpesa' | 'offline'; phone?: string; checkoutRequestId?: string }) => api.post('/subscriptions', data),
+  approve: (id: number) => api.patch(`/subscriptions/${id}/approve`),
+};
+const loyaltyApi = { getCustomers: () => api.get('/loyalty/customers'), getRedemptions: () => api.get('/loyalty/redemptions'), redeem: (data: { customerId: number; reward: string; points: number }) => api.post('/loyalty/redeem', data) };
 
 export const etimsApi = {
   getConfig: () => api.get('/etims/config'),
@@ -340,6 +351,6 @@ export interface DiscountPayload {
   active?: boolean;
 }
 
-export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
+export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
 export default api;
 

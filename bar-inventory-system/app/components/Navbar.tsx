@@ -17,7 +17,7 @@ import {
   Tags,
   Ruler,
   Badge,
-  FileText, PanelLeftClose, PanelLeftOpen
+  FileText, PanelLeftClose, PanelLeftOpen, TrendingUp, Gift, Award
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { authApi, treasuryApi, accountsApi } from '../lib/api';
@@ -41,12 +41,31 @@ const NAV_ITEMS = [
       { href: '/discounts', label: 'Discounts', icon: Tags },
     ]
   },
-  { href: '/reports',   label: 'Reports',    icon: BarChart3,       adminOnly: false },
-  { href: '/users',     label: 'Users',      icon: Users,           adminOnly: true  },
+  { label: 'Reports', icon: BarChart3, adminOnly: false, subItems: [
+    { href: '/reports', label: 'Reports', icon: BarChart3 },
+    { href: '/insights', label: 'Business Insights', icon: TrendingUp },
+    { href: '/insights/actions', label: 'Insight Actions', icon: TrendingUp },
+    { href: '/notifications', label: 'Notifications', icon: Bell },
+    { href: '/staff-performance', label: 'Staff Performance', icon: TrendingUp, adminOnly: true },
+    { href: '/users', label: 'User Management', icon: Users, adminOnly: true },
+  ] },
   {href: '/sales', label:'Sales', icon:Receipt, adminOnly:false},
   { href: '/locations', label: 'Locations', icon: MapPin, adminOnly: true },
-  { href: '/customers',  label: 'Customers',  icon: Users2, adminOnly: false },
-  { href: '/subscription', label: 'Packages', icon: CreditCard, adminOnly: false },
+  { label: 'Business Partners', icon: Users2, adminOnly: false, subItems: [
+    { href: '/customers', label: 'Customers', icon: Users2 },
+    { href: '/suppliers', label: 'Suppliers', icon: ShoppingCart },
+    { href: '/loyalty', label: 'Loyalty Overview', icon: Award },
+    { href: '/loyalty/rewards', label: 'Loyalty Rewards', icon: Gift },
+    { href: '/loyalty/history', label: 'Loyalty History', icon: Receipt },
+  ] },
+  { label: 'Packages', icon: CreditCard, adminOnly: false, subItems: [
+    { href: '/subscription', label: 'Packages', icon: CreditCard },
+    { href: '/subscription/status', label: 'Subscription Status', icon: CreditCard },
+    { href: '/subscription/overview', label: 'Subscription Overview', icon: CreditCard },
+    { href: '/subscription/manage', label: 'Subscription Requests', icon: CreditCard, adminOnly: true },
+  ] },
+  { href: '/network', label: 'StockPro Network', icon: Users2, adminOnly: false },
+  { href: '/network/invite', label: 'Invite to Network', icon: Users2, adminOnly: false },
   { href: '/account/account',  label: 'Treasury',   icon: Wallet, adminOnly: true  },
   {
     label: 'Setup',
@@ -87,11 +106,17 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => { setCollapsed(localStorage.getItem('stockpro_sidebar_collapsed') === 'true'); }, []);
   const [currentUser, setCurrentUser] = useState(user ?? null);
   const [treasuryConfigured, setTreasuryConfigured] = useState(false);
   const [accountsConfigured, setAccountsConfigured] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    const activeGroup = NAV_ITEMS.find((item: any) => item.subItems?.some((sub: any) => pathname === sub.href));
+    if (activeGroup) setOpenMenu(activeGroup.label);
+  }, [pathname]);
 
   useEffect(() => {
     if (isAdmin) treasuryApi.getAll().then((res) => setTreasuryConfigured(Array.isArray(res.data) && res.data.length > 0)).catch(() => setTreasuryConfigured(false));
@@ -141,7 +166,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
 
           {/* Desktop nav */}
           <div className="hidden md:flex md:flex-col md:items-stretch gap-1">
-            <button type="button" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(v => !v)} className="flex items-center justify-center p-2 rounded-md text-gray-500 hover:bg-gray-100 mb-2">{collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}</button>
+            <button type="button" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(v => { const next = !v; localStorage.setItem('stockpro_sidebar_collapsed', String(next)); return next; })} className="flex items-center justify-center p-2 rounded-md text-gray-500 hover:bg-gray-100 mb-2">{collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}</button>
             {visibleItems.map((item) => {
               if (item.subItems) {
                 const isActive = item.subItems.some(sub => pathname === sub.href);
@@ -163,7 +188,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
 
                     {openMenu === item.label && (
                       <div className="mt-1 ml-3 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                        {item.subItems.map((sub) => (
+                        {item.subItems.filter((sub: any) => !sub.adminOnly || isAdmin).map((sub) => (
                           <Link
                             key={sub.href}
                             href={sub.href}
@@ -205,7 +230,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
           {/* Right side */}
           <div className="flex items-center gap-2">
             {/* Alert bell */}
-            <button type="button" className="relative p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors">
+            <button type="button" onClick={() => router.push('/insights')} title="Open business alerts" className="relative p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors">
               <Bell className="w-4 h-4" />
               {alertCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -280,7 +305,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                   </button>
                   {mobileOpenMenu === item.label && (
                     <div className="pl-9 space-y-1">
-                      {item.subItems.map((sub) => (
+                      {item.subItems.filter((sub: any) => !sub.adminOnly || isAdmin).map((sub) => (
                         <Link
                           key={sub.href}
                           href={sub.href}
