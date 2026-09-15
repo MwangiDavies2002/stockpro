@@ -36,13 +36,24 @@ const loyaltyRoutes = require('./src/routes/loyalty');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be set to a random value of at least 32 characters in production');
+  }
+  if (!process.env.FRONTEND_URL) {
+    throw new Error('FRONTEND_URL must be configured in production');
+  }
+}
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
 /* ── Security & Middleware ─────────────────────────── */
 app.use(helmet());
 const corsOptions = {
   origin: (origin, callback) => {
     const whitelist = (process.env.FRONTEND_URL || 'http://localhost:3000,http://127.0.0.1:3000')
       .split(',').map((url) => url.trim()).filter(Boolean);
-    const isVercelPreview = process.env.VERCEL_ENV === 'preview' && /^https:\/\/[^/]+\.vercel\.app$/.test(origin || '');
+    const isVercelPreview = process.env.NODE_ENV !== 'production' && process.env.VERCEL_ENV === 'preview' && /^https:\/\/[^/]+\.vercel\.app$/.test(origin || '');
     if (!origin || whitelist.includes(origin) || isVercelPreview) {
       return callback(null, true);
     }
@@ -55,8 +66,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
 // Global rate limiter
@@ -65,12 +76,14 @@ app.use(rateLimit({
   max:      200,
   message:  { error: 'Too many requests, please try again later.' },
 }));
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many login attempts. Try again later.' } }));
 
 /* ── Routes ────────────────────────────────────────── */
 app.use('/api/auth',      authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/orders',    orderRoutes);
 app.use('/api/reports',   reportRoutes);
+app.use('/api/owner-network', require('./src/routes/ownerNetwork'));
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/mpesa',     mpesaRoutes);
 app.use('/api/sales', salesRoutes);

@@ -78,6 +78,21 @@ async function getOne(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getHistory(req, res, next) {
+  try {
+    const { rows } = await query(
+      `SELECT l.id, l.change_type, (l.after_stock-l.before_stock) AS qty_change, l.before_stock, l.after_stock, l.note,
+              l.created_at, u.name AS user_name
+         FROM inventory_stock_log l
+         LEFT JOIN users u ON u.id=l.user_id
+        WHERE l.item_id=? AND EXISTS (SELECT 1 FROM inventory_items i WHERE i.id=l.item_id AND i.business_id=?)
+        ORDER BY l.created_at DESC, l.id DESC`,
+      [req.params.id, getBusinessId(req)]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+}
+
 /* POST /api/inventory */
 /**
  * Create a new inventory item. Required: `name`, `category`.
@@ -315,5 +330,5 @@ async function bulkImport(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getAll, getLowStock, getOne, create, update, remove, restock, adjustStock, sell, bulkImport };
+module.exports = { getAll, getLowStock, getOne, getHistory, create, update, remove, restock, adjustStock, sell, bulkImport };
 

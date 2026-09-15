@@ -73,6 +73,7 @@ const inventoryApi = {
   getAll: (params?: { category?: string; search?: string; locationId?: number }) =>
     api.get('/inventory', { params }),
   getOne: (id: number) => api.get(`/inventory/${id}`),
+  getHistory: (id: number) => api.get(`/inventory/${id}/history`),
   create: (data: InventoryItemPayload) => api.post('/inventory', data),
   update: (id: number, data: Partial<InventoryItemPayload>) =>
     api.put(`/inventory/${id}`, data),

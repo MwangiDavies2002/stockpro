@@ -58,6 +58,14 @@ function signToken(user) {
   );
 }
 
+function validatePassword(password) {
+  const value = String(password || '');
+  if (value.length < 10 || !/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) {
+    return 'Password must be at least 10 characters and include uppercase, lowercase, and a number';
+  }
+  return null;
+}
+
 async function getDefaultBusinessId() {
   const { rows } = await query('SELECT id FROM businesses ORDER BY id LIMIT 1');
   if (rows.length) return rows[0].id;
@@ -72,6 +80,8 @@ async function register(req, res, next) {
   try {
     const { name, email, password, confirmPassword, role = 'employee', phone } = req.body;
     if (!name || !email || !password) return res.status(400).json({ message: 'name, email and password are required' });
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ message: passwordError });
     if (confirmPassword && confirmPassword !== password) return res.status(400).json({ message: 'Passwords do not match' });
     const existing = await query('SELECT id FROM users WHERE email=?', [email]);
     if (existing.rows.length) return res.status(409).json({ message: 'Email already registered' });

@@ -45,6 +45,17 @@ async function invoke(fn, body, params = {}, query = {}) {
   if (failure) throw failure;
   return { code, result };
 }
+test('stock history derives signed changes from balances and isolates businesses', async () => {
+  await run("INSERT INTO inventory_stock_log (item_id,change_type,qty_change,before_stock,after_stock,note) VALUES (1,'sale',3,10,7,'Legacy positive sale'),(1,'adjustment',2,7,9,'Count correction')");
+  const { result } = await invoke(inventory.getHistory, {}, { id: 1 });
+  assert.equal(result.length, 2);
+  assert.equal(Number(result.find(row => row.change_type === 'sale').qty_change), -3);
+  assert.equal(Number(result.find(row => row.change_type === 'adjustment').qty_change), 2);
+  assert.equal(result[0].note, 'Count correction');
+  await run('UPDATE inventory_items SET business_id=2 WHERE id=1');
+  assert.deepEqual((await invoke(inventory.getHistory, {}, { id: 1 })).result, []);
+});
+
 test('discount, tax, margin and zero-cost selling price', () => {
   const line = calculateLine(payload().items[0]);
   assert.equal(line.unitPrice, 90); assert.equal(line.subtotal, 180); assert.equal(line.netCost, 208.8); assert.equal(line.sellingPrice, 130.5);

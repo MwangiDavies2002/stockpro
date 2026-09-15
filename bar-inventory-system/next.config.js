@@ -10,7 +10,6 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export',
   devIndicators: false,
   async rewrites() {
     return [
@@ -21,7 +20,10 @@ const nextConfig = {
     ];
   },
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: '**' },
+    ],
   },
 };
 

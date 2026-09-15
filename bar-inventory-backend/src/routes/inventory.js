@@ -7,6 +7,7 @@ router.use(authenticate);
 
 router.get('/',             ctrl.getAll);
 router.get('/low-stock',    ctrl.getLowStock);
+router.get('/:id/history',  ctrl.getHistory);
 router.get('/:id',          ctrl.getOne);
 router.post('/',            adminOnly, ctrl.create);
 router.put('/:id',          adminOnly, ctrl.update);

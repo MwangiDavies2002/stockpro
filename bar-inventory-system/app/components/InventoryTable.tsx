@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit2, Trash2, RefreshCw, AlertTriangle, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export interface InventoryItem {
   id: number;
@@ -25,6 +25,8 @@ interface InventoryTableProps {
   onRestock: (item: InventoryItem) => void;
   onAdjust?: (item: InventoryItem) => void;
   onSell?: (id: number) => void;
+  onView?: (item: InventoryItem) => void;
+  onDuplicate?: (item: InventoryItem) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -40,10 +42,31 @@ const CATEGORY_COLORS: Record<string, string> = {
  * and stacked cards (mobile). Accepts callbacks for edit/delete/restock/sell.
  */
 export default function InventoryTable({
-  items, isAdmin, onEdit, onDelete, onRestock, onAdjust,
+  items, isAdmin, onEdit, onDelete, onRestock, onAdjust, onView, onDuplicate,
 }: InventoryTableProps) {
   const [sortKey, setSortKey] = useState<keyof InventoryItem>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+
+  function ProductActions({ item }: { item: InventoryItem }) {
+    return <select aria-label={`Actions for ${item.name}`} value="" className="max-w-40 rounded-lg border border-gray-300 bg-white p-2 text-sm" onChange={event => {
+      const action = event.target.value;
+      if (action === 'view') onView?.(item);
+      if (action === 'edit') onEdit(item);
+      if (action === 'restock') onRestock(item);
+      if (action === 'adjust') onAdjust?.(item);
+      if (action === 'duplicate') onDuplicate?.(item);
+      if (action === 'delete') onDelete(item.id);
+    }}>
+      <option value="" disabled>Actions</option>
+      {onView && <option value="view">View / Stock history</option>}
+      {isAdmin && <option value="edit">Edit product</option>}
+      {isAdmin && <option value="restock">Restock</option>}
+      {isAdmin && onAdjust && <option value="adjust">Adjust stock</option>}
+      {isAdmin && onDuplicate && <option value="duplicate">Duplicate product</option>}
+      {isAdmin && <option value="delete">Delete product</option>}
+    </select>;
+  }
 
   /** Toggle sorting key/direction for table columns. */
   function toggleSort(key: keyof InventoryItem) {
@@ -129,9 +152,11 @@ export default function InventoryTable({
             return (
               <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-red-50/30' : ''}`}>
                 <td className="px-4 py-3 font-medium text-gray-900">
+                  <button type="button" onClick={() => onView?.(item)} className="text-left hover:text-brand hover:underline">
                   {item.image_url ? <img src={item.image_url} alt="" className="inline-block w-8 h-8 rounded object-cover mr-2 align-middle" /> : null}
                   {isLow && <AlertTriangle className="inline w-3 h-3 text-amber-500 mr-1" />}
                   {item.name}
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>
@@ -146,39 +171,7 @@ export default function InventoryTable({
                 <td className="px-4 py-3 text-gray-700">{item.sold.toLocaleString()}</td>
                 <td className="px-4 py-3"><StockStatus item={item} /></td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => onRestock(item)}
-                        title="Restock"
-                        className="p-1.5 rounded-md hover:bg-green-50 text-green-600 transition-colors"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {isAdmin && onAdjust && <button type="button" onClick={() => onAdjust(item)} title="Stock correction" className="p-1.5 rounded-md hover:bg-amber-50 text-amber-600 transition-colors"><SlidersHorizontal className="w-3.5 h-3.5" /></button>}
-                                       {isAdmin && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onEdit(item)}
-                          title="Edit"
-                          className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500 transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item.id)}
-                          title="Delete"
-                          className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <ProductActions item={item} />
                 </td>
               </tr>
             );
@@ -196,7 +189,7 @@ export default function InventoryTable({
             <div key={item.id} className={`bg-white border border-gray-200 rounded-lg p-3 flex items-start justify-between ${isLow ? 'ring-2 ring-amber-200' : ''}`}>
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="font-medium text-gray-900">{item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded object-cover inline-block mr-2 align-middle" />}{item.name}</div>
+                  <button type="button" onClick={() => onView?.(item)} className="font-medium text-gray-900 text-left hover:text-brand hover:underline">{item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded object-cover inline-block mr-2 align-middle" />}{item.name}</button>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>{item.category}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{item.unit} • KES {item.price.toLocaleString()}</div>
@@ -206,27 +199,7 @@ export default function InventoryTable({
                   <div className="text-gray-500">Sold: {item.sold}</div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-1">
-                  {isAdmin && (
-                    <button type="button" onClick={() => onRestock(item)} title="Restock" className="p-2 rounded-md hover:bg-green-50 text-green-600">
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  )}
-                  {isAdmin && onAdjust && <button type="button" onClick={() => onAdjust(item)} title="Stock correction" className="p-2 rounded-md hover:bg-amber-50 text-amber-600"><SlidersHorizontal className="w-4 h-4" /></button>}
-                  
-                </div>
-                {isAdmin && (
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => onEdit(item)} title="Edit" className="p-2 rounded-md hover:bg-gray-100 text-gray-500">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button type="button" onClick={() => onDelete(item.id)} title="Delete" className="p-2 rounded-md hover:bg-red-50 text-red-500">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ProductActions item={item} />
             </div>
           );
         })}

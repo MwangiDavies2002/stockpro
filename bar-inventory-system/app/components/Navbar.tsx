@@ -26,7 +26,12 @@ import { toast } from 'sonner';
 const NAV_ITEMS = [
   { href: '/',          label: 'Dashboard',  icon: LayoutDashboard, adminOnly: false },
   {href:'/pos',               label:'POS',   icon:CreditCard,                       adminOnly:false},
-  { href: '/inventory', label: 'Inventory',  icon: Package,         adminOnly: false },
+  { label: 'Inventory', icon: Package, adminOnly: false, subItems: [
+    { href: '/inventory', label: 'Inventory Management', icon: Package },
+    { href: '/setup/units', label: 'Units', icon: Ruler, adminOnly: true },
+    { href: '/setup/categories', label: 'Categories', icon: Tags, adminOnly: true },
+    { href: '/setup/brands', label: 'Brands', icon: Badge, adminOnly: true },
+  ] },
   { href: '/purchases', label: 'Purchases', icon: ShoppingCart, adminOnly: true },
   {
     label: 'Sales A/R',
@@ -57,6 +62,8 @@ const NAV_ITEMS = [
     { href: '/loyalty', label: 'Loyalty Overview', icon: Award },
     { href: '/loyalty/rewards', label: 'Loyalty Rewards', icon: Gift },
     { href: '/loyalty/history', label: 'Loyalty History', icon: Receipt },
+    { href: '/network', label: 'StockPro Network', icon: Users2 },
+    { href: '/network/invite', label: 'Invite to Network', icon: Users2 },
   ] },
   { label: 'Packages', icon: CreditCard, adminOnly: false, subItems: [
     { href: '/subscription', label: 'Packages', icon: CreditCard },
@@ -64,19 +71,7 @@ const NAV_ITEMS = [
     { href: '/subscription/overview', label: 'Subscription Overview', icon: CreditCard },
     { href: '/subscription/manage', label: 'Subscription Requests', icon: CreditCard, adminOnly: true },
   ] },
-  { href: '/network', label: 'StockPro Network', icon: Users2, adminOnly: false },
-  { href: '/network/invite', label: 'Invite to Network', icon: Users2, adminOnly: false },
   { href: '/account/account',  label: 'Treasury',   icon: Wallet, adminOnly: true  },
-  {
-    label: 'Setup',
-    icon: Settings,
-    adminOnly: true,
-    subItems: [
-      { href: '/setup/units', label: 'Units', icon: Ruler },
-      { href: '/setup/categories', label: 'Categories', icon: Tags },
-      { href: '/setup/brands', label: 'Brands', icon: Badge },
-    ]
-  },
   { 
     label: 'Accounting', 
     icon: BookOpen, 
@@ -153,7 +148,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
     .filter((item) => (item.href !== '/account/account' || treasuryConfigured) && (item.label !== 'Accounting' || accountsConfigured));
   return (
     <nav className={`app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:border-r md:overflow-y-auto transition-all duration-200 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
-      <div className="mx-auto px-4 md:py-5">
+      <div className={`mx-auto md:py-5 ${collapsed ? 'px-1' : 'px-4'}`}>
         <div className="flex items-center justify-between h-14 md:h-auto md:flex-col md:items-stretch md:gap-6">
 
           {/* Logo */}

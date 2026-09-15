@@ -6,6 +6,7 @@ import Cookies from 'js-cookie';
 import { Search, Plus, Download, Upload, FileDown, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import InventoryTable from '../components/InventoryTable';
+import StockHistory from '../components/StockHistory';
 import type { InventoryItem } from '../components/InventoryTable';
 import { inventoryApi, authApi, locationsApi, referenceDataApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ export default function InventoryPage() {
   const [adjustmentItem, setAdjustmentItem] = useState<InventoryItem | null>(null);
   const [adjustmentQty, setAdjustmentQty] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [quickAdd, setQuickAdd]     = useState<null | 'units' | 'categories' | 'brands'>(null);
   const [quickForm, setQuickForm]   = useState({ name: '', shortName: '', allowDecimal: false, description: '' });
@@ -112,6 +114,16 @@ export default function InventoryPage() {
     setForm({ name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold, imageUrl:(item as any).image_url || '' });
     void loadReferenceData(nextLocationId);
     setModalOpen(true);
+  }
+
+  function openDuplicate(item: InventoryItem) {
+    openEdit(item);
+    setEditItem(null);
+    setForm(current => ({ ...current, name: `${item.name} (copy)`, stock: 0, sold: 0 }));
+  }
+
+  async function openDetails(item: InventoryItem) {
+    setDetailItem(item);
   }
 
   async function handleSave() {
@@ -395,8 +407,46 @@ export default function InventoryPage() {
           onDelete={handleDelete}
           onRestock={handleRestock}
           onAdjust={openAdjustment}
+          onView={openDetails}
+          onDuplicate={openDuplicate}
           isAdmin={isAdmin}
         />
+
+        {detailItem && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setDetailItem(null)}>
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4 p-6 border-b">
+                <div className="flex items-center gap-4">
+                  {detailItem.image_url ? <img src={detailItem.image_url} alt={detailItem.name} className="w-20 h-20 rounded-xl object-cover border" /> : <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>}
+                  <div><h2 className="text-xl font-semibold text-gray-900">{detailItem.name}</h2><p className="text-sm text-gray-500">{detailItem.category} · {detailItem.unit}</p></div>
+                </div>
+                <button type="button" aria-label="Close product details" onClick={() => setDetailItem(null)} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Current stock</p><p className="text-xl font-semibold text-emerald-900">{detailItem.stock}</p></div>
+                  <div className="rounded-lg bg-blue-50 p-3"><p className="text-xs text-blue-700">Total sold</p><p className="text-xl font-semibold text-blue-900">{detailItem.sold}</p></div>
+                  <div className="rounded-lg bg-amber-50 p-3"><p className="text-xs text-amber-700">Reorder at</p><p className="text-xl font-semibold text-amber-900">{detailItem.threshold}</p></div>
+                  <div className="rounded-lg bg-purple-50 p-3"><p className="text-xs text-purple-700">Stock value</p><p className="text-xl font-semibold text-purple-900">KES {(Number(detailItem.stock) * Number(detailItem.cost)).toLocaleString()}</p></div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div><p className="text-xs text-gray-500">Purchase cost</p><p className="font-medium">KES {Number(detailItem.cost).toLocaleString()}</p></div>
+                  <div><p className="text-xs text-gray-500">Selling price</p><p className="font-medium">KES {Number(detailItem.price).toLocaleString()}</p></div>
+                  <div><p className="text-xs text-gray-500">Margin per unit</p><p className="font-medium text-emerald-700">KES {(Number(detailItem.price) - Number(detailItem.cost)).toLocaleString()}</p></div>
+                  <div><p className="text-xs text-gray-500">SKU</p><p className="font-medium">{(detailItem as any).sku || '—'}</p></div>
+                  <div><p className="text-xs text-gray-500">Barcode</p><p className="font-medium">{(detailItem as any).barcode || '—'}</p></div>
+                  <div><p className="text-xs text-gray-500">Supplier</p><p className="font-medium">{(detailItem as any).supplier_name || '—'}</p></div>
+                </div>
+                <StockHistory key={detailItem.id} id={detailItem.id} stock={detailItem.stock} />
+                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  {isAdmin && <button type="button" onClick={() => { setDetailItem(null); openEdit(detailItem); }} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">Edit product</button>}
+                  {isAdmin && <button type="button" onClick={() => { setDetailItem(null); handleRestock(detailItem); }} className="px-4 py-2 rounded-lg border border-emerald-600 text-emerald-700 text-sm">Restock</button>}
+                  {isAdmin && <button type="button" onClick={() => { setDetailItem(null); openAdjustment(detailItem); }} className="px-4 py-2 rounded-lg border border-amber-600 text-amber-700 text-sm">Adjust stock</button>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add/Edit Modal */}
         {modalOpen && (
