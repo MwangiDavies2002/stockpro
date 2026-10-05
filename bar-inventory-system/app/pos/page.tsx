@@ -17,6 +17,7 @@ interface Product {
   unit: string;
   price: number;
   stock: number;
+  sold?: number;
   barcode?: string;
   sku?: string;
   image_url?: string;
@@ -191,8 +192,16 @@ export default function POSPage() {
     return products.filter((p) =>
       (catFilter === 'All' || p.category === catFilter) &&
       p.name.toLowerCase().includes(search.toLowerCase())
+    ).sort((a, b) =>
+      Number(b.stock > 0) - Number(a.stock > 0) ||
+      Number(b.sold || 0) - Number(a.sold || 0) ||
+      a.name.localeCompare(b.name)
     );
   }, [products, catFilter, search]);
+  const topSellers = useMemo(() =>
+    filtered.filter((product) => product.stock > 0 && Number(product.sold) > 0).slice(0, 6),
+    [filtered]
+  );
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()], [products]);
 
   function addToCart(product: Product) {
@@ -339,7 +348,7 @@ export default function POSPage() {
       setProducts((prev) =>
         prev.map((p) => {
           const line = cart.find((l) => l.id === p.id);
-          return line ? { ...p, stock: p.stock - line.quantity } : p;
+          return line ? { ...p, stock: p.stock - line.quantity, sold: Number(p.sold || 0) + line.quantity } : p;
         })
       );
 
@@ -603,6 +612,24 @@ export default function POSPage() {
               ))}
             </div>
           </div>
+
+          {!loading && topSellers.length > 0 && (
+            <section className="rounded-lg border border-green-200 bg-green-50 p-3" aria-label="Top selling product suggestions">
+              <h2 className="text-sm font-semibold text-green-900">Suggested top sellers</h2>
+              <p className="text-xs text-green-700 mt-1">Ranked by total units sold. Tap to add to your cart.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                {topSellers.map((product, index) => (
+                  <button key={product.id} onClick={() => addToCart(product)}
+                    className="rounded-lg border border-green-200 bg-white p-3 text-left hover:border-green-500 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
+                    <span className="text-[11px] font-semibold text-green-700">#{index + 1} best seller</span>
+                    <p className="text-sm font-medium text-gray-900 line-clamp-2 mt-1">{product.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{Number(product.sold).toLocaleString()} sold · {product.stock} in stock</p>
+                    <p className="text-sm font-semibold text-green-700 mt-2">KSh {Number(product.price).toLocaleString()}</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           {loading ? (
             <div className="text-center py-16 text-sm text-gray-400">Loading products...</div>
