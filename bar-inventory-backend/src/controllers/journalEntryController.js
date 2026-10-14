@@ -5,7 +5,7 @@ exports.createJournalEntry = async (req, res) => {
     const entry = await JournalEntry.create(req.body);
     res.status(201).json(entry);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 };
 

@@ -72,18 +72,21 @@ async function recordPayment(req, res, next) {
   const client = await getClient();
   try {
     const { amount, method, notes } = req.body;
-    if (!amount || amount <= 0) {
-      client.release();
+    if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) {
       return res.status(400).json({ message: 'amount must be greater than 0' });
     }
 
-    const custRes = await client.query('SELECT balance FROM customers WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
+    await client.query('BEGIN');
+    const custRes = await client.query('SELECT balance FROM customers WHERE id=? AND business_id=? FOR UPDATE', [req.params.id, getBusinessId(req)]);
     if (!custRes.rows.length) {
-      client.release();
+      await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    await client.query('BEGIN');
+    if (Number(amount) > Number(custRes.rows[0].balance)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'Payment cannot exceed the outstanding customer balance' });
+    }
     await client.query(
       'INSERT INTO customer_payments (business_id, customer_id, amount, method, notes, created_by) VALUES (?,?,?,?,?,?)',
       [getBusinessId(req), req.params.id, amount, method || 'cash', notes || null, req.user?.id || null]

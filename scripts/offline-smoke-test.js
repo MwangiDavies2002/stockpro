@@ -1,9 +1,13 @@
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openDatabase, apiRequest } = require('../electron/db');
+const { openDatabase, apiRequest:dispatch } = require('../electron/db');
+let token;
+const apiRequest=(db,request)=>dispatch(db,{...request,authorization:token?`Bearer ${token}`:undefined});
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stockpro-offline-'));
 const db = openDatabase(dir);
+apiRequest(db,{method:'post',url:'/auth/register',data:{name:'Smoke audit',email:'smoke@example.invalid',password:'AuditOnlyStrong123!'}});
+token=apiRequest(db,{method:'post',url:'/auth/login',data:{email:'smoke@example.invalid',password:'AuditOnlyStrong123!'}}).token;
 db.prepare("INSERT INTO inventory_items (name,category,stock,price,cost) VALUES ('Smoke Item','Test',10,5,2)").run();
 const products = apiRequest(db, { method: 'get', url: '/inventory' });
 apiRequest(db, { method: 'post', url: '/sales', data: { paymentMethod: 'cash', items: [{ itemId: products[0].id, quantity: 2, unitPrice: 5 }] } });

@@ -3,6 +3,7 @@ const JournalEngine = require('../models/JournalEngine');
 const { sendLowStockAlert } = require('../utils/notifications');
 const { calculateSalesLine, calculateTotals, badRequest } = require('../utils/salesMath');
 const { getBusinessId } = require('../utils/tenant');
+const { once } = require('../utils/idempotency');
 
 const TYPES = ['quotation', 'sales_order', 'proforma', 'invoice', 'pos', 'credit_note'];
 const NON_POSTING = ['quotation', 'sales_order', 'proforma'];
@@ -62,7 +63,7 @@ async function validateAndLoadItems(client, header, bodyItems, businessId = 1) {
   if (!Array.isArray(bodyItems) || !bodyItems.length) throw badRequest('Document must include at least one line item');
   const seen = new Set();
   const lines = [];
-  for (const raw of bodyItems) {
+  for (const raw of [...bodyItems].sort((a,b)=>Number(a.itemId??a.item_id)-Number(b.itemId??b.item_id))) {
     const itemId = Number(raw.itemId ?? raw.item_id);
     if (!Number.isInteger(itemId) || itemId <= 0 || seen.has(itemId)) throw badRequest('Each product must appear once with a valid ID');
     seen.add(itemId);
@@ -70,7 +71,13 @@ async function validateAndLoadItems(client, header, bodyItems, businessId = 1) {
     if (!products.length) throw badRequest('Product no longer exists');
     const product = products[0];
     if (Number(product.location_id) !== Number(header.locationId)) throw badRequest(`${product.name} belongs to another business location`);
-    const calc = calculateSalesLine({ ...raw, unitPrice: raw.unitPrice ?? product.price });
+    const unitPrice=Number(raw.unitPrice??product.price);
+    let discountPercent=raw.discountPercent;
+    if(header.type==='pos'&&discountPercent===undefined){
+      const {rows:rules}=await client.query(`SELECT * FROM discounts WHERE business_id=? AND location_id=? AND active=TRUE AND ((applies_to='product' AND product_id=?) OR (applies_to='category' AND category_id=?) OR (applies_to='customer' AND customer_id=?))`,[businessId,header.locationId,itemId,product.category_id||null,header.customerId]);
+      discountPercent=Math.max(0,...rules.map(rule=>rule.discount_type==='percent'?Number(rule.value):Math.min(100,unitPrice>0?Number(rule.value)/unitPrice*100:0)));
+    }
+    const calc = calculateSalesLine({ ...raw, unitPrice, discountPercent:discountPercent??raw.discount_percent??0 });
     if (!NON_POSTING.includes(header.type) && header.type !== 'credit_note' && Number(product.stock) < calc.quantity) {
       throw badRequest(`Insufficient stock for ${product.name}: have ${product.stock}, need ${calc.quantity}`);
     }
@@ -111,8 +118,10 @@ async function create(req, res, next) {
     const header = validateHeader(req.body);
     client = await getClient();
     await client.query('BEGIN');
-    await createDocument(client, header, req.body.items, req.user?.id || null, getBusinessId(req));
-    const doc = await loadDocument(client, client.lastDocumentId, getBusinessId(req));
+    const doc = await once(client,getBusinessId(req),'sales-document',req.body.requestId,async()=>{
+      await createDocument(client, header, req.body.items, req.user?.id || null, getBusinessId(req));
+      return loadDocument(client, client.lastDocumentId, getBusinessId(req));
+    });
     await client.query('COMMIT');
     res.status(201).json(doc);
   } catch (err) {
@@ -122,6 +131,7 @@ async function create(req, res, next) {
 }
 
 async function createDocument(client, header, rawItems, userId, businessId = 1) {
+  if(userId)await client.query('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[userId,businessId]);
   const location = await client.query('SELECT id FROM locations WHERE id=? AND business_id=?', [header.locationId, businessId]);
   if (!location.rows.length) throw badRequest('Business location does not exist');
   if (header.customerId) {
@@ -155,14 +165,15 @@ async function createDocument(client, header, rawItems, userId, businessId = 1) 
   for (const line of lines) {
     await client.query(
       `INSERT INTO sales_document_items
-       (document_id,item_id,item_name,quantity,unit_price,discount_percent,discount_amount,tax_percent,tax_amount,subtotal,line_total)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [documentId, line.itemId, line.itemName, line.quantity, line.unitPrice, line.discountPercent, line.discountAmount, line.taxPercent, line.taxAmount, line.subtotal, line.lineTotal]
+       (document_id,item_id,item_name,quantity,unit_price,discount_percent,discount_amount,tax_percent,tax_amount,subtotal,line_total,unit_cost)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [documentId, line.itemId, line.itemName, line.quantity, line.unitPrice, line.discountPercent, line.discountAmount, line.taxPercent, line.taxAmount, line.subtotal, line.lineTotal, header.type === 'credit_note' ? line.originalCost : Number(line.product.cost)]
     );
   }
 
   if (header.type === 'invoice' || header.type === 'pos') await postInvoice(client, documentId, header, lines, totals, openingPaid, userId, businessId);
   if (header.type === 'credit_note') await postCreditNote(client, documentId, header, lines, totals, userId, businessId);
+  if(['invoice','pos','credit_note'].includes(header.type))await require('../services/etims').queueDocument(client,documentId,businessId);
 }
 
 async function validateCreditNoteQuantities(client, invoiceId, lines) {
@@ -182,6 +193,8 @@ async function validateCreditNoteQuantities(client, invoiceId, lines) {
     if (Number(credited.rows[0].qty) + line.quantity > Number(invoiced.rows[0].qty)) {
       throw badRequest(`${line.itemName} credit quantity exceeds the referenced invoice quantity`);
     }
+    const { rows: [cost] } = await client.query('SELECT CASE WHEN COUNT(unit_cost)=COUNT(*) THEN SUM(unit_cost*quantity)/SUM(quantity) ELSE NULL END AS original_cost FROM sales_document_items WHERE document_id=? AND item_id=?', [invoiceId, line.itemId]);
+    line.originalCost = cost.original_cost;
   }
 }
 
@@ -194,7 +207,7 @@ async function postInvoice(client, documentId, header, lines, totals, paidAmount
   let totalCogs = 0;
   const updatedItems = [];
   for (const line of lines) {
-    await client.query('INSERT INTO sale_items (sale_id,item_id,item_name,quantity,unit_price) VALUES (?,?,?,?,?)', [saleId, line.itemId, line.itemName, line.quantity, line.unitPrice]);
+    await client.query('INSERT INTO sale_items (sale_id,item_id,item_name,quantity,unit_price,unit_cost,net_revenue) VALUES (?,?,?,?,?,?,?)', [saleId, line.itemId, line.itemName, line.quantity, line.unitPrice, line.product.cost, line.subtotal]);
     await client.query('UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=? AND business_id=?', [line.quantity, line.quantity, line.itemId, businessId]);
     totalCogs += Number(line.product.cost || 0) * line.quantity;
     const { rows: [updated] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [line.itemId, businessId]);
@@ -235,8 +248,13 @@ async function convert(req, res, next) {
   const client = await getClient();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[req.user.id,getBusinessId(req)]);
+    await client.query('SELECT id FROM sales_documents WHERE id=? AND business_id=? FOR UPDATE',[req.params.id,getBusinessId(req)]);
     const source = await loadDocument(client, req.params.id, getBusinessId(req));
     if (!source) throw badRequest('Source document does not exist');
+    if(!NON_POSTING.includes(source.type))throw badRequest('Only quotations, sales orders and proformas can be converted');
+    const previous=await client.query('SELECT id,type FROM sales_documents WHERE converted_from_id=? AND business_id=? ORDER BY id LIMIT 1',[source.id,getBusinessId(req)]);
+    if(previous.rows.length){if(previous.rows[0].type!==targetType)throw badRequest('This document was already converted; continue from its resulting document');const existing=await loadDocument(client,previous.rows[0].id,getBusinessId(req));await client.query('COMMIT');return res.status(201).json({...existing,replayed:true});}
     const header = validateHeader({ ...source, type: targetType, convertedFromId: source.id, status: targetType === 'invoice' ? 'issued' : 'draft', date: today() });
     await createDocument(client, header, source.items.map(line => ({ itemId: line.item_id, quantity: line.quantity, unitPrice: line.unit_price, discountPercent: line.discount_percent, taxPercent: line.tax_percent })), req.user?.id || null, getBusinessId(req));
     await client.query('UPDATE sales_documents SET status=? WHERE id=?', [`converted_to_${targetType}`, source.id]);

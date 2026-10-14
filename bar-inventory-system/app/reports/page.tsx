@@ -51,6 +51,11 @@ const GROUP_RANGES: Record<string, string> = {
 };
 
 type Period = '7' | '14' | '30';
+type ProfitReport = {
+  items: Array<{ item_id: number; item_name: string; units_sold: number; net_revenue: number; recorded_cost: number; missing_cost_lines: number; gross_profit: number | null }>;
+  summary: { netRevenue: number; recordedCost: number; missingCostLines: number; grossProfit: number | null; marginPercent: number | null };
+};
+const money = (value: number) => `KES ${Number(value).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -63,6 +68,7 @@ export default function ReportsPage() {
   const [usage, setUsage]   = useState<UsageRow[]>([]);
   const [trend, setTrend]   = useState<TrendRow[]>([]);
   const [groups, setGroups] = useState<SizeGroup[]>([]);
+  const [profit, setProfit] = useState<ProfitReport | null>(null);
 
   useEffect(() => {
     const token = Cookies.get('token');
@@ -90,11 +96,13 @@ export default function ReportsPage() {
   async function loadReports() {
     setLoading(true);
     try {
-      const [usageRes, trendRes, groupsRes] = await Promise.all([
+      const [usageRes, trendRes, groupsRes, profitRes] = await Promise.all([
         reportsApi.getUsage(parseInt(period)),
         reportsApi.getSalesTrend(parseInt(period)),
         reportsApi.getMpesaGroups(), // hits /reports/sale-size-groups
+        reportsApi.getProfit(parseInt(period)),
       ]);
+      setProfit(profitRes.data);
       setUsage(usageRes.data);
       setTrend(trendRes.data.map((r: any) => ({
         date: new Date(r.date).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' }),
@@ -120,10 +128,11 @@ export default function ReportsPage() {
       const days = parseInt(p);
       const label = p === '7' ? '7_Days' : p === '14' ? '14_Days' : '30_Days';
 
-      const [usageRes, trendRes, groupsRes] = await Promise.all([
+      const [usageRes, trendRes, groupsRes, profitRes] = await Promise.all([
         reportsApi.getUsage(days),
         reportsApi.getSalesTrend(days),
         reportsApi.getMpesaGroups(),
+        reportsApi.getProfit(days),
       ]);
 
       const ws1 = XLSX.utils.json_to_sheet(usageRes.data.map((i: UsageRow) => ({
@@ -154,6 +163,13 @@ export default function ReportsPage() {
       XLSX.utils.book_append_sheet(wb, ws1, 'Inventory Snapshot');
       XLSX.utils.book_append_sheet(wb, ws2, 'Sale Size Groups');
       XLSX.utils.book_append_sheet(wb, ws3, 'Daily Sales');
+      const profitData = profitRes.data as ProfitReport;
+      const ws4 = XLSX.utils.json_to_sheet(profitData.items.map(row => ({
+        'Item': row.item_name, 'Net Units Sold': row.units_sold, 'Net Revenue (KES)': row.net_revenue,
+        'Recorded Purchase Cost (KES)': row.recorded_cost, 'Gross Profit (KES)': row.gross_profit ?? 'Cost unavailable',
+        'Missing Cost Lines': row.missing_cost_lines,
+      })));
+      XLSX.utils.book_append_sheet(wb, ws4, 'Gross Profit');
 
       XLSX.writeFile(wb, `StockPro_Report_${label}.xlsx`);
       toast.success(`Exported ${days}-day report as Excel`);
@@ -164,8 +180,8 @@ export default function ReportsPage() {
     }
   }
 
-  const totalRevenue = groups.reduce((a, g) => a + g.total, 0);
-  const totalTxns    = groups.reduce((a, g) => a + g.count, 0);
+  const totalRevenue = trend.reduce((a, row) => a + row.revenue, 0);
+  const totalTxns    = trend.reduce((a, row) => a + row.transactions, 0);
   const lowStockCount = usage.filter((i) => i.stock <= i.threshold).length;
 
   if (!user) {
@@ -235,6 +251,22 @@ export default function ReportsPage() {
           <div className="text-center py-16 text-sm text-gray-400">Loading reports...</div>
         ) : (
           <>
+            {profit && <section className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+              <div><h2 className="text-sm font-semibold">Gross Profit on Items Sold ({period} Days)</h2><p className="text-xs text-gray-500 mt-1">Sales after discounts, excluding tax, minus the purchase cost recorded at sale. Credit notes reduce revenue and cost. Operating expenses are excluded.</p></div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  ['Net sales', money(profit.summary.netRevenue)],
+                  ['Recorded purchase cost', money(profit.summary.recordedCost)],
+                  ['Gross profit', profit.summary.grossProfit === null ? 'Incomplete costs' : money(profit.summary.grossProfit)],
+                  ['Gross margin', profit.summary.marginPercent === null ? 'Unavailable' : `${profit.summary.marginPercent.toFixed(2)}%`],
+                ].map(([label, value]) => <div key={label} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">{label}</p><p className="font-semibold mt-1">{value}</p></div>)}
+              </div>
+              {profit.summary.missingCostLines > 0 && <p role="status" className="text-sm text-amber-800 bg-amber-50 rounded-lg p-3">{profit.summary.missingCostLines} older sale or return line(s) have no recorded purchase cost. Their profit is unavailable; changing today's item cost will not reconstruct those costs.</p>}
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Net units sold</th><th className="py-2 pr-3">Net revenue</th><th className="py-2 pr-3">Purchase cost</th><th className="py-2">Gross profit</th></tr></thead><tbody>
+                {profit.items.map(row => <tr key={`${row.item_id}-${row.item_name}`} className="border-b"><td className="py-3 pr-3">{row.item_name}</td><td className="py-3 pr-3">{row.units_sold}</td><td className="py-3 pr-3 whitespace-nowrap">{money(row.net_revenue)}</td><td className="py-3 pr-3 whitespace-nowrap">{row.missing_cost_lines ? 'Incomplete costs' : money(row.recorded_cost)}</td><td className="py-3 whitespace-nowrap">{row.gross_profit === null ? 'Unavailable' : money(row.gross_profit)}</td></tr>)}
+                {!profit.items.length && <tr><td colSpan={5} className="py-6 text-center text-gray-500">No items sold in this period.</td></tr>}
+              </tbody></table></div>
+            </section>}
             {/* Charts row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white border border-gray-200 rounded-xl p-5">

@@ -2,5 +2,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('stockpro', {
   request: (request) => ipcRenderer.invoke('api:request', request),
-  exportDatabase: () => ipcRenderer.invoke('backup:export'),
+  exportDatabase: (authorization) => ipcRenderer.invoke('backup:export',authorization),
+  restoreDatabase: (authorization) => ipcRenderer.invoke('backup:restore',authorization),
 });

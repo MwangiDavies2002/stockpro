@@ -55,6 +55,7 @@ const NAV_ITEMS = [
     { href: '/users', label: 'User Management', icon: Users, adminOnly: true },
   ] },
   {href: '/sales', label:'Sales', icon:Receipt, adminOnly:false},
+  {href:'/payments',label:'M-Pesa Payments',icon:CreditCard,adminOnly:true},
   { href: '/locations', label: 'Locations', icon: MapPin, adminOnly: true },
   { label: 'Business Partners', icon: Users2, adminOnly: false, subItems: [
     { href: '/customers', label: 'Customers', icon: Users2 },

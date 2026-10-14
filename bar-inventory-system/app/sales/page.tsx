@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Receipt, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { salesApi } from '../lib/api';
+import { salesApi,authApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
@@ -31,7 +31,7 @@ function todayISO() {
 }
 
 export default function SalesHistoryPage() {
-  const user = { name: 'Admin', role: 'admin', email: 'admin@bar.co.ke' };
+  const [user,setUser]=useState<any>(null);
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,7 @@ export default function SalesHistoryPage() {
   const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
+    authApi.me().then(({data})=>setUser(data)).catch(()=>{});
     loadSales();
   }, []);
 

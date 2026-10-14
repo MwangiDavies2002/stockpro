@@ -7,7 +7,7 @@ router.use(authenticate);
 router.get('/'  , ctrl.getAll);
 router.get('/:id/summary', ctrl.summary);
 router.post('/', adminOnly, ctrl.create)
-router.post('/:id', adminOnly, ctrl.update);
-router.post('/:id', adminOnly, ctrl.remove);
+router.put('/:id', adminOnly, ctrl.update);
+router.delete('/:id', adminOnly, ctrl.remove);
 
 module.exports = router;

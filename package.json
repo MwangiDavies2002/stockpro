@@ -4,14 +4,26 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
+    "dev": "node scripts/run-web.js dev",
+    "build": "node scripts/run-web.js build",
+    "start": "node scripts/run-web.js start",
+    "start:api": "npm --prefix bar-inventory-backend start",
     "build:renderer": "npm --prefix bar-inventory-system run build:desktop",
     "test:all": "npm --prefix bar-inventory-backend test && npm --prefix bar-inventory-system run typecheck",
-    "start": "npm run build:renderer && electron .",
-    "dist:win": "npm run build:renderer && electron-builder --win nsis",
+    "prepare:desktop": "node scripts/prepare-desktop-runtime.js",
+    "start:desktop": "npm run build:renderer && npm run prepare:desktop && electron .",
+    "dist:desktop": "npm run build:renderer && npm run prepare:desktop && electron-builder --win nsis",
+    "dist:win": "npm run dist:desktop",
     "migrate:json": "node scripts/migrate-json-to-sqlite.js",
-    "test:offline": "node scripts/offline-smoke-test.js"
+    "test:offline": "node scripts/offline-smoke-test.js",
+    "test:import": "node scripts/inventory-import-test.js",
+    "test:backup": "node scripts/backup-test.js",
+    "test:queue": "node scripts/offline-queue-test.js",
+    "audit:desktop": "node scripts/desktop-feature-audit.js",
+    "audit:pages": "node scripts/page-route-audit.js",
+    "audit:web": "npm --prefix bar-inventory-backend run audit:features --"
   },
   "devDependencies": { "electron": "^35.0.0", "electron-builder": "^26.0.0" },
   "dependencies": { "better-sqlite3": "^11.8.1" },
-  "build": { "appId": "com.stockpro.pos", "productName": "StockPro", "files": ["electron/**/*", "bar-inventory-system/out/**/*", "package.json"], "win": { "target": "nsis" }, "nsis": { "oneClick": false, "perMachine": false } }
+  "build": { "appId": "com.stockpro.pos", "productName": "StockPro", "npmRebuild": false, "files": ["electron/**/*", ".desktop-runtime/node_modules/**/*", ".desktop-runtime/package.json", "bar-inventory-system/out/**/*", "bar-inventory-backend/src/utils/salesMath.js", "bar-inventory-backend/src/utils/purchaseMath.js", "bar-inventory-backend/src/utils/journalValidation.js", "bar-inventory-backend/src/utils/ownerIntelligence.js", "package.json"], "asarUnpack": [".desktop-runtime/node_modules/better-sqlite3/build/Release/*.node"], "win": { "target": "nsis" }, "nsis": { "oneClick": false, "perMachine": false } }
 }

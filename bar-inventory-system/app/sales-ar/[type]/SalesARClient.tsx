@@ -139,7 +139,7 @@ export default function SalesARPage() {
         payment: type === 'invoice' && paymentAmount > 0 ? { amount: paymentAmount, method: paymentMethod } : undefined,
         items: lines.map(l => ({ itemId: l.product.id, quantity: l.quantity, unitPrice: l.unitPrice, discountPercent: l.discountPercent, taxPercent: l.taxPercent })),
       });
-      toast.success(`${meta[type].label} #${data.id} saved`);
+      if(type!=='invoice')toast.success(`${meta[type].label} #${data.id} saved`);
       setLines([]); setReferenceNo(''); setPaymentAmount(0); await loadDocuments();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save document');
@@ -149,7 +149,7 @@ export default function SalesARPage() {
   async function convert(id: number, targetType: 'sales_order' | 'invoice') {
     try {
       const { data } = await salesDocumentsApi.convert(id, targetType);
-      toast.success(`Created ${targetType.replace('_', ' ')} #${data.id}`);
+      if(targetType!=='invoice')toast.success(`Created ${targetType.replace('_', ' ')} #${data.id}`);
       await loadDocuments();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Conversion failed'); }
   }

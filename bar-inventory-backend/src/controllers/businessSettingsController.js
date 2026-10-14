@@ -5,7 +5,7 @@ exports.get = async (req, res, next) => {
   try {
     const { rows } = await query('SELECT settings_json FROM businesses WHERE id=?', [getBusinessId(req)]);
     let settings = {};
-    try { settings = rows[0]?.settings_json ? JSON.parse(rows[0].settings_json) : {}; } catch {}
+    try { const value = rows[0]?.settings_json; settings = typeof value === 'string' ? JSON.parse(value) : value || {}; } catch {}
     res.json(settings);
   } catch (err) { next(err); }
 };

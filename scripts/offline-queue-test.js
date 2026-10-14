@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const ts=require('../bar-inventory-system/node_modules/typescript');
+const source=fs.readFileSync(path.join(__dirname,'../bar-inventory-system/app/lib/offlineQueue.ts'),'utf8');
+const exportsObject={};new Function('exports',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(exportsObject);
+const {readQueue,appendQueue,removeSynced}=exportsObject;
+const values=new Map(),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
+const key='pos_pending_sales:1:1:1',other='pos_pending_sales:2:2:2';
+appendQueue(storage,key,{localId:'A'});appendQueue(storage,key,{localId:'A'});assert.equal(readQueue(storage,key).length,1);
+appendQueue(storage,other,{localId:'B'});assert.equal(readQueue(storage,key)[0].localId,'A');
+appendQueue(storage,key,{localId:'NEW-DURING-SYNC'});assert.deepEqual(removeSynced(storage,key,['A']),[{localId:'NEW-DURING-SYNC'}]);
+storage.setItem(key,'corrupt');assert.throws(()=>readQueue(storage,key));assert.equal(storage.getItem(key),'corrupt');
+assert.throws(()=>appendQueue({...storage,setItem(){throw new Error('Storage full');}},other,{localId:'C'}));assert.deepEqual(readQueue(storage,other),[{localId:'B'}]);
+console.log('Offline queue persistence, retry deduplication, scope separation, in-flight additions and failure preservation passed');

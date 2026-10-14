@@ -1,6 +1,7 @@
 const Setting = require('./Setting');
 const Journal = require('./Journal');
 const { query } = require('../config/db');
+const { currentBusinessId } = require('../utils/tenant');
 
 const JournalEngine = {
   /**
@@ -9,7 +10,7 @@ const JournalEngine = {
   generate: async (type, amount, reference, description, client = null, data = null) => {
     // 1. Get mappings
     const { rows: settings } = client
-      ? await client.query('SELECT * FROM accounting_settings')
+      ? await client.query('SELECT * FROM accounting_settings WHERE business_id=?', [currentBusinessId()])
       : await Setting.getAll();
     const map = {};
     const treasuryMap = {};
@@ -24,7 +25,7 @@ const JournalEngine = {
     const getTreasuryGL = async (treasuryId) => {
       if (!treasuryId) return null;
       const q = client ? client.query.bind(client) : query;
-      const { rows } = await q('SELECT linked_gl_account FROM treasury WHERE id = ?', [treasuryId]);
+      const { rows } = await q('SELECT linked_gl_account FROM treasury WHERE id = ? AND business_id=?', [treasuryId, currentBusinessId()]);
       return rows.length > 0 ? rows[0].linked_gl_account : null;
     };
 

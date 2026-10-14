@@ -14,6 +14,8 @@ function validate(body) {
   if (!['percent', 'fixed'].includes(discountType)) throw badRequest('Discount type must be percent or fixed');
   if (!Number.isFinite(value) || value <= 0 || (discountType === 'percent' && value > 100)) throw badRequest('Discount value is invalid');
   if (!['product', 'category', 'customer'].includes(appliesTo)) throw badRequest('Discount applies-to value is invalid');
+  const target = appliesTo === 'product' ? body.productId ?? body.product_id : appliesTo === 'category' ? body.categoryId ?? body.category_id : body.customerId ?? body.customer_id;
+  if (!Number.isInteger(Number(target)) || Number(target)<1) throw badRequest('Choose the product, category or customer this discount applies to');
   return {
     locationId, name, discountType, value, appliesTo,
     productId: body.productId || body.product_id ? Number(body.productId ?? body.product_id) : null,
@@ -42,6 +44,7 @@ async function list(req, res, next) {
 async function create(req, res, next) {
   try {
     const d = validate(req.body);
+    await validateTarget(d,getBusinessId(req));
     const { insertId } = await query(
       `INSERT INTO discounts (business_id,location_id,name,discount_type,value,applies_to,product_id,category_id,customer_id,active)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
@@ -55,6 +58,7 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const d = validate(req.body);
+    await validateTarget(d,getBusinessId(req));
     const { rowCount } = await query(
       `UPDATE discounts SET location_id=?,name=?,discount_type=?,value=?,applies_to=?,product_id=?,category_id=?,customer_id=?,active=?,updated_at=NOW()
        WHERE id=? AND business_id=?`,
@@ -64,6 +68,13 @@ async function update(req, res, next) {
     const { rows } = await query('SELECT * FROM discounts WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     res.json(rows[0]);
   } catch (err) { next(err); }
+}
+
+async function validateTarget(d,businessId) {
+  const table = d.appliesTo==='product'?'inventory_items':d.appliesTo==='category'?'categories':'customers';
+  const id = d.appliesTo==='product'?d.productId:d.appliesTo==='category'?d.categoryId:d.customerId;
+  const {rows}=await query(`SELECT id FROM ${table} WHERE id=? AND business_id=?${table==='customers'?'':' AND location_id=?'}`,table==='customers'?[id,businessId]:[id,businessId,d.locationId]);
+  if(!rows.length) throw badRequest('Discount target must belong to the selected shop location');
 }
 
 async function remove(req, res, next) {

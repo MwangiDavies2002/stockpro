@@ -2,9 +2,10 @@
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const database = require('../src/config/db');
+const {runForBusiness}=require('../src/utils/tenant');
 
-let connection, salesDocuments;
-const tables = ['sales_documents', 'sales_document_items', 'sales_document_payments', 'discounts', 'sales', 'sale_items', 'customers', 'inventory_items', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
+let connection, salesDocuments, reports;
+const tables = ['businesses','integration_jobs','sales_documents', 'sales_document_items', 'sales_document_payments', 'discounts', 'sales', 'sale_items', 'customers', 'inventory_items', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
 const run = async (sql, params = []) => {
   const [result] = await connection.query(sql.replace(/\$\d+/g, '?').replace(new RegExp('\\b(' + tables.join('|') + ')\\b', 'g'), 'test_ar_$1'), params);
   return { rows: Array.isArray(result) ? result : [], insertId: result.insertId, rowCount: result.affectedRows };
@@ -16,6 +17,7 @@ before(async () => {
   database.query = run;
   database.getClient = async () => ({ query: run, release() {} });
   salesDocuments = require('../src/controllers/salesDocumentController');
+  reports = require('../src/controllers/reportController');
 });
 
 after(async () => { if (connection) { await connection.rollback(); connection.release(); } await database.db.end(); });
@@ -31,7 +33,7 @@ beforeEach(async () => {
 async function invoke(fn, body, params = {}, query = {}) {
   let code = 200, result, failure;
   const response = { status(n) { code = n; return this; }, json(data) { result = data; return this; } };
-  await fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; });
+  await runForBusiness(1,()=>fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; }));
   if (failure) throw failure;
   return { code, result };
 }
@@ -67,5 +69,35 @@ test('credit note must reference an invoice and reverses stock', async () => {
   assert.equal(credit.result.type, 'credit_note');
   assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock, 10);
   await assert.rejects(invoke(salesDocuments.create, { ...payload('credit_note'), referenceInvoiceId: invoice.result.id }), /exceeds/);
+});
+
+test('profit uses cost at sale, discounts, tax exclusion and original cost on returns', async () => {
+  const invoice = await invoke(salesDocuments.create, payload('invoice'));
+  await run('UPDATE inventory_items SET cost=70 WHERE id=1');
+  const first = (await invoke(reports.getProfit, {}, {}, { days: 7 })).result;
+  assert.equal(first.summary.netRevenue, 180);
+  assert.equal(first.summary.recordedCost, 80);
+  assert.equal(first.summary.grossProfit, 100);
+  const credit = await invoke(salesDocuments.create, { ...payload('credit_note'), referenceNo: 'RETURN-PROFIT', referenceInvoiceId: invoice.result.id, items: [{ itemId: 1, quantity: 1, unitPrice: 100, discountPercent: 10, taxPercent: 16 }] });
+  assert.equal(Number(credit.result.items[0].unit_cost), 40);
+  const afterReturn = (await invoke(reports.getProfit, {}, {}, { days: 7 })).result;
+  assert.equal(afterReturn.summary.netRevenue, 90);
+  assert.equal(afterReturn.summary.recordedCost, 40);
+  assert.equal(afterReturn.summary.grossProfit, 50);
+  assert.equal(afterReturn.items[0].units_sold, 1);
+  await run('UPDATE sales SET business_id=2');
+  await run('UPDATE sales_documents SET business_id=2');
+  assert.equal((await invoke(reports.getProfit, {}, {}, { days: 7 })).result.items.length, 0);
+});
+
+test('legacy costs stay unknown and invalid report periods are rejected', async () => {
+  const sale = await run("INSERT INTO sales (business_id,total,payment_method) VALUES (1,100,'cash')");
+  await run("INSERT INTO sale_items (sale_id,item_id,item_name,quantity,unit_price) VALUES (?,1,'Legacy item',1,100)", [sale.insertId]);
+  const report = (await invoke(reports.getProfit, {}, {}, { days: 7 })).result;
+  assert.equal(report.summary.netRevenue, 100);
+  assert.equal(report.summary.missingCostLines, 1);
+  assert.equal(report.summary.grossProfit, null);
+  assert.equal(report.items[0].gross_profit, null);
+  assert.equal((await invoke(reports.getProfit, {}, {}, { days: -1 })).code, 400);
 });
 

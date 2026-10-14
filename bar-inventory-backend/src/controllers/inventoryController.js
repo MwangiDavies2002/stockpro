@@ -1,10 +1,16 @@
-﻿const { query, getClient } = require('../config/db');
+const { query, getClient } = require('../config/db');
 const { sendLowStockAlert } = require('../utils/notifications');
 const JournalEngine = require('../models/JournalEngine');
 const { getBusinessId } = require('../utils/tenant');
 
 function badRequest(message) { return Object.assign(new Error(message), { status: 400 }); }
 function generateSku() { return `SKU-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`; }
+function validateNumbers(body) {
+  for (const key of ['stock', 'threshold', 'cost', 'price']) {
+    const value = Number(body[key] ?? (key === 'threshold' ? 5 : 0));
+    if (!Number.isFinite(value) || value < 0 || (['stock', 'threshold'].includes(key) && !Number.isInteger(value)) || (['cost', 'price'].includes(key) && value > 99999999.99)) throw badRequest('Purchase price, selling price and quantities must be valid non-negative values');
+  }
+}
 
 async function resolveReferences(body, businessId = 1) {
   const locationId = Number(body.locationId || body.location_id || 1);
@@ -25,7 +31,6 @@ async function resolveReferences(body, businessId = 1) {
     refs[idKey] = id;
     refs[textKey] = rows[0].name;
   }
-  if (!refs.category) throw badRequest('Category is required');
   if (!refs.unit) refs.unit = 'Unit';
   return refs;
 }
@@ -95,16 +100,17 @@ async function getHistory(req, res, next) {
 
 /* POST /api/inventory */
 /**
- * Create a new inventory item. Required: `name`, `category`.
+ * Create a new inventory item. Required: `name`. Category is optional.
  */
 async function create(req, res, next) {
   try {
+    validateNumbers(req.body);
     const { name, stock, threshold, cost, price, supplierId, sku, barcode, imageUrl } = req.body;
-    if (!String(name || '').trim()) return res.status(400).json({ message: 'name and category are required' });
+    if (!String(name || '').trim()) return res.status(400).json({ message: 'name is required' });
     const refs = await resolveReferences(req.body, getBusinessId(req));
     const { insertId } = await query(
       'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,image_url,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock || 0, threshold || 5, cost || 0, price || 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId]
+      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock ?? 0, threshold ?? 5, cost ?? 0, price ?? 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId]
     );
     const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     res.status(201).json(rows[0]);
@@ -117,6 +123,7 @@ async function create(req, res, next) {
  */
 async function update(req, res, next) {
   try {
+    validateNumbers(req.body);
     const { name, stock, threshold, cost, price, supplierId, imageUrl } = req.body;
     const refs = await resolveReferences(req.body, getBusinessId(req));
     const { rowCount } = await query(
@@ -232,7 +239,7 @@ async function sell(req, res, next) {
     const quantity = Number(req.body.quantity || 1);
     if (!Number.isInteger(quantity) || quantity < 1) return res.status(400).json({ message: 'quantity must be a positive integer' });
 
-    const check = await client.query('SELECT stock, threshold, name, price FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
+    const check = await client.query('SELECT stock, threshold, name, price, cost FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!check.rows.length) return res.status(404).json({ message: 'Item not found' });
     const item = check.rows[0];
     if (item.stock < quantity) return res.status(400).json({ message: 'Insufficient stock' });
@@ -246,8 +253,8 @@ async function sell(req, res, next) {
     const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [saleId, getBusinessId(req)]);
 
     await client.query(
-      'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price) VALUES (?,?,?,?,?)',
-      [sale.id, req.params.id, item.name, quantity, item.price || 0]
+      'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price, unit_cost, net_revenue) VALUES (?,?,?,?,?,?,?)',
+      [sale.id, req.params.id, item.name, quantity, item.price || 0, item.cost, total]
     );
 
     await client.query(
@@ -282,53 +289,7 @@ async function sell(req, res, next) {
  * Inserts each row independently â€” one bad row doesn't block the rest.
  * Returns a summary of created rows and any per-row errors.
  */
-async function bulkImport(req, res, next) {
-  try {
-    const businessId = getBusinessId(req);
-    const { items } = req.body;
-    if (!Array.isArray(items) || !items.length) {
-      return res.status(400).json({ message: 'No items to import' });
-    }
-
-    const created = [];
-    const errors = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const row = items[i];
-      const rowNum = i + 2; // +2 accounts for header row + 1-index
-      try {
-        const name = String(row.name || '').trim();
-        const category = String(row.category || '').trim();
-        if (!name || !category) {
-          errors.push({ row: rowNum, name: name || '(blank)', message: 'name and category are required' });
-          continue;
-        }
-        const unit = String(row.unit || 'Pieces').trim();
-        const stock = Number(row.stock) || 0;
-        const threshold = Number(row.threshold) || 5;
-        const cost = Number(row.cost) || 0;
-        const price = Number(row.price) || 0;
-        const supplierId = row.supplierId ? Number(row.supplierId) : null;
-        const sku = String(row.sku || '').trim() || generateSku();
-
-        const { insertId } = await query(
-          'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,sku) VALUES (?,?,?,?,?,?,?,?,?,?)',
-          [businessId, name, category, unit, stock, threshold, cost, price, supplierId, sku]
-        );
-        created.push({ row: rowNum, id: insertId, name });
-      } catch (rowErr) {
-        errors.push({ row: rowNum, name: row.name || '(blank)', message: rowErr.message });
-      }
-    }
-
-    res.status(errors.length === items.length ? 400 : 201).json({
-      createdCount: created.length,
-      errorCount: errors.length,
-      created,
-      errors,
-    });
-  } catch (err) { next(err); }
-}
+const { bulkImport } = require('./inventoryImportController');
 
 module.exports = { getAll, getLowStock, getOne, getHistory, create, update, remove, restock, adjustStock, sell, bulkImport };
 

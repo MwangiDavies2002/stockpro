@@ -1,14 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Book, Filter, Calendar, Search, ArrowLeft } from 'lucide-react';
-import Navbar from '../../../components/Navbar';
-import { accountsApi, treasuryApi } from '../../../lib/api';
+import Navbar from '../../components/Navbar';
+import { accountsApi, treasuryApi } from '../../lib/api';
 
 import Link from 'next/link';
 
-export default function AccountBookPage() {
-  const { id } = useParams();
+function AccountBookPage() {
+  const id = useSearchParams().get('id');
   const [account, setAccount] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,6 @@ export default function AccountBookPage() {
   });
 
   useEffect(() => {
-    fetchAccountData();
     fetchTransactions();
   }, [id, filters]);
 
@@ -48,7 +47,11 @@ export default function AccountBookPage() {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const { data } = await accountsApi.getBook(id as string, filters);
+      if(!id)return;
+      const {data:treasury}=await treasuryApi.getOne(Number(id));
+      setAccount(treasury);
+      if(!treasury.linked_gl_account){setTransactions([]);return;}
+      const { data } = await accountsApi.getBook(treasury.linked_gl_account, filters);
       setTransactions(data);
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -206,3 +209,5 @@ export default function AccountBookPage() {
     </div>
   );
 }
+
+export default function Page(){return <Suspense fallback={<div>Loading account book...</div>}><AccountBookPage /></Suspense>}

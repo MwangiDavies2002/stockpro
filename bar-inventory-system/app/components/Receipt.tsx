@@ -4,6 +4,7 @@ interface ReceiptItem {
   item_name: string;
   quantity: number;
   unit_price: number;
+  line_total?: number;
 }
 
 interface ReceiptProps {
@@ -62,7 +63,7 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
           {items.map((item, i) => (
             <div key={i} className="flex justify-between">
               <span>{item.quantity}x {item.item_name}</span>
-              <span>{(item.quantity * item.unit_price).toFixed(2)}</span>
+              <span>{Number(item.line_total??item.quantity * item.unit_price).toFixed(2)}</span>
             </div>
           ))}
           <div className="border-t border-dashed border-black my-2" />
@@ -70,7 +71,7 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
             <span>TOTAL</span>
             <span>KSh {total.toFixed(2)}</span>
           </div>
-          <p className="mt-1">Payment: {paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'credit' ? 'Credit / Tab' : 'M-Pesa'}</p>
+          <p className="mt-1">Payment: {({cash:'Cash',credit:'Credit / Tab',mpesa:'M-Pesa',card:'Card',bank:'Bank'} as Record<string,string>)[paymentMethod]||paymentMethod}</p>
           <div className="border-t border-dashed border-black my-2" />
           <p className="text-center">Thank you for your business!</p>
         </div>

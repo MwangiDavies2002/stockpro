@@ -58,7 +58,7 @@ async function summary(req, res, next) {
     );
     const revenueRes = await query(
       "SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*) AS sale_count FROM sales WHERE location_id=? AND business_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)",
-      [locationId]
+      [locationId, getBusinessId(req)]
     );
     res.json({
       totalProducts: Number(stockRes.rows[0].total),

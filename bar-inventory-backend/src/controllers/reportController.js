@@ -2,6 +2,38 @@ const { query } = require('../config/db');
 const Journal = require('../models/Journal');
 const { getBusinessId } = require('../utils/tenant');
 
+async function getProfit(req, res, next) {
+  try {
+    const days = Number(req.query.days ?? 30);
+    if (!Number.isInteger(days) || days < 1 || days > 3660) return res.status(400).json({ message: 'Days must be between 1 and 3660' });
+    const businessId = getBusinessId(req);
+    const { rows } = await query(`
+      SELECT item_id, item_name, SUM(quantity) AS units_sold,
+             ROUND(SUM(revenue),2) AS net_revenue,
+             ROUND(SUM(CASE WHEN unit_cost IS NOT NULL THEN quantity*unit_cost ELSE 0 END),2) AS recorded_cost,
+             SUM(CASE WHEN unit_cost IS NULL THEN 1 ELSE 0 END) AS missing_cost_lines,
+             CASE WHEN SUM(CASE WHEN unit_cost IS NULL THEN 1 ELSE 0 END)=0
+                  THEN ROUND(SUM(revenue-quantity*unit_cost),2) ELSE NULL END AS gross_profit
+      FROM (
+        SELECT si.item_id, si.item_name, si.quantity, si.unit_cost,
+               COALESCE(si.net_revenue,si.quantity*si.unit_price) AS revenue
+        FROM sale_items si JOIN sales s ON s.id=si.sale_id
+        WHERE s.business_id=? AND s.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        UNION ALL
+        SELECT ci.item_id, ci.item_name, -ci.quantity, ci.unit_cost, -ci.subtotal
+        FROM sales_document_items ci JOIN sales_documents cn ON cn.id=ci.document_id
+        WHERE cn.business_id=? AND cn.type='credit_note' AND cn.status='issued'
+          AND cn.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      ) profit_events
+      GROUP BY item_id,item_name ORDER BY net_revenue DESC`, [businessId, days, businessId, days]);
+    const items = rows.map(row => ({ ...row, units_sold: Number(row.units_sold), net_revenue: Number(row.net_revenue), recorded_cost: Number(row.recorded_cost), missing_cost_lines: Number(row.missing_cost_lines), gross_profit: row.gross_profit === null ? null : Number(row.gross_profit) }));
+    const revenue = Number(items.reduce((sum, row) => sum + row.net_revenue, 0).toFixed(2));
+    const cost = Number(items.reduce((sum, row) => sum + row.recorded_cost, 0).toFixed(2));
+    const missing = items.reduce((sum, row) => sum + row.missing_cost_lines, 0);
+    res.json({ days, items, summary: { netRevenue: revenue, recordedCost: cost, missingCostLines: missing, grossProfit: missing ? null : Number((revenue-cost).toFixed(2)), marginPercent: missing || revenue <= 0 ? null : Number(((revenue-cost)/revenue*100).toFixed(2)) } });
+  } catch (err) { next(err); }
+}
+
 /* GET /api/reports/stock */
 /**
  * Report: current stock levels with a status of LOW/OK per item.
@@ -160,4 +192,4 @@ async function getLedger(_req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getBenchmarks, getProductPairs, getLossAlerts, getStaffPerformance, getLedger };
+module.exports = { getProfit, getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getBenchmarks, getProductPairs, getLossAlerts, getStaffPerformance, getLedger };

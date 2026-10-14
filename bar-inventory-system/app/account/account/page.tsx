@@ -183,7 +183,7 @@ export default function TreasuryPage() {
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <Link href={`/treasury/${acc.id}/book`} className="p-1.5 border border-yellow-400 text-yellow-600 rounded-full hover:bg-yellow-50">
+                        <Link href={`/treasury/book?id=${acc.id}`} className="p-1.5 border border-yellow-400 text-yellow-600 rounded-full hover:bg-yellow-50">
                           <Book className="w-3.5 h-3.5" />
                         </Link>
                         <button className="p-1.5 border border-blue-400 text-blue-600 rounded-full hover:bg-blue-50">

@@ -1,0 +1,570 @@
+-- MySQL baseline: schema only; no application records or secrets.
+
+SET FOREIGN_KEY_CHECKS=0;
+
+CREATE TABLE IF NOT EXISTS `accounting_settings` (
+  `setting_key` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_id` int DEFAULT NULL,
+  `treasury_id` int DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`setting_key`),
+  KEY `account_id` (`account_id`),
+  KEY `treasury_id` (`treasury_id`),
+  CONSTRAINT `accounting_settings_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `chart_of_accounts` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `accounting_settings_ibfk_2` FOREIGN KEY (`treasury_id`) REFERENCES `treasury` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `brands` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `location_id` int NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_brands_location_name` (`location_id`,`name`),
+  KEY `idx_brands_business` (`business_id`),
+  CONSTRAINT `fk_brands_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `businesses` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(180) COLLATE utf8mb4_general_ci NOT NULL,
+  `start_date` date DEFAULT NULL,
+  `currency` varchar(3) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'KES',
+  `logo_url` text COLLATE utf8mb4_general_ci,
+  `website` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `contact_number` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `alternate_contact_number` varchar(40) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `country` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `state` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `city` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `zip_code` varchar(40) COLLATE utf8mb4_general_ci NOT NULL,
+  `landmark` varchar(180) COLLATE utf8mb4_general_ci NOT NULL,
+  `timezone` varchar(80) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Africa/Nairobi',
+  `locale` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'en-KE',
+  `business_type` varchar(60) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Retail',
+  `business_type_other` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `default_tax_rate` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `tax_number` varchar(80) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `selling_price_tax_type` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'inclusive',
+  `stock_accounting_method` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'weighted_average',
+  `default_low_stock_threshold` decimal(12,4) NOT NULL DEFAULT '5.0000',
+  `feature_pos_offline` tinyint(1) NOT NULL DEFAULT '0',
+  `feature_multi_currency_sales` tinyint(1) NOT NULL DEFAULT '0',
+  `feature_barcode_scanning` tinyint(1) NOT NULL DEFAULT '1',
+  `feature_service_repair` tinyint(1) NOT NULL DEFAULT '0',
+  `financial_year_start_month` tinyint NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `kra_pin` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `etims_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `etims_mode` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'sandbox',
+  `etims_api_url` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `etims_username` varchar(180) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `etims_password_encrypted` text COLLATE utf8mb4_general_ci,
+  `etims_device_serial` varchar(120) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `settings_json` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `businesses_chk_1` CHECK ((`selling_price_tax_type` in (_utf8mb4'inclusive',_utf8mb4'exclusive'))),
+  CONSTRAINT `businesses_chk_2` CHECK ((`stock_accounting_method` in (_utf8mb4'fifo',_utf8mb4'lifo',_utf8mb4'weighted_average'))),
+  CONSTRAINT `businesses_chk_3` CHECK ((`financial_year_start_month` between 1 and 12))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `location_id` int NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `code` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
+  `parent_id` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_categories_location_name_parent` (`location_id`,`name`,`parent_id`),
+  KEY `fk_categories_parent` (`parent_id`),
+  KEY `idx_categories_business` (`business_id`),
+  CONSTRAINT `fk_categories_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `chart_of_accounts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `account_code` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `parent_id` int DEFAULT NULL,
+  `account_type` enum('Assets','Liabilities','Equity','Income','Expenses') COLLATE utf8mb4_general_ci NOT NULL,
+  `account_subtype` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `detail_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `normal_balance` enum('Debit','Credit') COLLATE utf8mb4_general_ci NOT NULL,
+  `active` tinyint(1) DEFAULT '1',
+  `details` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `account_code` (`account_code`),
+  KEY `parent_id` (`parent_id`),
+  KEY `idx_chart_of_accounts_business` (`business_id`),
+  CONSTRAINT `chart_of_accounts_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `chart_of_accounts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `customer_payments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `customer_id` int NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `method` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'cash',
+  `notes` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `customer_id` (`customer_id`),
+  KEY `created_by` (`created_by`),
+  KEY `idx_customer_payments_business` (`business_id`),
+  CONSTRAINT `customer_payments_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `customer_payments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `customers` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `phone` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `credit_limit` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `balance` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_customers_phone` (`phone`),
+  KEY `idx_customers_business` (`business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `discounts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `location_id` int NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `discount_type` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'percent',
+  `value` decimal(15,4) NOT NULL,
+  `applies_to` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'product',
+  `product_id` int DEFAULT NULL,
+  `category_id` int DEFAULT NULL,
+  `customer_id` int DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_discounts_location` (`location_id`),
+  KEY `fk_discounts_product` (`product_id`),
+  KEY `fk_discounts_category` (`category_id`),
+  KEY `fk_discounts_customer` (`customer_id`),
+  KEY `idx_discounts_business` (`business_id`),
+  CONSTRAINT `fk_discounts_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_discounts_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_discounts_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_discounts_product` FOREIGN KEY (`product_id`) REFERENCES `inventory_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `inventory_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `category` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `unit` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Bottles',
+  `stock` int NOT NULL DEFAULT '0',
+  `threshold` int NOT NULL DEFAULT '5',
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `cost` decimal(10,2) DEFAULT '0.00',
+  `sold` int NOT NULL DEFAULT '0',
+  `supplier_id` int DEFAULT NULL,
+  `location_id` int NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `sku` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `barcode` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `previous_unit_price` decimal(15,4) DEFAULT NULL,
+  `previous_discount` decimal(7,4) DEFAULT NULL,
+  `unit_id` int DEFAULT NULL,
+  `category_id` int DEFAULT NULL,
+  `brand_id` int DEFAULT NULL,
+  `image_url` text COLLATE utf8mb4_general_ci,
+  PRIMARY KEY (`id`),
+  KEY `supplier_id` (`supplier_id`),
+  KEY `idx_inventory_category` (`category`),
+  KEY `idx_inventory_stock` (`stock`),
+  KEY `idx_inventory_location` (`location_id`),
+  KEY `idx_inventory_items_business` (`business_id`),
+  CONSTRAINT `inventory_items_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `inventory_items_ibfk_2` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`),
+  CONSTRAINT `chk_stock` CHECK ((`stock` >= 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `inventory_stock_log` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `item_id` int NOT NULL,
+  `change_type` varchar(30) COLLATE utf8mb4_general_ci NOT NULL,
+  `qty_change` int NOT NULL,
+  `before_stock` int NOT NULL,
+  `after_stock` int NOT NULL,
+  `note` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `user_id` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `idx_stocklog_item` (`item_id`),
+  KEY `idx_stocklog_type` (`change_type`),
+  KEY `idx_inventory_stock_log_business` (`business_id`),
+  CONSTRAINT `inventory_stock_log_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `inventory_stock_log_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `journal_entries` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `posting_date` date NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
+  `reference` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'posted',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_journal_entries_business` (`business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `journal_entry_lines` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `journal_entry_id` int NOT NULL,
+  `account_id` int NOT NULL,
+  `debit` decimal(15,2) DEFAULT '0.00',
+  `credit` decimal(15,2) DEFAULT '0.00',
+  `description` text COLLATE utf8mb4_general_ci,
+  PRIMARY KEY (`id`),
+  KEY `journal_entry_id` (`journal_entry_id`),
+  KEY `account_id` (`account_id`),
+  CONSTRAINT `journal_entry_lines_ibfk_1` FOREIGN KEY (`journal_entry_id`) REFERENCES `journal_entries` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `journal_entry_lines_ibfk_2` FOREIGN KEY (`account_id`) REFERENCES `chart_of_accounts` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `locations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `address` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `invoice_scheme_pos` varchar(40) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Default',
+  `invoice_layout_pos` varchar(40) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Default',
+  `invoice_scheme_sale` varchar(40) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Default',
+  `invoice_layout_sale` varchar(40) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Default',
+  `location_type` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'selling',
+  `payment_options` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_locations_business` (`business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `loyalty_redemptions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int NOT NULL,
+  `customer_id` int NOT NULL,
+  `reward` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `points` int NOT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_loyalty_customer` (`business_id`,`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `order_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `order_id` int NOT NULL,
+  `item_id` int DEFAULT NULL,
+  `item_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `quantity` int NOT NULL,
+  `unit_price` decimal(15,4) NOT NULL,
+  `cost_before_discount` decimal(15,4) DEFAULT NULL,
+  `discount_percent` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `tax_percent` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `subtotal` decimal(15,2) DEFAULT NULL,
+  `net_cost` decimal(15,2) DEFAULT NULL,
+  `profit_margin` decimal(12,4) NOT NULL DEFAULT '0.0000',
+  `selling_price` decimal(15,2) DEFAULT NULL,
+  `account_type` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'asset',
+  PRIMARY KEY (`id`),
+  KEY `order_id` (`order_id`),
+  KEY `item_id` (`item_id`),
+  CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_qty` CHECK ((`quantity` > 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `orders` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `supplier_id` int DEFAULT NULL,
+  `status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `notes` text COLLATE utf8mb4_general_ci,
+  `total` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `reference_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `purchase_date` date DEFAULT NULL,
+  `location_id` int DEFAULT NULL,
+  `pay_term` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `transaction_type` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'purchase',
+  PRIMARY KEY (`id`),
+  KEY `supplier_id` (`supplier_id`),
+  KEY `created_by` (`created_by`),
+  KEY `idx_orders_status` (`status`),
+  KEY `idx_orders_business` (`business_id`),
+  CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_status` CHECK ((`status` in (_utf8mb4'pending',_utf8mb4'approved',_utf8mb4'delivered',_utf8mb4'cancelled')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `sale_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `sale_id` int NOT NULL,
+  `item_id` int DEFAULT NULL,
+  `item_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `quantity` int NOT NULL,
+  `unit_price` decimal(10,2) NOT NULL,
+  `unit_cost` decimal(15,4) DEFAULT NULL,
+  `net_revenue` decimal(15,2) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sale_id` (`sale_id`),
+  KEY `item_id` (`item_id`),
+  CONSTRAINT `sale_items_ibfk_1` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `sale_items_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `sales` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `total` decimal(10,2) NOT NULL,
+  `payment_method` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'cash',
+  `created_by` int DEFAULT NULL,
+  `location_id` int NOT NULL DEFAULT '1',
+  `customer_id` int DEFAULT NULL,
+  `notes` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `created_by` (`created_by`),
+  KEY `idx_sales_location` (`location_id`),
+  KEY `idx_sales_customer` (`customer_id`),
+  KEY `idx_sales_business` (`business_id`),
+  CONSTRAINT `sales_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `sales_ibfk_2` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`),
+  CONSTRAINT `sales_ibfk_3` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `sales_document_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `document_id` int NOT NULL,
+  `item_id` int DEFAULT NULL,
+  `item_name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `quantity` int NOT NULL,
+  `unit_price` decimal(15,4) NOT NULL,
+  `discount_percent` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `discount_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `tax_percent` decimal(7,4) NOT NULL DEFAULT '0.0000',
+  `tax_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `line_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `unit_cost` decimal(15,4) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_sales_document_items_document` (`document_id`),
+  KEY `fk_sales_document_items_item` (`item_id`),
+  CONSTRAINT `fk_sales_document_items_document` FOREIGN KEY (`document_id`) REFERENCES `sales_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_sales_document_items_item` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `sales_document_payments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `document_id` int NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `method` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'cash',
+  `reference_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_general_ci,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_sales_document_payments_document` (`document_id`),
+  CONSTRAINT `fk_sales_document_payments_document` FOREIGN KEY (`document_id`) REFERENCES `sales_documents` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `sales_documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `type` varchar(30) COLLATE utf8mb4_general_ci NOT NULL,
+  `status` varchar(30) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'draft',
+  `customer_id` int DEFAULT NULL,
+  `reference_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `document_date` date NOT NULL,
+  `location_id` int NOT NULL,
+  `converted_from_id` int DEFAULT NULL,
+  `reference_invoice_id` int DEFAULT NULL,
+  `sale_id` int DEFAULT NULL,
+  `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `discount_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `tax_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `paid_amount` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `balance_due` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `notes` text COLLATE utf8mb4_general_ci,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_sales_documents_type_status` (`type`,`status`),
+  KEY `idx_sales_documents_customer` (`customer_id`),
+  KEY `idx_sales_documents_location` (`location_id`),
+  KEY `fk_sales_documents_converted_from` (`converted_from_id`),
+  KEY `fk_sales_documents_reference_invoice` (`reference_invoice_id`),
+  KEY `fk_sales_documents_sale` (`sale_id`),
+  KEY `idx_sales_documents_business` (`business_id`),
+  CONSTRAINT `fk_sales_documents_converted_from` FOREIGN KEY (`converted_from_id`) REFERENCES `sales_documents` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_sales_documents_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_sales_documents_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`),
+  CONSTRAINT `fk_sales_documents_reference_invoice` FOREIGN KEY (`reference_invoice_id`) REFERENCES `sales_documents` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_sales_documents_sale` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `shifts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `user_id` int NOT NULL,
+  `opening_float` decimal(10,2) NOT NULL,
+  `closing_expected` decimal(10,2) DEFAULT NULL,
+  `closing_actual` decimal(10,2) DEFAULT NULL,
+  `variance` decimal(10,2) DEFAULT NULL,
+  `status` varchar(10) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'open',
+  `notes` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `opened_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `closed_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_shifts_user` (`user_id`),
+  KEY `idx_shifts_status` (`status`),
+  KEY `idx_shifts_business` (`business_id`),
+  CONSTRAINT `shifts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_shift_status` CHECK ((`status` in (_utf8mb4'open',_utf8mb4'closed')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `subscriptions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int NOT NULL,
+  `plan` varchar(30) COLLATE utf8mb4_general_ci NOT NULL,
+  `amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `payment_method` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `phone` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
+  `created_by` int DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `checkout_request_id` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `start_date` datetime DEFAULT NULL,
+  `end_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `checkout_request_id` (`checkout_request_id`),
+  KEY `idx_subscriptions_business` (`business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `suppliers` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(150) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `phone` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` text COLLATE utf8mb4_general_ci,
+  `items_supplied` json DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_suppliers_business` (`business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `treasury` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `account_number` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `linked_gl_account` int DEFAULT NULL,
+  `opening_balance` decimal(15,2) DEFAULT '0.00',
+  `current_balance` decimal(15,2) DEFAULT '0.00',
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'active',
+  `notes` text COLLATE utf8mb4_general_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `linked_gl_account` (`linked_gl_account`),
+  KEY `idx_treasury_business` (`business_id`),
+  CONSTRAINT `treasury_ibfk_1` FOREIGN KEY (`linked_gl_account`) REFERENCES `chart_of_accounts` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `treasury_transactions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `treasury_id` int NOT NULL,
+  `transaction_type` enum('Deposit','Withdrawal','Transfer') COLLATE utf8mb4_general_ci NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `reference` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
+  `related_transaction_id` int DEFAULT NULL,
+  `created_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `treasury_id` (`treasury_id`),
+  CONSTRAINT `treasury_transactions_ibfk_1` FOREIGN KEY (`treasury_id`) REFERENCES `treasury` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `units` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `location_id` int NOT NULL,
+  `name` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `short_name` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `allow_decimal` tinyint(1) NOT NULL DEFAULT '0',
+  `base_unit_id` int DEFAULT NULL,
+  `multiplier` decimal(15,6) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_units_location_name` (`location_id`,`name`),
+  KEY `fk_units_base` (`base_unit_id`),
+  KEY `idx_units_business` (`business_id`),
+  CONSTRAINT `fk_units_base` FOREIGN KEY (`base_unit_id`) REFERENCES `units` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_units_location` FOREIGN KEY (`location_id`) REFERENCES `locations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `business_id` int DEFAULT NULL,
+  `prefix` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `first_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `last_name` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `username` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `role` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'employee',
+  `is_owner` tinyint(1) NOT NULL DEFAULT '0',
+  `phone` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `uq_users_username` (`username`),
+  KEY `idx_users_business` (`business_id`),
+  CONSTRAINT `chk_role` CHECK ((`role` in (_utf8mb4'admin',_utf8mb4'employee')))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+SET FOREIGN_KEY_CHECKS=1;

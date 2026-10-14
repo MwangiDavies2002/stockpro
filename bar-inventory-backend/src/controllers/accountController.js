@@ -52,7 +52,8 @@ exports.deleteAccount = async (req, res) => {
 exports.getAccountBook = async (req, res) => {
   try {
     const { startDate, endDate, transactionType } = req.query;
-    const book = await Account.getBook(req.params.id, startDate, endDate, transactionType);
+    if (!(await Account.findById(req.params.id, getBusinessId(req))).rows.length) return res.status(404).json({ error: 'Account not found' });
+    const book = await Account.getBook(req.params.id, startDate, endDate, transactionType, getBusinessId(req));
     res.json(book);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -78,10 +79,10 @@ exports.ensureOpeningBalanceEquity = async (req, res) => {
       account = rows[0];
     }
     await client.query(
-      `INSERT INTO accounting_settings (setting_key, account_id, treasury_id)
-       VALUES ('opening_balance_equity', ?, NULL)
+      `INSERT INTO accounting_settings (business_id,setting_key, account_id, treasury_id)
+       VALUES (?, 'opening_balance_equity', ?, NULL)
        ON DUPLICATE KEY UPDATE account_id = VALUES(account_id), treasury_id = NULL, updated_at = NOW()`,
-      [account.id]
+      [getBusinessId(req), account.id]
     );
     await client.query('COMMIT');
     res.status(existing.length ? 200 : 201).json(account);

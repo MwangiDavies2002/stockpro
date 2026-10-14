@@ -4,4 +4,8 @@ const controller = require('../controllers/etimsController');
 router.use(authenticate, adminOnly);
 router.get('/config', controller.getConfig);
 router.put('/config', controller.updateConfig);
+router.post('/initialize',controller.initialize);
+router.get('/jobs',controller.jobs);
+router.post('/jobs/:id/submit',controller.submit);
+router.put('/items/:id',controller.mapItem);
 module.exports = router;

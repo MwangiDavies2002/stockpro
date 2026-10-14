@@ -1,193 +1,60 @@
-const axios  = require('axios');
-const { query } = require('../config/db');
-
-const PRICE_GROUPS = [
-  { label:'Micro',  min:0,    max:50   },
-  { label:'Small',  min:51,   max:500  },
-  { label:'Medium', min:501,  max:1000 },
-  { label:'Large',  min:1001, max:2500 },
-];
-
-/**
- * Map an amount to a named price group (Micro, Small, ...).
- * @param {number} amount
- * @returns {string}
- */
-function getPriceGroup(amount) {
-  for (const g of PRICE_GROUPS) {
-    if (amount >= g.min && amount <= g.max) return g.label;
-  }
-  return 'Other';
+const {query,getClient}=require('../config/db');
+const {getBusinessId,runForBusiness}=require('../utils/tenant');
+const provider=require('../services/mpesa');
+const {once}=require('../utils/idempotency');
+const fail=message=>{throw Object.assign(new Error(message),{status:400});};
+const group=amount=>amount<=50?'Micro':amount<=500?'Small':amount<=1000?'Medium':'Large';
+async function settleVerified(payment){
+  if(!payment.verified_at||!payment.mpesa_receipt)fail('Only verified payments can be recovered');
+  if(payment.reference_id||!payment.payload_json)return payment.reference_id;
+  const sale=typeof payment.payload_json==='string'?JSON.parse(payment.payload_json):payment.payload_json;
+  const{rows:[actor]}=await query('SELECT id,business_id,role,name FROM users WHERE id=? AND business_id=?',[payment.created_by,payment.business_id]);
+  if(!actor)fail('The original cashier account is unavailable; payment requires manual reconciliation');
+  let failure,document;
+  await runForBusiness(payment.business_id,()=>require('./salesDocumentController').create({body:{...sale,type:'pos',requestId:`mpesa:${payment.transaction_id}`,payment:{amount:Number(payment.amount),method:'mpesa'}},user:actor},{status(){return this;},json(data){document=data;}},error=>{failure=error;}),actor);
+  if(failure){await query("UPDATE mpesa_payments SET status='needs_action' WHERE id=?",[payment.id]);throw failure;}
+  await query("UPDATE mpesa_payments SET reference_id=?,status='completed' WHERE id=? AND business_id=?",[document.id,payment.id,payment.business_id]);
+  return document.id;
 }
-
-/* Get M-Pesa OAuth token */
-/**
- * Obtain an OAuth token from Safaricom (sandbox or production based on env).
- * @returns {Object} { token, base }
- */
-async function getMpesaToken() {
-  const { MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_ENV } = process.env;
-  const base = MPESA_ENV === 'production'
-    ? 'https://api.safaricom.co.ke'
-    : 'https://sandbox.safaricom.co.ke';
-  const creds = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
-  const { data } = await axios.get(`${base}/oauth/v1/generate?grant_type=client_credentials`, {
-    headers: { Authorization: `Basic ${creds}` },
-  });
-  return { token: data.access_token, base };
-}
-
-/* POST /api/mpesa/stk-push */
-/**
- * Initiate an STK Push (payment prompt) to a mobile number.
- * Expects `phone` and `amount` in the request body.
- */
-async function stkPush(req, res, next) {
-  try {
-    const { phone, amount, itemId } = req.body;
-    if (!phone || !amount) return res.status(400).json({ message: 'phone and amount required' });
-
-    const { token, base }  = await getMpesaToken();
-    const shortcode        = process.env.MPESA_SHORTCODE;
-    const passkey          = process.env.MPESA_PASSKEY;
-    const timestamp        = new Date().toISOString().replace(/[-T:.Z]/g,'').slice(0,14);
-    const password         = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
-    const callbackUrl      = process.env.MPESA_CALLBACK_URL;
-    const formattedPhone   = phone.replace(/^0/, '254');
-
-    const { data } = await axios.post(`${base}/mpesa/stkpush/v1/processrequest`, {
-      BusinessShortCode: shortcode,
-      Password:          password,
-      Timestamp:         timestamp,
-      TransactionType:   'CustomerPayBillOnline',
-      Amount:            Math.ceil(amount),
-      PartyA:            formattedPhone,
-      PartyB:            shortcode,
-      PhoneNumber:       formattedPhone,
-      CallBackURL:       callbackUrl,
-      AccountReference:  itemId ? String(itemId) : (req.body.itemName || 'BarStock'),
-      TransactionDesc:   req.body.itemName ? `Payment for ${req.body.itemName}` : 'Bar payment',
-    }, { headers: { Authorization: `Bearer ${token}` } });
-
-    res.json({ checkoutRequestId: data.CheckoutRequestID, message: 'STK push sent' });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/* POST /api/mpesa/callback  — called by Safaricom */
-/**
- * M-Pesa callback endpoint invoked by Safaricom. Parses payment metadata
- * and attempts to map the payment to an inventory item.
- */
-async function callback(req, res, next) {
-  try {
-    const body   = req.body?.Body?.stkCallback;
-    if (!body)   return res.json({ ResultCode:0, ResultDesc:'Accepted' });
-
-    const { ResultCode, CallbackMetadata, CheckoutRequestID } = body;
-    if (ResultCode !== 0) {
-      console.log('M-Pesa STK failed:', body.ResultDesc);
-      return res.json({ ResultCode:0, ResultDesc:'Accepted' });
-    }
-
-    const items  = CallbackMetadata?.Item || [];
-    const get    = (name) => items.find(i => i.Name === name)?.Value;
-    const amount = parseFloat(get('Amount'));
-    const receipt= get('MpesaReceiptNumber');
-    const phone  = String(get('PhoneNumber'));
-    const group  = getPriceGroup(amount);
-
-    // Store the payment (basic fields)
-    await query(
-      `INSERT INTO mpesa_payments (transaction_id,phone,amount,price_group,mpesa_receipt,status)
-       VALUES ($1,$2,$3,$4,$5,'completed')`,
-      [CheckoutRequestID, phone, amount, group, receipt]
-    );
-
-    await query("UPDATE subscriptions SET status='approved', approved_at=NOW() WHERE checkout_request_id=? AND amount<=? AND status='pending'", [CheckoutRequestID, amount]);
-
-    // Attempt to extract a reference from metadata to map to an inventory item
-    const ref = get('AccountReference') || get('BillRefNumber') || get('Reference') || get('Item') || get('ItemName') || get('MpesaReference');
-    if (ref) {
-      let item = null;
-      // If numeric, try to match by id
-      if (/^\d+$/.test(String(ref))) {
-        const { rows } = await query('SELECT * FROM inventory_items WHERE id=? LIMIT 1', [Number(ref)]);
-        item = rows[0];
-      }
-      // Exact name match
-      if (!item) {
-        const { rows } = await query('SELECT * FROM inventory_items WHERE name=? LIMIT 1', [String(ref)]);
-        item = rows[0];
-      }
-      // Partial, case-insensitive match
-      if (!item) {
-        const lowerRef = String(ref).toLowerCase();
-        const { rows } = await query(
-          'SELECT * FROM inventory_items WHERE LOWER(name) LIKE ? LIMIT 1',
-          [`%${lowerRef}%`]
-        );
-        item = rows[0];
-      }
-
-      if (item) {
-        // Decrement stock by 1 (or by quantity if metadata includes Quantity)
-        const qty = parseInt(get('Quantity')) || 1;
-        const newStock = Math.max(0, (item.stock || 0) - qty);
-        const newSold  = (item.sold || 0) + qty;
-        await query('UPDATE inventory_items SET stock=?, sold=? WHERE id=?', [newStock, newSold, item.id]);
-
-        // Attach item info to the payment record
-        await query(
-          'UPDATE mpesa_payments SET item_id=?, item_name=? WHERE transaction_id=?',
-          [item.id, item.name, CheckoutRequestID]
-        );
-        console.log(`Mapped payment ${CheckoutRequestID} -> item ${item.id} (${item.name}), qty ${qty}`);
-      } else {
-        console.log('MPesa callback reference not matched to inventory:', ref);
-      }
-    } else {
-      console.log('No reference found in MPesa callback metadata');
-    }
-
-    res.json({ ResultCode:0, ResultDesc:'Accepted' });
-  } catch (err) { next(err); }
-}
-
-/* GET /api/mpesa/payments */
-/**
- * List M-Pesa payments within a period (week/two-week/month).
- */
-async function getPayments(req, res, next) {
-  try {
-    const { period } = req.query; // 'week' | 'two-week' | 'month'
-    const days = period === 'month' ? 30 : period === 'two-week' ? 14 : 7;
-    const { rows } = await query(`
-      SELECT mp.*, i.name AS item_name
-      FROM mpesa_payments mp
-      LEFT JOIN inventory_items i ON i.id=mp.item_id
-      WHERE mp.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      ORDER BY mp.created_at DESC
-    `, [days]);
-    res.json(rows);
-  } catch (err) { next(err); }
-}
-
-/* GET /api/mpesa/groups */
-/**
- * Aggregate payments by price group for reporting.
- */
-async function getGroups(_req, res, next) {
-  try {
-    const { rows } = await query(`
-      SELECT price_group, COUNT(*) AS count, SUM(amount) AS total
-      FROM mpesa_payments
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY price_group
-    `);
-    res.json(rows);
-  } catch (err) { next(err); }
-}
-
-module.exports = { stkPush, callback, getPayments, getGroups };
+async function stkPush(req,res,next){try{
+  const phone=String(req.body.phone||'').replace(/^\+/, '').replace(/^0/,'254'),amount=Number(req.body.amount);
+  if(!/^254[17]\d{8}$/.test(phone)||!Number.isInteger(amount)||amount<1)fail('A valid Kenyan phone number and positive whole amount are required');
+  const businessId=getBusinessId(req),purpose=req.body.purpose||'sale',referenceId=Number(req.body.referenceId)||null;
+  if(!['sale','subscription'].includes(purpose))fail('Invalid payment purpose');
+  if(referenceId){const table=purpose==='subscription'?'subscriptions':'sales_documents';const{rows}=await query(`SELECT * FROM ${table} WHERE id=? AND business_id=?`,[referenceId,businessId]);if(!rows.length)fail('Payment reference does not belong to your shop');}
+  if(purpose==='subscription'){const prices={basic:1000,growth:5000,erp:30000};if(!prices[req.body.plan]||prices[req.body.plan]!==amount)fail('Subscription amount must match the selected plan');}
+  const sale=req.body.sale;
+  if(sale){if(purpose!=='sale'||sale.type!=='pos'||!Array.isArray(sale.items)||!sale.items.length)fail('Invalid sale payment request');const location=await query('SELECT id FROM locations WHERE id=? AND business_id=?',[sale.locationId,businessId]);if(!location.rows.length)fail('Sale location must belong to your shop');let expected=0;for(const line of sale.items){const{rows:[item]}=await query('SELECT id,stock FROM inventory_items WHERE id=? AND business_id=? AND location_id=?',[line.itemId,businessId,sale.locationId]);if(!item||item.stock<line.quantity)fail('Sale item is unavailable');expected+=require('../utils/salesMath').calculateSalesLine(line).lineTotal;}if(Number(expected.toFixed(2))!==amount)fail('Payment amount must match the sale total');}
+  const client=await getClient();try{await client.query('BEGIN');
+    const result=await once(client,businessId,'mpesa-stk',req.body.requestId||sale?.requestId,async()=>{
+      const data=await provider.initiate({phone,amount,reference:`SP${businessId}`});
+      await client.query('INSERT INTO mpesa_payments(business_id,transaction_id,phone,amount,price_group,status,purpose,reference_id,payload_json,created_by) VALUES (?,?,?,?,?,\'pending\',?,?,?,?)',[businessId,data.CheckoutRequestID,phone,amount,group(amount),purpose,referenceId,sale?JSON.stringify(sale):null,req.user.id]);
+      return{checkoutRequestId:data.CheckoutRequestID,message:'Payment request sent; awaiting verified confirmation'};
+    });await client.query('COMMIT');res.json(result);
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+}catch(error){next(error);}}
+async function callback(req,res,next){try{
+  const callback=req.body?.Body?.stkCallback;if(!callback?.CheckoutRequestID)return res.json({ResultCode:0,ResultDesc:'Accepted'});
+  const{rows:[payment]}=await query('SELECT * FROM mpesa_payments WHERE transaction_id=?',[callback.CheckoutRequestID]);
+  if(!payment)return res.json({ResultCode:0,ResultDesc:'Accepted'});
+  if(payment.verified_at){try{await settleVerified(payment);}catch(error){console.error('Verified M-Pesa sale requires recovery:',error.message);}return res.json({ResultCode:0,ResultDesc:'Accepted'});}
+  if(Number(callback.ResultCode)!==0){const confirmation=await provider.verify(payment.transaction_id);if(Number(confirmation.ResultCode)!==Number(callback.ResultCode))return res.status(503).json({message:'Cancellation is awaiting provider verification'});await query("UPDATE mpesa_payments SET status='failed',result_code=? WHERE id=? AND status='pending'",[Number(callback.ResultCode),payment.id]);return res.json({ResultCode:0,ResultDesc:'Accepted'});}
+  const verified=await provider.verify(payment.transaction_id);if(Number(verified.ResultCode)!==0)return res.status(503).json({message:'Payment confirmation is awaiting provider verification'});
+  const items=callback.CallbackMetadata?.Item||[],value=name=>items.find(item=>item.Name===name)?.Value;
+  const amount=Number(value('Amount')),phone=String(value('PhoneNumber')||''),receipt=String(value('MpesaReceiptNumber')||'');
+  if(amount!==Number(payment.amount)||phone!==payment.phone||!receipt)return res.status(400).json({message:'Payment confirmation does not match the pending request'});
+  const client=await getClient();try{await client.query('BEGIN');
+    const locked=await client.query('SELECT * FROM mpesa_payments WHERE id=? FOR UPDATE',[payment.id]);if(locked.rows[0].status==='completed'){await client.query('ROLLBACK');return res.json({ResultCode:0,ResultDesc:'Accepted'});}
+    await client.query("UPDATE mpesa_payments SET status='completed',mpesa_receipt=?,verified_at=NOW(),result_code=0 WHERE id=?",[receipt,payment.id]);
+    if(payment.purpose==='subscription')await client.query("UPDATE subscriptions SET status='approved',approved_at=NOW(),start_date=NOW(),end_date=DATE_ADD(NOW(),INTERVAL 30 DAY) WHERE business_id=? AND checkout_request_id=? AND amount=? AND status='pending'",[payment.business_id,payment.transaction_id,amount]);
+    await client.query('COMMIT');
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+  const{rows:[confirmed]}=await query('SELECT * FROM mpesa_payments WHERE id=?',[payment.id]);
+  try{await settleVerified(confirmed);}catch(error){console.error('Verified M-Pesa sale requires recovery:',error.message);}
+  res.json({ResultCode:0,ResultDesc:'Accepted'});
+}catch(error){next(error);}}
+async function getPayments(req,res,next){try{const days=req.query.period==='month'?30:req.query.period==='two-week'?14:7;res.json((await query('SELECT * FROM mpesa_payments WHERE business_id=? AND created_at>=DATE_SUB(NOW(),INTERVAL ? DAY) ORDER BY created_at DESC',[getBusinessId(req),days])).rows);}catch(error){next(error);}}
+async function getGroups(req,res,next){try{res.json((await query("SELECT price_group,COUNT(*) count,SUM(amount) total FROM mpesa_payments WHERE business_id=? AND status='completed' GROUP BY price_group",[getBusinessId(req)])).rows);}catch(error){next(error);}}
+async function getStatus(req,res,next){try{const{rows:[payment]}=await query('SELECT transaction_id,status,reference_id,verified_at,amount FROM mpesa_payments WHERE transaction_id=? AND business_id=?',[req.params.id,getBusinessId(req)]);if(!payment)return res.status(404).json({message:'Payment not found'});res.json(payment);}catch(error){next(error);}}
+async function recover(req,res,next){try{const{rows:[payment]}=await query('SELECT * FROM mpesa_payments WHERE id=? AND business_id=?',[req.params.id,getBusinessId(req)]);if(!payment)return res.status(404).json({message:'Payment not found'});const documentId=await settleVerified(payment);res.json({recovered:true,documentId});}catch(error){next(error);}}
+module.exports={stkPush,callback,getPayments,getGroups,getStatus,recover};

@@ -1,0 +1,178 @@
+[
+  {
+    "path": "/account/account",
+    "status": 200
+  },
+  {
+    "path": "/accounting/journal-entry/create",
+    "status": 200
+  },
+  {
+    "path": "/accounts/ledger",
+    "status": 200
+  },
+  {
+    "path": "/accounts",
+    "status": 200
+  },
+  {
+    "path": "/accounts/settings",
+    "status": 200
+  },
+  {
+    "path": "/business/settings",
+    "status": 200
+  },
+  {
+    "path": "/customers",
+    "status": 200
+  },
+  {
+    "path": "/discounts",
+    "status": 200
+  },
+  {
+    "path": "/insights/actions",
+    "status": 200
+  },
+  {
+    "path": "/insights",
+    "status": 200
+  },
+  {
+    "path": "/inventory",
+    "status": 200
+  },
+  {
+    "path": "/locations",
+    "status": 200
+  },
+  {
+    "path": "/login",
+    "status": 200
+  },
+  {
+    "path": "/loyalty/history",
+    "status": 200
+  },
+  {
+    "path": "/loyalty",
+    "status": 200
+  },
+  {
+    "path": "/loyalty/rewards",
+    "status": 200
+  },
+  {
+    "path": "/network/invite",
+    "status": 200
+  },
+  {
+    "path": "/network",
+    "status": 200
+  },
+  {
+    "path": "/notifications",
+    "status": 200
+  },
+  {
+    "path": "/orders",
+    "status": 200
+  },
+  {
+    "path": "/",
+    "status": 200
+  },
+  {
+    "path": "/payments",
+    "status": 200
+  },
+  {
+    "path": "/pos",
+    "status": 200
+  },
+  {
+    "path": "/purchases",
+    "status": 200
+  },
+  {
+    "path": "/register-business",
+    "status": 200
+  },
+  {
+    "path": "/reports",
+    "status": 200
+  },
+  {
+    "path": "/sales",
+    "status": 200
+  },
+  {
+    "path": "/sales-ar/quotation",
+    "status": 200
+  },
+  {
+    "path": "/sales-ar/sales_order",
+    "status": 200
+  },
+  {
+    "path": "/sales-ar/proforma",
+    "status": 200
+  },
+  {
+    "path": "/sales-ar/invoice",
+    "status": 200
+  },
+  {
+    "path": "/sales-ar/credit_note",
+    "status": 200
+  },
+  {
+    "path": "/setup/units",
+    "status": 200
+  },
+  {
+    "path": "/setup/categories",
+    "status": 200
+  },
+  {
+    "path": "/setup/brands",
+    "status": 200
+  },
+  {
+    "path": "/staff-performance",
+    "status": 200
+  },
+  {
+    "path": "/subscription/manage",
+    "status": 200
+  },
+  {
+    "path": "/subscription/overview",
+    "status": 200
+  },
+  {
+    "path": "/subscription",
+    "status": 200
+  },
+  {
+    "path": "/subscription/status",
+    "status": 200
+  },
+  {
+    "path": "/suppliers",
+    "status": 200
+  },
+  {
+    "path": "/treasury/book",
+    "status": 200
+  },
+  {
+    "path": "/treasury",
+    "status": 200
+  },
+  {
+    "path": "/users",
+    "status": 200
+  }
+]

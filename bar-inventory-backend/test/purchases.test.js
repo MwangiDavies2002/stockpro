@@ -3,6 +3,7 @@ const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { calculateLine } = require('../src/utils/purchaseMath');
 const database = require('../src/config/db');
+const {runForBusiness}=require('../src/utils/tenant');
 let connection, controller, inventory, suppliers, referenceData;
 const tables = ['chart_of_accounts', 'units', 'categories', 'brands', 'inventory_items', 'orders', 'order_items', 'suppliers', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
 const run = async (sql, params = []) => {
@@ -31,17 +32,17 @@ beforeEach(async () => {
   await run("INSERT INTO suppliers (id,business_id,name) VALUES (1,1,'Test supplier')");
   await run("INSERT INTO locations (id,business_id,name) VALUES (1,1,'Test location'),(2,1,'Other location')");
   await run("INSERT INTO inventory_items (id,business_id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,1,'Test lager','Beers','Bottles',10,50,90,1,'SKU-TEST','123456789'),(2,1,'Other item','Beers','Bottles',2,10,20,2,'OTHER','987654321')");
-  await run(`INSERT INTO chart_of_accounts (id,account_code,account_name,account_type,normal_balance,active)
-             VALUES (1,'1200','Inventory Asset','Assets','Debit',TRUE),
-                    (2,'2000','Accounts Payable','Liabilities','Credit',TRUE),
-                    (3,'5100','Purchase Expense','Expenses','Debit',TRUE)`);
+  await run(`INSERT INTO chart_of_accounts (id,business_id,account_code,account_name,account_type,normal_balance,active)
+             VALUES (1,1,'1200','Inventory Asset','Assets','Debit',TRUE),
+                    (2,1,'2000','Accounts Payable','Liabilities','Credit',TRUE),
+                    (3,1,'5100','Purchase Expense','Expenses','Debit',TRUE)`);
   await run("INSERT INTO accounting_settings (setting_key,account_id) VALUES ('inventory_asset',1),('purchases_payable',2),('purchases_expense',3)");
 });
 const payload = (status = 'delivered') => ({ supplierId: 1, locationId: 1, purchaseDate: '2026-09-07', referenceNo: 'TEST-PURCHASE', status, items: [{ itemId: 1, quantity: 2, costBeforeDiscount: 100, discountPercent: 10, taxPercent: 16, profitMargin: 25, accountType: 'asset' }] });
 async function invoke(fn, body, params = {}, query = {}) {
   let code = 200, result, failure;
   const response = { status(n) { code = n; return this; }, json(data) { result = data; return this; } };
-  await fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; });
+  await runForBusiness(1,()=>fn({ body, params, query, user: { id: 1, business_id: 1 } }, response, err => { failure = err; }));
   if (failure) throw failure;
   return { code, result };
 }
@@ -62,6 +63,23 @@ test('discount, tax, margin and zero-cost selling price', () => {
   assert.equal(calculateLine({ ...payload().items[0], sellingPrice: 156.6 }).margin, 50);
   assert.equal(calculateLine({ ...payload().items[0], costBeforeDiscount: 0, sellingPrice: 10 }).sellingPrice, 10);
   for (const override of [{ quantity: -1 }, { quantity: 1.5 }, { discountPercent: 101 }, { taxPercent: -1 }, { costBeforeDiscount: NaN }, { sellingPrice: -1 }]) assert.throws(() => calculateLine({ ...payload().items[0], ...override }));
+});
+test('products can be created, edited and imported with blank categories', async () => {
+  const { result: item, code } = await invoke(inventory.create, { name: 'Uncategorized part', category: '', unit: 'Pieces', stock: 0, price: 10, locationId: 1 });
+  assert.equal(code, 201);
+  assert.equal(item.category, '');
+  assert.equal(item.category_id, null);
+  const { result: edited } = await invoke(inventory.update, { name: item.name, category: '', unit: item.unit, stock: 0, threshold: 5, cost: 0, price: 12, locationId: 1 }, { id: item.id });
+  assert.equal(edited.category, '');
+  const imported = await invoke(inventory.bulkImport, { items: [{ name: 'Imported part', category: '', unit: 'Pieces', stock: 10, threshold: 0, cost: 2, price: 3, sku: 'BLANK-CATEGORY' }] });
+  assert.equal(imported.code, 201);
+  assert.equal(imported.result.createdCount, 1);
+  const { rows: [saved] } = await run("SELECT * FROM inventory_items WHERE sku='BLANK-CATEGORY'");
+  assert.equal(saved.category, '');
+  assert.equal(saved.threshold, 0);
+  const invalid = await invoke(inventory.bulkImport, { items: [{ name: '', category: '' }] });
+  assert.equal(invalid.code, 400);
+  assert.equal(invalid.result.errors[0].message, 'name is required');
 });
 test('received purchase persists calculations, updates stock/references and posts balanced journal', async () => {
   const { code, result } = await invoke(controller.create, payload());

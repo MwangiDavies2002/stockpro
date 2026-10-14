@@ -1,47 +1,11 @@
-/**
- * Notification utilities
- * Extend with email (nodemailer), SMS (Africa's Talking), or push alerts.
- */
-
-/**
- * Called whenever an inventory item's stock drops to or below its threshold.
- * @param {Object} item - inventory_items row
- */
-async function sendLowStockAlert(item) {
-  const critical = item.stock <= Math.floor(item.threshold / 2);
-  const level    = critical ? '🚨 CRITICAL' : '⚠️  LOW';
-
-  // Console log — replace with email/SMS/push in production
-  console.log(
-    `[STOCK ALERT] ${level} — "${item.name}" has ${item.stock} ${item.unit} left (threshold: ${item.threshold})`
-  );
-
-  // ── Example: Africa's Talking SMS ──────────────────────────────────
-  // const AfricasTalking = require('africastalking');
-  // const at = AfricasTalking({ apiKey: process.env.AT_API_KEY, username: process.env.AT_USERNAME });
-  // await at.SMS.send({
-  //   to:      [process.env.ADMIN_PHONE],
-  //   message: `BarStock Alert: "${item.name}" stock is ${level} (${item.stock} left).`,
-  //   from:    process.env.AT_SENDER_ID,
-  // });
-
-  // ── Example: Email via nodemailer ──────────────────────────────────
-  // const transporter = nodemailer.createTransport({ ... });
-  // await transporter.sendMail({
-  //   to:      process.env.ADMIN_EMAIL,
-  //   subject: `${level} Stock: ${item.name}`,
-  //   text:    `${item.name} is running low. Current stock: ${item.stock}. Threshold: ${item.threshold}.`,
-  // });
+const {query}=require('../config/db');
+const {currentBusinessId}=require('./tenant');
+async function save(type,title,message,businessId){
+  try{await query('INSERT INTO notifications(business_id,type,title,message) VALUES (?,?,?,?)',[businessId||currentBusinessId(),type,title,message]);}
+  catch(error){console.error('Could not save application notification:',error.message);}
 }
-
-/**
- * Called when an order status changes.
- * @param {Object} order  - orders row
- * @param {string} status - new status
- */
-async function sendOrderStatusUpdate(order, status) {
-  console.log(`[ORDER ALERT] Order #${order.id} → ${status.toUpperCase()}`);
-  // Add email/SMS dispatch here
+async function sendLowStockAlert(item){
+  return save('stock',`Low stock: ${item.name}`,`${item.stock} ${item.unit||'units'} left; threshold ${item.threshold}`,item.business_id);
 }
-
-module.exports = { sendLowStockAlert, sendOrderStatusUpdate };
+async function sendOrderStatusUpdate(order,status){return save('order',`Order #${order.id}`,`Order status: ${status}`,order.business_id);}
+module.exports={sendLowStockAlert,sendOrderStatusUpdate};

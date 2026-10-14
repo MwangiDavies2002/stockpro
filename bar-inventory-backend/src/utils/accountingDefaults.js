@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { currentBusinessId } = require('./tenant');
 
 const purchaseMappings = [
   {
@@ -33,16 +34,16 @@ const purchaseMappings = [
 async function ensureAccount(client, account) {
   const q = client ? client.query.bind(client) : query;
   const { rows: existing } = await q(
-    'SELECT id FROM chart_of_accounts WHERE account_code = ? OR account_name = ? ORDER BY id LIMIT 1',
-    [account.code, account.name]
+    'SELECT id FROM chart_of_accounts WHERE business_id=? AND (account_code = ? OR account_name = ?) ORDER BY id LIMIT 1',
+    [currentBusinessId(), account.code, account.name]
   );
   if (existing.length) return existing[0].id;
 
   const result = await q(
     `INSERT INTO chart_of_accounts
-     (account_code, account_name, account_type, account_subtype, detail_type, normal_balance, active)
-     VALUES (?, ?, ?, ?, ?, ?, TRUE)`,
-    [account.code, account.name, account.type, account.subtype, account.detail, account.normal]
+     (business_id,account_code, account_name, account_type, account_subtype, detail_type, normal_balance, active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
+    [currentBusinessId(), account.code, account.name, account.type, account.subtype, account.detail, account.normal]
   );
   return result.insertId;
 }
@@ -54,13 +55,13 @@ async function ensurePurchaseAccountingMappings(client = null) {
   for (const mapping of purchaseMappings) {
     const accountId = await ensureAccount(client, mapping);
     await q(
-      `INSERT INTO accounting_settings (setting_key, account_id, treasury_id)
-       VALUES (?, ?, NULL)
+      `INSERT INTO accounting_settings (business_id,setting_key, account_id, treasury_id)
+       VALUES (?, ?, ?, NULL)
        ON DUPLICATE KEY UPDATE
          account_id = COALESCE(accounting_settings.account_id, VALUES(account_id)),
          treasury_id = NULL,
          updated_at = NOW()`,
-      [mapping.key, accountId]
+      [currentBusinessId(), mapping.key, accountId]
     );
     accountIds[mapping.key] = accountId;
   }

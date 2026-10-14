@@ -57,7 +57,7 @@ const Account = {
     return query('DELETE FROM chart_of_accounts WHERE id = ? AND business_id=?', [id, businessId]);
   },
 
-  getBook: async (id, startDate, endDate, transactionType) => {
+  getBook: async (id, startDate, endDate, transactionType, businessId) => {
     let sql = `
       SELECT 
         je.posting_date as date, 
@@ -70,9 +70,9 @@ const Account = {
       FROM journal_entry_lines jel
       JOIN journal_entries je ON jel.journal_entry_id = je.id
       LEFT JOIN users u ON je.created_by = u.id
-      WHERE jel.account_id = ?
+      WHERE jel.account_id = ? AND je.business_id=?
     `;
-    const params = [id];
+    const params = [id, businessId];
 
     if (startDate) {
       sql += ' AND je.posting_date >= ?';

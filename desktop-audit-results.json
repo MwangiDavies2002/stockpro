@@ -1,0 +1,178 @@
+[
+  {
+    "name": "Register → login → current user has no password",
+    "status": "pass"
+  },
+  {
+    "name": "Import with blank category preserves SKU",
+    "status": "pass"
+  },
+  {
+    "name": "Shift → cash sale → stock → balanced journal → close",
+    "status": "pass"
+  },
+  {
+    "name": "Purchase → receive → stock and cost",
+    "status": "pass"
+  },
+  {
+    "name": "Search and location filters applied",
+    "status": "pass"
+  },
+  {
+    "name": "Negative sale quantity rejected",
+    "status": "pass"
+  },
+  {
+    "name": "Credit sale requires customer and updates balance",
+    "status": "pass"
+  },
+  {
+    "name": "Current user requires authentication",
+    "status": "pass"
+  },
+  {
+    "name": "Stock movement writes history",
+    "status": "pass"
+  },
+  {
+    "name": "Manual journal balance validated",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop quotation, invoice, payment, credit note and historical cost flow",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop automatic discount target and request replay",
+    "status": "pass"
+  },
+  {
+    "name": "Disabled desktop user session is revoked",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /inventory/1",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /inventory/1/history",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reference-data/units",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reference-data/categories",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reference-data/brands",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/usage",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/sales-trend",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/hourly-sales",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/benchmarks",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/product-pairs",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/loss-alerts",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/staff-performance",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /reports/owner-intelligence",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /mpesa/payments",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /mpesa/groups",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /owner-network",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /subscriptions",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /subscriptions/current",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /loyalty/customers",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /loyalty/redemptions",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /sales-documents",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /discounts",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /etims/config",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /accounting-settings",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /accounts/1/book",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /treasury/1/transactions",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /customers/1/statement",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint PUT /locations/1",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint PUT /suppliers/1",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /sales/1",
+    "status": "pass"
+  },
+  {
+    "name": "Desktop endpoint GET /orders/1",
+    "status": "pass"
+  }
+]

@@ -129,8 +129,8 @@ export default function InventoryTable({
               { key: 'unit',      label: 'Unit'         },
               { key: 'stock',     label: 'Stock'        },
               { key: 'threshold', label: 'Threshold'    },
-              { key: 'cost',      label: 'Cost (KES)'   },
-              { key: 'price',     label: 'Price (KES)'  },
+              { key: 'cost',      label: 'Purchase Price (KES)'   },
+              { key: 'price',     label: 'Selling Price (KES)'  },
               { key: 'sold',      label: 'Total Sold'   },
             ].map(({ key, label }) => (
               <th
@@ -195,7 +195,7 @@ export default function InventoryTable({
                 <div className="text-xs text-gray-500 mt-1">{item.unit} • KES {item.price.toLocaleString()}</div>
                 <div className="mt-2 text-sm space-y-1">
                   <div><span className="font-semibold">Stock:</span> {item.stock}</div>
-                  <div><span className="font-semibold">Cost:</span> KES {item.cost.toLocaleString()}</div>
+                  <div><span className="font-semibold">Purchase price:</span> KES {item.cost.toLocaleString()}</div>
                   <div className="text-gray-500">Sold: {item.sold}</div>
                 </div>
               </div>

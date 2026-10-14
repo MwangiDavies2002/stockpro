@@ -3,6 +3,7 @@ node_modules/
 
 # Next.js build output
 .next/
+.next-desktop/
 out/
 build/
 dist/
@@ -44,3 +45,5 @@ prisma/.env
 
 # Local DBs
 *.sqlite
+.private/
+.desktop-runtime/

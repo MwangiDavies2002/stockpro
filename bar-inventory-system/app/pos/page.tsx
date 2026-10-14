@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,13 +7,16 @@ import Cookies from 'js-cookie';
 import { Search, X, Banknote, Smartphone, CreditCard, Trash2, WifiOff, CloudUpload, Plus, ScanLine } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Receipt from '../components/Receipt';
-import { inventoryApi, salesApi, salesDocumentsApi, authApi, shiftsApi, customersApi } from '../lib/api';
+import { inventoryApi, salesDocumentsApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi } from '../lib/api';
+import {showDone} from '../lib/feedback';
 import { toast } from 'sonner';
+import {readQueue,appendQueue,removeSynced} from '../lib/offlineQueue';
 
 interface Product {
   id: number;
   name: string;
   category: string;
+  category_id?: number;
   unit: string;
   price: number;
   stock: number;
@@ -36,9 +39,19 @@ const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60
 
 export default function POSPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; business_id: number; name: string; role: string; email: string } | null>(null);
+  const [locations, setLocations] = useState<Array<{id:number;name:string;active:boolean|number}>>([]);
+  const [locationId,setLocationId] = useState('');
+  const queueKey = user && locationId ? `pos_pending_sales:${user.business_id}:${user.id}:${locationId}` : null;
+  const cacheKey = user && locationId ? `pos_products_cache:${user.business_id}:${user.id}:${locationId}` : null;
+  const syncLock = useRef(false);
+  const checkoutRequestId = useRef<string|null>(null);
+  const pendingMpesa=useRef<{id:string;requestId:string}|null>(null);
+  const [mpesaPhone,setMpesaPhone]=useState('');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [discountRules,setDiscountRules]=useState<any[]>([]);
+  useEffect(()=>{if(!locationId)return;discountsApi.getAll({locationId:Number(locationId)}).then(({data})=>setDiscountRules(data)).catch(()=>setDiscountRules([]));},[locationId]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -82,49 +95,42 @@ export default function POSPage() {
 
   // Load any queued offline sales from previous sessions
   useEffect(() => {
-    const stored = localStorage.getItem('pos_pending_sales');
-    if (stored) {
-      try {
-        setPendingSales(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('pos_pending_sales');
-      }
-    }
-  }, []);
-
-  // Persist pending sales to localStorage whenever the queue changes
-  useEffect(() => {
-    if (pendingSales.length) {
-      localStorage.setItem('pos_pending_sales', JSON.stringify(pendingSales));
-    } else {
-      localStorage.removeItem('pos_pending_sales');
-    }
-  }, [pendingSales]);
+    if (!queueKey) return;
+    try{setPendingSales(readQueue(localStorage,queueKey));}
+    catch(error:any){setPendingSales([]);toast.error(error.message);}
+    try{const raw=localStorage.getItem(`${queueKey}:mpesa`);if(raw){const payment=JSON.parse(raw);if(typeof payment.id==='string'&&typeof payment.requestId==='string'&&Array.isArray(payment.cart)){pendingMpesa.current={id:payment.id,requestId:payment.requestId};checkoutRequestId.current=payment.requestId;setCart(payment.cart);setMpesaPhone(payment.phone||'');toast.info('Pending M-Pesa payment restored. Continue M-Pesa checkout to check it.');}}}catch{toast.error('Saved M-Pesa checkout requires payment review');}
+  }, [queueKey]);
 
   // Auto-sync queued sales the moment we're back online
   useEffect(() => {
     if (isOnline && pendingSales.length && !syncing) {
       syncPendingSales();
     }
-  }, [isOnline]);
+  }, [isOnline, queueKey, pendingSales.length]);
 
   async function syncPendingSales() {
-    if (!pendingSales.length) return;
+    if (!pendingSales.length || syncLock.current || !queueKey) return;
+    syncLock.current = true;
     setSyncing(true);
     const remaining: any[] = [];
+    const accepted:string[]=[];
     let syncedCount = 0;
 
     for (const queued of pendingSales) {
       try {
-        await salesApi.create(queued.payload);
+        if (queued.businessId !== user?.business_id || queued.userId !== user?.id || queued.payload.locationId !== Number(locationId)) throw new Error('Queued sale belongs to a different shop, cashier or branch');
+        await salesDocumentsApi.create(queued.payload);
+        accepted.push(queued.localId);
         syncedCount++;
       } catch {
         remaining.push(queued); // keep it queued, try again next time
       }
     }
 
-    setPendingSales(remaining);
+    try{setPendingSales(removeSynced(localStorage,queueKey,accepted));}
+    catch(error:any){toast.error(`Could not update the offline queue: ${error.message}. Retrying remains safe.`);}
     setSyncing(false);
+    syncLock.current = false;
 
     if (syncedCount > 0) {
       toast.success(`Synced ${syncedCount} offline sale(s)`);
@@ -160,19 +166,21 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    if (!user) return;
+    locationsApi.getAll().then(res=>{const active=res.data.filter((row:any)=>row.active!==false&&Number(row.active)!==0);setLocations(active);setLocationId(active[0]?String(active[0].id):'');}).catch(()=>toast.error('Failed to load business locations'));
+  }, [user?.id]);
+  useEffect(() => { if (user && locationId) {setCart([]);void loadProducts();} },[user?.id,locationId]);
 
   async function loadProducts() {
     setLoading(true);
     try {
-      const { data } = await inventoryApi.getAll();
+      const { data } = await inventoryApi.getAll({locationId:Number(locationId)});
       setProducts(data);
-      localStorage.setItem('pos_products_cache', JSON.stringify(data));
+      if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(data));
     } catch {
       // If the request failed because we're offline, fall back to the
       // last known product list instead of showing an empty grid.
-      const cached = localStorage.getItem('pos_products_cache');
+      const cached = cacheKey ? localStorage.getItem(cacheKey) : null;
       if (cached) {
         try {
           setProducts(JSON.parse(cached));
@@ -205,6 +213,8 @@ export default function POSPage() {
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()], [products]);
 
   function addToCart(product: Product) {
+    if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
+    checkoutRequestId.current=null;
     if (product.stock <= 0) {
       toast.error(`${product.name} is out of stock`);
       return;
@@ -235,6 +245,8 @@ export default function POSPage() {
   }
 
   function updateQuantity(id: number, qty: number) {
+    if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
+    checkoutRequestId.current=null;
     setCart((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
@@ -249,6 +261,8 @@ export default function POSPage() {
   }
 
   function updatePrice(id: number, price: number) {
+    if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
+    checkoutRequestId.current=null;
     setCart((prev) => prev.map((l) => {
       if (l.id !== id) return l;
       if (price < 0) return l;
@@ -257,15 +271,24 @@ export default function POSPage() {
   }
 
   function removeLine(id: number) {
+    if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
+    checkoutRequestId.current=null;
     setCart((prev) => prev.filter((l) => l.id !== id));
   }
 
   function clearCart() {
+    if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before clearing this cart');
+    checkoutRequestId.current=null;
     setCart([]);
   }
 
   const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0);
-  const subtotal  = cart.reduce((sum, l) => sum + l.quantity * l.price, 0);
+  function discountFor(line:CartLine, customerId?:number){
+    const product=products.find(product=>product.id===line.id);
+    return Math.max(0,...discountRules.filter(rule=>rule.active&&Number(rule.location_id)===Number(locationId)&&((rule.applies_to==='product'&&Number(rule.product_id)===line.id)||(rule.applies_to==='category'&&product?.category_id&&Number(rule.category_id)===Number(product.category_id))||(rule.applies_to==='customer'&&customerId&&Number(rule.customer_id)===customerId))).map(rule=>rule.discount_type==='percent'?Number(rule.value):Math.min(100,Number(rule.value)/line.price*100)));
+  }
+  const saleTotal=(customerId?:number)=>Number(cart.reduce((sum,line)=>{const gross=Number((line.quantity*line.price).toFixed(2));return sum+gross-Number((gross*discountFor(line,customerId)/100).toFixed(2));},0).toFixed(2));
+  const subtotal = saleTotal();
 
   async function openShift() {
     try {
@@ -298,6 +321,7 @@ export default function POSPage() {
   }
 
   async function checkout(method: 'cash' | 'mpesa' | 'card' | 'credit', customerId?: number) {
+    if(pendingMpesa.current&&method!=='mpesa')return toast.error('Resolve the pending M-Pesa payment before using another payment method');
     if (checkoutLockRef.current) return;
     if (!cart.length) {
       toast.error('Cart is empty');
@@ -312,7 +336,12 @@ export default function POSPage() {
     setCheckingOut(true);
 
     const salePayload = {
-      items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price })),
+      type: 'pos' as const,
+      requestId: checkoutRequestId.current ||= crypto.randomUUID(),
+      locationId: Number(locationId),
+      date: todayISO(),
+      payment: method === 'credit' ? undefined : { amount: saleTotal(customerId), method },
+      items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price, discountPercent:discountFor(l,customerId) })),
       paymentMethod: method,
       customerId: method === 'credit' ? customerId : undefined,
     };
@@ -327,21 +356,24 @@ export default function POSPage() {
 
     // Credit sales need a live server check against the customer's
     // balance/limit, so they can't be queued offline like cash/M-Pesa can.
-    if (method === 'credit' && !isOnline) {
-      toast.error('Credit sales require an internet connection');
+    if ((method === 'credit'||method === 'mpesa') && !isOnline) {
+      toast.error(`${method === 'mpesa'?'M-Pesa':'Credit'} sales require an internet connection`);
       setCheckingOut(false);
       checkoutLockRef.current = false;
       return;
     }
 
-    // ── Offline path: queue locally instead of hitting the API ──
+    // -- Offline path: queue locally instead of hitting the API --
     if (!isOnline) {
       const queuedSale = {
-        localId: `offline-${Date.now()}`,
+        localId: salePayload.requestId,
+        businessId: user?.business_id,
+        userId: user?.id,
         payload: salePayload,
         queuedAt: new Date().toISOString(),
       };
-      setPendingSales((prev) => [...prev, queuedSale]);
+      try{if(!queueKey)throw new Error('Select a shop and location before saving an offline sale');setPendingSales(appendQueue(localStorage,queueKey,queuedSale));}
+      catch(error:any){toast.error(`Sale was not saved: ${error.message}`);setCheckingOut(false);checkoutLockRef.current=false;return;}
 
       // Optimistically deduct stock locally so the cashier sees it reflected,
       // even though the server hasn't confirmed it yet.
@@ -354,7 +386,7 @@ export default function POSPage() {
 
       setReceiptData({
         saleId: queuedSale.localId,
-        items: cart.map((l) => ({ item_name: l.name, quantity: l.quantity, unit_price: l.price })),
+        items: cart.map((l) => ({ item_name: l.name, quantity: l.quantity, unit_price: l.price,line_total:Number((l.quantity*l.price-Number((l.quantity*l.price*discountFor(l,customerId)/100).toFixed(2))).toFixed(2)) })),
         total: subtotal,
         paymentMethod: method,
         cashierName: user?.name,
@@ -368,19 +400,30 @@ export default function POSPage() {
       return;
     }
 
-    // ── Online path: normal atomic sale ──
+    // -- Online path: normal atomic sale --
     try {
-      const { data } = await salesDocumentsApi.create({
-        type: 'pos',
-        customerId: method === 'credit' ? customerId : null,
-        date: todayISO(),
-        locationId: 1,
-        payment: method === 'credit' ? undefined : { amount: subtotal, method },
-        items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price })),
-      });
+      let data:any;
+      if(method==='mpesa'){
+        if(!/^\+?(?:254|0)[17]\d{8}$/.test(mpesaPhone))throw new Error('Enter a valid M-Pesa phone number');
+        if(!Number.isInteger(salePayload.payment?.amount))throw new Error('M-Pesa requires a whole-shilling total. Use another payment method for this sale.');
+        if(pendingMpesa.current&&pendingMpesa.current.requestId!==salePayload.requestId)throw new Error('Resolve the previous M-Pesa payment before changing this cart');
+        if(!pendingMpesa.current){const response=await mpesaApi.initiateSTK({phone:mpesaPhone,amount:salePayload.payment!.amount,purpose:'sale',sale:salePayload});pendingMpesa.current={id:response.data.checkoutRequestId,requestId:salePayload.requestId};try{if(queueKey)localStorage.setItem(`${queueKey}:mpesa`,JSON.stringify({...pendingMpesa.current,cart,phone:mpesaPhone}));}catch{toast.warning('Keep this page open until payment is resolved; checkout could not be saved locally');}}
+        toast.info('Confirm the M-Pesa request on your phone. Waiting for verified payment.');
+        let documentId:number|undefined;
+        for(let attempt=0;attempt<45;attempt++){
+          const response=await mpesaApi.getStatus(pendingMpesa.current.id);
+          if(response.data.status==='failed'){pendingMpesa.current=null;checkoutRequestId.current=null;if(queueKey)localStorage.removeItem(`${queueKey}:mpesa`);throw new Error('M-Pesa payment failed or was cancelled');}
+          if(response.data.status==='needs_action')throw new Error('Payment received; sale needs review. Do not charge the customer again.');
+          if(response.data.status==='completed'&&response.data.reference_id){documentId=response.data.reference_id;break;}
+          await new Promise(resolve=>setTimeout(resolve,2000));
+        }
+        if(!documentId)throw new Error('Payment is still pending. Retry this unchanged cart to check the same payment request.');
+        data=(await salesDocumentsApi.getOne(documentId)).data;
+        pendingMpesa.current=null;if(queueKey)localStorage.removeItem(`${queueKey}:mpesa`);showDone();
+      }else data=(await salesDocumentsApi.create(salePayload)).data;
       setReceiptData({
         saleId: data.sale_id || data.saleId || data.id,
-        items: data.items.map((item: any) => ({ item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price })),
+        items: data.items.map((item: any) => ({ item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price,line_total:Number(item.line_total) })),
         total: Number(data.total),
         paymentMethod: method,
         cashierName: user?.name,
@@ -389,7 +432,7 @@ export default function POSPage() {
       setAgeVerified(false);
       await loadProducts();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Sale failed');
+      toast.error(err?.response?.data?.message || err?.message || 'Sale failed');
     } finally {
       setCheckingOut(false);
       checkoutLockRef.current = false;
@@ -427,6 +470,7 @@ export default function POSPage() {
       <Navbar user={user} />
 
       <div className="max-w-[1600px] mx-auto px-4 pt-3 space-y-2">
+        <label className="block text-sm font-medium">Business location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>setLocationId(event.target.value)} className="ml-3 rounded-lg border border-gray-300 p-2"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
         {!isOnline && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-800">
             <WifiOff className="w-4 h-4" />
@@ -466,7 +510,7 @@ export default function POSPage() {
       </div>
 
       <main className="max-w-[1600px] mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
-        {/* ── Left: Cart ─────────────────────────────── */}
+        {/* -- Left: Cart ------------------------------- */}
         <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <h1 className="text-base font-semibold text-gray-900">New Sale</h1>
@@ -559,6 +603,7 @@ export default function POSPage() {
                 <Smartphone className="w-4 h-4" /> M-Pesa
               </button>
             </div>
+            <label className="block text-xs text-gray-600">M-Pesa phone number<input type="tel" placeholder="07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} disabled={checkingOut} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"/></label>
             <button
               onClick={() => setCreditModalOpen(true)}
               disabled={checkingOut || !cart.length}
@@ -576,7 +621,7 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* ── Right: Product grid ───────────────────────── */}
+        {/* -- Right: Product grid ------------------------- */}
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative w-full flex gap-2">
@@ -665,7 +710,7 @@ export default function POSPage() {
         </div>
       </main>
 
-      {/* ── Credit sale: customer picker ─────────────────── */}
+      {/* -- Credit sale: customer picker ------------------- */}
       {ageModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
           <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
@@ -698,7 +743,7 @@ export default function POSPage() {
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
-              <button 
+              <button
                 onClick={() => setNewCustomerModalOpen(true)}
                 className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
                 title="Add New Customer"
@@ -753,7 +798,7 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* ── Add Customer Modal ─────────────────── */}
+      {/* -- Add Customer Modal ------------------- */}
       {newCustomerModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
           <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
@@ -788,14 +833,14 @@ export default function POSPage() {
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <button 
-                onClick={() => setNewCustomerModalOpen(false)} 
+              <button
+                onClick={() => setNewCustomerModalOpen(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleAddCustomer} 
+              <button
+                onClick={handleAddCustomer}
                 className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium"
               >
                 Save & Select
@@ -805,7 +850,7 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* ── Shift open/close modal ─────────────────────── */}
+      {/* -- Shift open/close modal ----------------------- */}
       {shiftModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
@@ -853,7 +898,7 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* ── Receipt after successful checkout ─────────────── */}
+      {/* -- Receipt after successful checkout --------------- */}
       {receiptData && (
         <Receipt
           saleId={receiptData.saleId}

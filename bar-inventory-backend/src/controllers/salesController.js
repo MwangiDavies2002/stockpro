@@ -14,11 +14,19 @@ const { getBusinessId } = require('../utils/tenant');
  * Expected body: { items: [{ itemId, quantity, unitPrice }], paymentMethod, note }
  */
 async function create(req, res, next) {
-  const { items = [], paymentMethod, note, locationId, customerId } = req.body;
+  let { items = [] } = req.body;
+  const { paymentMethod, note, locationId, customerId } = req.body;
 
   if (!Array.isArray(items) || !items.length) {
     return res.status(400).json({ message: 'Sale must include at least one item' });
   }
+  const combined = new Map();
+  for (const line of items) {
+    const previous = combined.get(Number(line.itemId));
+    if (previous && previous.unitPrice !== line.unitPrice) return res.status(400).json({message:'Duplicate product lines must use the same price'});
+    combined.set(Number(line.itemId), {...line,quantity: Number(line.quantity)+(previous?.quantity||0)});
+  }
+  items = [...combined.values()].sort((a,b)=>Number(a.itemId)-Number(b.itemId));
   for (const line of items) {
     if (!line.itemId || !Number.isInteger(line.quantity) || line.quantity < 1) {
       return res.status(400).json({ message: 'Each item needs a valid itemId and quantity >= 1' });
@@ -30,20 +38,22 @@ async function create(req, res, next) {
 
   const client = await getClient();
   try {
+    await client.query('BEGIN');
+    await client.query('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[req.user.id,getBusinessId(req)]);
     // Pre-check all stock levels before touching anything
     const stockChecks = [];
     for (const line of items) {
       const { rows } = await client.query(
-        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=? AND business_id=?',
+        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE',
         [line.itemId, getBusinessId(req)]
       );
       if (!rows.length) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(404).json({ message: `Item ${line.itemId} not found` });
       }
       const item = rows[0];
       if (item.stock < line.quantity) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({
           message: `Insufficient stock for ${item.name}: have ${item.stock}, need ${line.quantity}`,
         });
@@ -66,28 +76,28 @@ async function create(req, res, next) {
     // Credit sales: require a customer and check they have room on their tab
     if (paymentMethod === 'credit') {
       if (!customerId) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ message: 'A customer is required for credit sales' });
       }
       const custRes = await client.query('SELECT balance, credit_limit, active FROM customers WHERE id=? AND business_id=?', [customerId, getBusinessId(req)]);
       if (!custRes.rows.length) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(404).json({ message: 'Customer not found' });
       }
       const customer = custRes.rows[0];
       if (!customer.active) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({ message: 'This customer account is inactive' });
       }
       if (Number(customer.balance) + total > Number(customer.credit_limit)) {
-        client.release();
+        await client.query('ROLLBACK');
         return res.status(400).json({
           message: `Credit limit exceeded: balance KSh ${customer.balance} + this sale KSh ${total} exceeds limit KSh ${customer.credit_limit}`,
         });
       }
     }
 
-    await client.query('BEGIN');
+
 
     const saleNote = note || (paymentMethod ? `Sale via ${paymentMethod}` : 'Sale recorded');
     const { insertId: saleId } = await client.query(
@@ -100,8 +110,8 @@ async function create(req, res, next) {
       const unitPrice = line.unitPrice ?? item.price;
 
       await client.query(
-        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price) VALUES (?,?,?,?,?)',
-        [saleId, item.id, item.name, line.quantity, unitPrice]
+        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price, unit_cost, net_revenue) VALUES (?,?,?,?,?,?,?)',
+        [saleId, item.id, item.name, line.quantity, unitPrice, item.cost, Number((line.quantity * unitPrice).toFixed(2))]
       );
 
       await client.query(

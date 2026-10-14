@@ -84,6 +84,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/orders',    orderRoutes);
 app.use('/api/reports',   reportRoutes);
 app.use('/api/owner-network', require('./src/routes/ownerNetwork'));
+app.use('/api/notifications', require('./src/routes/notifications'));
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/mpesa',     mpesaRoutes);
 app.use('/api/sales', salesRoutes);

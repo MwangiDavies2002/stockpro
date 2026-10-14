@@ -1,20 +1,23 @@
 const { query } = require('../config/db');
+const { currentBusinessId, currentUser } = require('../utils/tenant');
+const { validateJournal } = require('../utils/journalValidation');
 
 const Journal = {
   create: async (data, lines, client = null) => {
     const q = client ? client.query.bind(client) : query;
-    
+    validateJournal(lines);
+
     // Create Journal Entry
     const { insertId: journalId } = await q(
-      `INSERT INTO journal_entries (posting_date, description, reference, created_by) 
-       VALUES (?, ?, ?, ?)`,
-      [data.posting_date, data.description, data.reference, data.created_by || null]
+      `INSERT INTO journal_entries (business_id,posting_date, description, reference, created_by)
+       VALUES (?, ?, ?, ?, ?)`,
+      [currentBusinessId(), data.posting_date, data.description, data.reference, data.created_by || currentUser()?.id || null]
     );
 
     // Create Lines
     for (const line of lines) {
       await q(
-        `INSERT INTO journal_entry_lines (journal_entry_id, account_id, debit, credit, description) 
+        `INSERT INTO journal_entry_lines (journal_entry_id, account_id, debit, credit, description)
          VALUES (?, ?, ?, ?, ?)`,
         [journalId, line.account_id, line.debit || 0, line.credit || 0, line.description || data.description]
       );
@@ -25,7 +28,7 @@ const Journal = {
 
   findAll: async () => {
     return query(`
-      SELECT je.*, 
+      SELECT je.*,
              JSON_ARRAYAGG(
                JSON_OBJECT(
                  'id', jel.id,
@@ -36,12 +39,13 @@ const Journal = {
                  'credit', jel.credit,
                  'description', jel.description
                )
-             ) as lines
+             ) as \`lines\`
       FROM journal_entries je
       LEFT JOIN journal_entry_lines jel ON je.id = jel.journal_entry_id
+      WHERE je.business_id=?
       GROUP BY je.id
       ORDER BY je.posting_date DESC, je.id DESC
-    `);
+    `, [currentBusinessId()]);
   }
 };
 

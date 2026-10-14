@@ -1,8 +1,9 @@
 ﻿import axios from 'axios';
 import Cookies from 'js-cookie';
+import {showDone} from './feedback';
 
 declare global {
-  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown> } }
+  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown>; exportDatabase: (authorization:string)=>Promise<string|null>; restoreDatabase: (authorization:string)=>Promise<{restored:boolean;recovery:string}|null> } }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
@@ -19,7 +20,10 @@ const api = axios.create({
           url: config.url,
           data: config.data ? JSON.parse(config.data as string) : undefined,
           params: config.params,
+          authorization: String(config.headers.Authorization || ''),
         });
+        const failure=data as {__stockproError?:boolean;message:string;status:number};
+        if(failure?.__stockproError)throw new axios.AxiosError(failure.message,'ERR_BAD_REQUEST',config,undefined,{data:{message:failure.message},status:failure.status,statusText:'Error',headers:{},config});
         return { data, status: 200, statusText: 'OK', headers: {}, config };
       }
     : undefined,
@@ -40,7 +44,12 @@ api.interceptors.request.use((config) => {
  * Interceptor: handle global response errors (redirect on 401).
  */
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    const method=res.config.method?.toLowerCase();
+    const url=res.config.url||'';
+    if(!res.data?.replayed&&((method==='post'&&url==='/sales')||(method==='post'&&/^\/sales-documents(?:\/\d+\/convert)?$/.test(url)&&['pos','invoice'].includes(res.data?.type))||(method==='patch'&&/^\/inventory\/\d+\/sell$/.test(url))))showDone();
+    return res;
+  },
   (error) => {
     if (error.response?.status === 401) {
       Cookies.remove('token');
@@ -85,7 +94,7 @@ const inventoryApi = {
   sell: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/sell`, { quantity: qty }),
   getLowStock: () => api.get('/inventory/low-stock'),
-  bulkImport: (items: InventoryItemPayload[]) => api.post('/inventory/import', { items }),
+  bulkImport: (items: InventoryItemPayload[], locationId?: number, requestId?: string) => api.post('/inventory/import', { items, locationId, requestId }, { timeout: 120000 }),
 };
 
 /* â”€â”€ Orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -126,6 +135,7 @@ const suppliersApi = {
  * Reports API helpers
  */
 const reportsApi = {
+  getProfit: (days: number) => api.get('/reports/profit', { params: { days } }),
   getStock: () => api.get('/reports/stock'),
   getUsage: (days?: number) => api.get('/reports/usage', { params: { days } }),
   getMpesaGroups: () => api.get('/reports/sale-size-groups'),
@@ -148,8 +158,10 @@ const mpesaApi = {
   getPayments: (params?: { period?: string }) =>
     api.get('/mpesa/payments', { params }),
   getGroups: () => api.get('/mpesa/groups'),
-  initiateSTK: (data: { phone: string; amount: number; itemId: number }) =>
-    api.post('/mpesa/stk-push', data),
+  initiateSTK: (data: { phone: string; amount: number; requestId?:string;itemId?: number; purpose?: 'sale'|'subscription';plan?:string;referenceId?:number;sale?:SalesDocumentPayload }) =>
+    api.post('/mpesa/stk-push', data,{timeout:45000}),
+  recover:(id:number)=>api.post(`/mpesa/payments/${id}/recover`,{}),
+  getStatus: (id:string)=>api.get(`/mpesa/status/${id}`),
 };
 
 const salesApi = {
@@ -231,8 +243,11 @@ const subscriptionsApi = {
 const loyaltyApi = { getCustomers: () => api.get('/loyalty/customers'), getRedemptions: () => api.get('/loyalty/redemptions'), redeem: (data: { customerId: number; reward: string; points: number }) => api.post('/loyalty/redeem', data) };
 
 export const etimsApi = {
+  initialize:()=>api.post('/etims/initialize'),
+  jobs:()=>api.get('/etims/jobs'),
+  submit:(id:number)=>api.post(`/etims/jobs/${id}/submit`,{}, {timeout:45000}),
   getConfig: () => api.get('/etims/config'),
-  updateConfig: (data: { kraPin?: string; enabled: boolean; mode: 'sandbox' | 'production'; apiUrl?: string; username?: string; password?: string }) => api.put('/etims/config', data),
+  updateConfig: (data: { kraPin?: string; enabled: boolean; mode: 'sandbox' | 'production'; apiUrl?: string; username?: string; password?: string;deviceSerial?:string;branchId?:string;lastInvoiceNo?:number }) => api.put('/etims/config', data),
 };
 export const businessSettingsApi = {
   get: () => api.get('/business-settings'),
@@ -327,6 +342,7 @@ export interface SupplierPayload {
 }
 
 export interface SalesDocumentPayload {
+  requestId?: string;
   type: 'quotation' | 'sales_order' | 'proforma' | 'invoice' | 'pos' | 'credit_note';
   customerId?: number | null;
   referenceNo?: string;

@@ -1,4 +1,36 @@
-# Vercel deployment
+# StockPro deployment options
+
+The web application is the default product. Electron remains an optional Windows installation for customers who need local offline operation or a one-time installation. Normal web development, builds and hosting do not launch or build Electron.
+
+## Default web application
+
+Install the frontend and backend dependencies independently; Electron dependencies are unnecessary for a web-only setup:
+
+```powershell
+npm --prefix bar-inventory-system install
+npm --prefix bar-inventory-backend install
+npm --prefix bar-inventory-backend run migrate
+```
+
+Configure the backend database/environment and frontend API URL. For local use, run `npm run start:api` in one terminal and `npm run dev` in another. For production, use `npm run build` followed by `npm start` for the frontend, and run or deploy the API separately. Root web commands explicitly select the web build even if a desktop build flag was previously set.
+
+## Optional desktop installation
+
+When a customer chooses the Windows desktop edition:
+
+```powershell
+npm install
+npm --prefix bar-inventory-system install
+npm run start:desktop
+# Create a Windows installer:
+npm run dist:desktop
+```
+
+`dist:win` is an alias for `dist:desktop`. The desktop edition uses a local SQLite database and provides backup/restore through Business Settings. It keeps its Electron native dependencies separate from the Node test runtime. A fresh desktop installation has its own data and login; it does not automatically copy or synchronize a hosted customer's records.
+
+Local inventory and sales can run offline. M-Pesa, KRA submissions and online network services still require a connection and configured services. A one-time installation is a deployment option; commercial licensing and any subscription policy must be agreed separately. Hosted subscriptions are not changed by selecting this build.
+
+## Vercel deployment
 
 Deploy the frontend and API as **two Vercel projects** from this repository:
 
@@ -24,6 +56,10 @@ After deployment, confirm `https://your-api.vercel.app/api/health` returns `stat
 Import the same repository again with `bar-inventory-system` as its Root Directory. Set `NEXT_PUBLIC_API_URL` to the API deployment origin, for example `https://your-api.vercel.app`, then redeploy. This variable is intentionally public because it contains only the API URL.
 
 ## Production check
+
+For optional integrations, Safaricom credentials and callback URL belong in the backend environment (see `.env.example`). KRA PIN, mode, API URL, device/branch, numbering and product codes are configured under Business Settings → eTIMS; hosted installations also need `ETIMS_ENCRYPTION_KEY` in the backend environment. `node bar-inventory-backend/check-integration-config.js` reports only whether these values are configured, never their contents.
+
+Administrators can use M-Pesa Payments to recover a verified payment whose sale posting was interrupted. This reuses the original receipt and request identifier. KRA jobs with an uncertain response remain blocked until acceptance is reconciled with KRA; an uncertain job must not be blindly resubmitted.
 
 Log in, create a test product, and confirm the browser can call the API without a CORS error. Then run the purchase and sale test cycle before entering live transactions.
 

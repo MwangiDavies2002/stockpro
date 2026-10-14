@@ -11,6 +11,9 @@ import type { InventoryItem } from '../components/InventoryTable';
 import { inventoryApi, authApi, locationsApi, referenceDataApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { mapInventoryImportRow } from '../lib/inventoryImport';
+import axios from 'axios';
+import {showDone} from '../lib/feedback';
 
 type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
 type Location = { id: number; name: string; active?: boolean };
@@ -44,6 +47,7 @@ export default function InventoryPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [importLocationId, setImportLocationId] = useState('');
   const [importResult, setImportResult] = useState<{ createdCount: number; errorCount: number; errors: Array<{ row: number; name: string; message: string }> } | null>(null);
 
   const loadItems = useCallback(async () => {
@@ -128,14 +132,15 @@ export default function InventoryPage() {
 
   async function handleSave() {
     if (!form.name.trim()) return toast.error('Item name is required');
+    if ([form.cost, form.price, form.stock, form.threshold].some(value => !Number.isFinite(value) || value < 0)) return toast.error('Prices and quantities must be zero or greater');
     if (!form.locationId) return toast.error('Business location is required');
-    if (!form.categoryId || !form.unitId) return toast.error('Category and unit are required');
+    if (!form.unitId) return toast.error('Unit is required');
     setSaving(true);
     try {
       const selectedCategory = categories.find(c => String(c.id) === form.categoryId);
       const selectedUnit = units.find(u => String(u.id) === form.unitId);
       const selectedBrand = brands.find(b => String(b.id) === form.brandId);
-      const payload = { ...form, locationId: Number(form.locationId), categoryId: Number(form.categoryId), unitId: Number(form.unitId), brandId: form.brandId ? Number(form.brandId) : null, category: selectedCategory?.name || form.category, unit: selectedUnit?.name || form.unit, brand: selectedBrand?.name || form.brand };
+      const payload = { ...form, locationId: Number(form.locationId), categoryId: form.categoryId ? Number(form.categoryId) : null, unitId: Number(form.unitId), brandId: form.brandId ? Number(form.brandId) : null, category: selectedCategory?.name || form.category, unit: selectedUnit?.name || form.unit, brand: selectedBrand?.name || form.brand };
       if (editItem) {
         const { data } = await inventoryApi.update(editItem.id, payload);
         setItems((prev) => prev.map((i) => i.id === editItem.id ? data : i));
@@ -282,28 +287,33 @@ export default function InventoryPage() {
       }
 
       const sheetRows = rows as Array<Record<string, unknown>>;
+      const hash = await crypto.subtle.digest('SHA-256', buffer);
+      const fingerprint = Array.from(new Uint8Array(hash)).map(byte=>byte.toString(16).padStart(2,'0')).join('');
+      const locationId = Number(importLocationId || locations[0]?.id);
+      if (!locationId) throw new Error('Select a business location before importing');
       const { data } = await inventoryApi.bulkImport(
-        sheetRows.map((r) => ({
-          name: String(r.name ?? r.Name ?? r['Product Name'] ?? '').trim(),
-          category: String(r.category ?? r.Category ?? '').trim(),
-          unit: String(r.unit ?? r.Unit ?? '').trim(),
-          stock: Number(r.stock ?? r.Stock ?? r['Opening Stock'] ?? 0),
-          threshold: Number(r.threshold ?? r.Threshold ?? r['Alert quantity'] ?? 5),
-          cost: Number(r.cost ?? r.Cost ?? r['Purchase Price (Including Tax)'] ?? 0),
-          price: Number(r.price ?? r.Price ?? r['Selling Price'] ?? 0),
-        }))
+        sheetRows.map(mapInventoryImportRow), locationId, `${locationId}:${fingerprint}`
       );
 
       setImportResult(data);
+      if (data.replayed) toast.info('This file was already imported into this location');
+      if (data.skippedCount) toast.info(`Skipped ${data.skippedCount} existing SKU(s)`);
       if (data.createdCount > 0) {
-        toast.success(`Imported ${data.createdCount} item(s)`);
+        if(!data.errorCount)showDone(data.replayed ? 'This file was already imported safely.' : `Imported ${data.createdCount} item(s)`);
         await loadItems();
       }
       if (data.errorCount > 0) {
         toast.warning(`${data.errorCount} row(s) failed — see details below`);
       }
-    } catch {
-      toast.error('Failed to import file');
+      if (!data.createdCount && !data.errorCount) showDone(data.skippedCount ? `Skipped ${data.skippedCount} existing SKU(s).` : 'Import complete.');
+    } catch (error) {
+      const response = axios.isAxiosError(error) ? error.response?.data : undefined;
+      if (response && Array.isArray(response.errors)) {
+        setImportResult(response);
+        toast.error(`${response.errorCount} row(s) failed — see details below`);
+      } else {
+        toast.error(axios.isAxiosError(error)&&error.code==='ECONNABORTED' ? 'The import is taking longer than expected. You can retry this file safely; existing items will not be duplicated.' : response?.message || (error instanceof Error ? error.message : 'Failed to import file'));
+      }
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -335,6 +345,9 @@ export default function InventoryPage() {
                 <button type="button" onClick={downloadTemplate} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50">
                   <FileDown className="w-3.5 h-3.5" /> Template
                 </button>
+                <select aria-label="Import business location" value={importLocationId || String(locations[0]?.id || '')} onChange={event => setImportLocationId(event.target.value)} disabled={importing} className="bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-lg">
+                  {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -451,9 +464,12 @@ export default function InventoryPage() {
         {/* Add/Edit Modal */}
         {modalOpen && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
-              <h2 className="text-lg font-semibold">{editItem ? 'Edit Item' : 'Add Item'}</h2>
-              <div className="space-y-3">
+            <form role="dialog" aria-modal="true" aria-labelledby="item-dialog-title" onKeyDown={(event) => { if (event.key === 'Escape') setModalOpen(false); }} onSubmit={(event) => { event.preventDefault(); void handleSave(); }} className="bg-white rounded-lg max-w-md w-full max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden shadow-xl">
+              <div className="flex items-center justify-between gap-3 p-6 pb-4 shrink-0 border-b">
+                <h2 id="item-dialog-title" className="text-lg font-semibold">{editItem ? 'Edit Item' : 'Add Item'}</h2>
+                <button type="button" aria-label="Close item form" onClick={() => setModalOpen(false)} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-3 overflow-y-auto overscroll-contain min-h-0 flex-1 p-6">
                 <div>
                   <label htmlFor="item-location" className="text-xs font-medium text-gray-600 mb-1 block">Business Location</label>
                   <select id="item-location" value={form.locationId} onChange={(e) => { setForm({...form, locationId: e.target.value, categoryId: '', unitId: '', brandId: '', category: '', unit: '', brand: ''}); void loadReferenceData(e.target.value); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -470,9 +486,9 @@ export default function InventoryPage() {
                   <div className="flex items-center gap-3"><label className="cursor-pointer px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"><Upload className="w-4 h-4 inline mr-2" />Choose image<input type="file" accept="image/*" className="hidden" onChange={(e) => handleImage(e.target.files?.[0])} /></label>{form.imageUrl && <img src={form.imageUrl} alt="Preview" className="w-12 h-12 rounded-lg object-cover" />}</div>
                 </div>
                 <div>
-                  <label htmlFor="item-category" className="text-xs font-medium text-gray-600 mb-1 block">Category</label>
+                  <label htmlFor="item-category" className="text-xs font-medium text-gray-600 mb-1 block">Category (optional)</label>
                   <div className="flex gap-2"><select id="item-category" value={form.categoryId} onChange={(e) => { const row = categories.find(c => String(c.id) === e.target.value); setForm({...form, categoryId: e.target.value, category: row?.name || ''}); }} className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">Select category</option>
+                    <option value="">No category</option>
                     {categories.map((c) => <option key={c.id} value={c.id}>{c.parent_name ? `${c.parent_name} / ${c.name}` : c.name}</option>)}
                   </select><button type="button" aria-label="Add category" onClick={() => setQuickAdd('categories')} disabled={!form.locationId} className="px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"><Plus className="w-4 h-4"/></button></div>
                 </div>
@@ -499,19 +515,23 @@ export default function InventoryPage() {
                   <input id="item-threshold" type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
-                  <label htmlFor="item-cost" className="text-xs font-medium text-gray-600 mb-1 block">Cost (KES)</label>
-                  <input id="item-cost" type="number" placeholder="0" value={form.cost} onChange={(e) => setForm({...form, cost: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label htmlFor="item-cost" className="text-xs font-medium text-gray-600 mb-1 block">Purchase Price per Unit (KES)</label>
+                  <input id="item-cost" type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.cost} onChange={(e) => setForm({...form, cost: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
-                  <label htmlFor="item-price" className="text-xs font-medium text-gray-600 mb-1 block">Price (KES)</label>
-                  <input id="item-price" type="number" placeholder="0" value={form.price} onChange={(e) => setForm({...form, price: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label htmlFor="item-price" className="text-xs font-medium text-gray-600 mb-1 block">Selling Price per Unit (KES)</label>
+                  <input id="item-price" type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.price} onChange={(e) => setForm({...form, price: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div className="rounded-lg bg-gray-50 border p-3 text-sm">
+                  <p className="font-medium">Expected gross profit per unit: KES {(form.price - form.cost).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-gray-500 mt-1">Selling price minus purchase price, before discounts, tax and operating expenses.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 p-6 pt-4 border-t bg-white shrink-0">
                 <button type="button" onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Cancel</button>
-                <button type="button" onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+                <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
               </div>
-            </div>
+            </form>
           </div>
         )}
 
