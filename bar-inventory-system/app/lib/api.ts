@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 import {showDone} from './feedback';
 
 declare global {
-  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown>; exportDatabase: (authorization:string)=>Promise<string|null>; restoreDatabase: (authorization:string)=>Promise<{restored:boolean;recovery:string}|null> } }
+  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown>;shareWhatsApp?:(authorization:string,text:string)=>Promise<void>; exportDatabase: (authorization:string)=>Promise<string|null>; restoreDatabase: (authorization:string)=>Promise<{restored:boolean;recovery:string}|null> } }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
@@ -52,8 +52,9 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      Cookies.remove('token');
-      window.location.href = '/login';
+      const original=sessionStorage.getItem('stockpro_superadmin_token');
+      if(original){sessionStorage.removeItem('stockpro_superadmin_token');Cookies.set('token',original,{expires:7});window.location.href='/superadmin';}
+      else {Cookies.remove('token');window.location.href='/login';}
     }
     return Promise.reject(error);
   }
@@ -79,6 +80,7 @@ export const authApi = {
  * Inventory API helpers
  */
 const inventoryApi = {
+  adjustments:()=>api.get('/inventory/adjustments'),
   getAll: (params?: { category?: string; search?: string; locationId?: number }) =>
     api.get('/inventory', { params }),
   getOne: (id: number) => api.get(`/inventory/${id}`),
@@ -89,7 +91,7 @@ const inventoryApi = {
   delete: (id: number) => api.delete(`/inventory/${id}`),
   restock: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/restock`, { quantity: qty }),
-  adjustStock: (id: number, data: { quantity: number; reason: string }) =>
+  adjustStock: (id: number, data: { quantity: number; reason: string; requestId?: string }) =>
     api.patch(`/inventory/${id}/adjustment`, data),
   sell: (id: number, qty: number) =>
     api.patch(`/inventory/${id}/sell`, { quantity: qty }),
@@ -102,6 +104,7 @@ const inventoryApi = {
  * Orders API helpers
  */
 const ordersApi = {
+  addPayment: (id: number, data: {amount: number; method: string; treasuryId?: number; referenceNo?: string; notes?: string; requestId: string}) => api.post(`/orders/${id}/payments`, data),
   getAll: (params?: { status?: string }) => api.get('/orders', { params }),
   getOne: (id: number) => api.get(`/orders/${id}`),
   create: (data: OrderPayload) => api.post('/orders', data),
@@ -122,6 +125,7 @@ const shiftsApi = {
  * Suppliers API helpers
  */
 const suppliersApi = {
+  statement: (id: number) => api.get(`/suppliers/${id}/statement`),
   getAll: () => api.get('/suppliers'),
   getOne: (id: number) => api.get(`/suppliers/${id}`),
   create: (data: SupplierPayload) => api.post('/suppliers', data),
@@ -134,11 +138,15 @@ const suppliersApi = {
 /**
  * Reports API helpers
  */
+const stockTransfersApi={getAll:()=>api.get('/stock-transfers'),getOne:(id:number)=>api.get(`/stock-transfers/${id}`),create:(data:any)=>api.post('/stock-transfers',data)};
+const expensesApi={getAll:()=>api.get('/expenses'),getOne:(id:number)=>api.get(`/expenses/${id}`),categories:()=>api.get('/expenses/categories'),saveCategory:(data:any,id?:number)=>id?api.put(`/expenses/categories/${id}`,data):api.post('/expenses/categories',data),create:(data:any)=>api.post('/expenses',data),reverse:(id:number,data:any)=>api.post(`/expenses/${id}/reverse`,data)};
 const reportsApi = {
+  stockOverview:(days:number,locationId?:number)=>api.get('/reports/stock-overview',{params:{days,locationId}}),
+  expenses:(days:number,locationId?:number)=>api.get('/reports/expenses',{params:{days,locationId}}),
   getProfit: (days: number) => api.get('/reports/profit', { params: { days } }),
   getStock: () => api.get('/reports/stock'),
   getUsage: (days?: number) => api.get('/reports/usage', { params: { days } }),
-  getMpesaGroups: () => api.get('/reports/sale-size-groups'),
+  getMpesaGroups: (days=30) => api.get('/reports/sale-size-groups',{params:{days}}),
   getSalesTrend: (days: number) =>
     api.get('/reports/sales-trend', { params: { days } }),
   getHourlySales: (days: number) =>
@@ -158,7 +166,7 @@ const mpesaApi = {
   getPayments: (params?: { period?: string }) =>
     api.get('/mpesa/payments', { params }),
   getGroups: () => api.get('/mpesa/groups'),
-  initiateSTK: (data: { phone: string; amount: number; requestId?:string;itemId?: number; purpose?: 'sale'|'subscription';plan?:string;referenceId?:number;sale?:SalesDocumentPayload }) =>
+  initiateSTK: (data: { phone: string; amount: number; requestId?:string;itemId?: number; purpose?: 'sale'|'subscription';plan?:string;couponCode?:string;referenceId?:number;sale?:SalesDocumentPayload }) =>
     api.post('/mpesa/stk-push', data,{timeout:45000}),
   recover:(id:number)=>api.post(`/mpesa/payments/${id}/recover`,{}),
   getStatus: (id:string)=>api.get(`/mpesa/status/${id}`),
@@ -221,11 +229,11 @@ const treasuryApi = {
   create: (data: any) => api.post('/treasury', data),
   update: (id: number, data: any) => api.put(`/treasury/${id}`, data),
   getTransactions: (id: number) => api.get(`/treasury/${id}/transactions`),
-  deposit: (id: number, data: { amount: number; reference?: string; description?: string }) =>
+  deposit: (id: number, data: { amount: number; reference?: string; description?: string; requestId?: string }) =>
     api.post(`/treasury/${id}/deposit`, data),
-  withdraw: (id: number, data: { amount: number; reference?: string; description?: string }) =>
+  withdraw: (id: number, data: { amount: number; reference?: string; description?: string; requestId?: string }) =>
     api.post(`/treasury/${id}/withdraw`, data),
-  transfer: (data: { fromTreasuryId: number; toTreasuryId: number; amount: number; reference?: string; description?: string }) =>
+  transfer: (data: { fromTreasuryId: number; toTreasuryId: number; amount: number; reference?: string; description?: string; requestId?: string }) =>
     api.post('/treasury/transfer', data),
 };
 
@@ -237,7 +245,7 @@ const settingsApi = {
 const subscriptionsApi = {
   getAll: () => api.get('/subscriptions'),
   getCurrent: () => api.get('/subscriptions/current'),
-  create: (data: { plan: string; amount: number; paymentMethod: 'mpesa' | 'offline'; phone?: string; checkoutRequestId?: string }) => api.post('/subscriptions', data),
+  create: (data: { plan: string; amount: number; paymentMethod: 'mpesa' | 'offline'; phone?: string; checkoutRequestId?: string; couponCode?: string }) => api.post('/subscriptions', data),
   approve: (id: number) => api.patch(`/subscriptions/${id}/approve`),
 };
 const loyaltyApi = { getCustomers: () => api.get('/loyalty/customers'), getRedemptions: () => api.get('/loyalty/redemptions'), redeem: (data: { customerId: number; reward: string; points: number }) => api.post('/loyalty/redeem', data) };
@@ -258,8 +266,10 @@ const salesDocumentsApi = {
   getAll: (params?: { type?: string; locationId?: number }) => api.get('/sales-documents', { params }),
   getOne: (id: number) => api.get(`/sales-documents/${id}`),
   create: (data: SalesDocumentPayload) => api.post('/sales-documents', data),
-  convert: (id: number, targetType: string) => api.post(`/sales-documents/${id}/convert`, { targetType }),
-  addPayment: (id: number, data: { amount: number; method?: string; referenceNo?: string; notes?: string }) =>
+  update:(id:number,data:SalesDocumentPayload)=>api.put(`/sales-documents/${id}`,data),
+  issue:(id:number,data:{payment?:{amount:number;method:string}})=>api.post(`/sales-documents/${id}/issue`,data),
+  convert: (id: number, targetType: string, options?: {status?:string}) => api.post(`/sales-documents/${id}/convert`, { targetType,...options }),
+  addPayment: (id: number, data: { amount: number; method?: string; referenceNo?: string; notes?: string;requestId?:string }) =>
     api.post(`/sales-documents/${id}/payments`, data),
 };
 
@@ -283,12 +293,14 @@ const referenceDataApi = {
  
 /* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export interface BusinessRegistrationPayload {
+  plan: string;
   business: { name: string; startDate?: string; currency: string; logoUrl?: string; website?: string; contactNumber?: string; alternateContactNumber?: string; country: string; state: string; city: string; zipCode: string; landmark: string; timezone: string; locale?: string };
   settings: { businessType: string; businessTypeOther?: string; defaultTaxRate?: number; taxNumber?: string; sellingPriceTaxType: string; stockAccountingMethod: string; defaultBusinessLocation: string; defaultLowStockThreshold?: number; featurePosOffline?: boolean; featureMultiCurrencySales?: boolean; featureBarcodeScanning?: boolean; featureServiceRepair?: boolean; financialYearStartMonth: number };
   owner: { prefix?: string; firstName: string; lastName?: string; username: string; email: string; password: string; confirmPassword: string };
 }
 
 export interface InventoryItemPayload {
+  requestId?: string;
   imageUrl?: string;
   sku?: string;
   barcode?: string;
@@ -322,13 +334,21 @@ export interface ReferenceDataPayload {
 }
 
 export interface OrderPayload {
+  requestId?: string;
+  dueDate?: string;
+  taxTreatment?: string;
+  shippingCost?: number;
+  otherCost?: number;
+  shippingDetails?: string;
+  otherCostNote?: string;
+  payment?: {amount: number; method: string; treasuryId?: number; referenceNo?: string};
   referenceNo?: string;
   purchaseDate?: string;
   status?: string;
   locationId?: number;
   payTerm?: string;
   supplierId?: number;
-  items: { itemId: number; quantity: number; unitPrice: number; costBeforeDiscount?: number; discountPercent?: number; taxPercent?: number; profitMargin?: number; sellingPrice?: number; accountType?: string }[];
+  items: { itemId: number; quantity: number; unitPrice: number; costBeforeDiscount?: number; discountPercent?: number; taxPercent?: number; profitMargin?: number; sellingPrice?: number; accountType?: string; lotNumber?: string }[];
   notes?: string;
   transactionType?: 'purchase' | 'opening_stock';
 }
@@ -350,6 +370,10 @@ export interface SalesDocumentPayload {
   locationId: number;
   status?: string;
   convertedFromId?: number | null;
+  dueDate?: string;
+  validUntil?: string;
+  terms?: string;
+  staffNotes?: string;
   referenceInvoiceId?: number | null;
   notes?: string;
   payment?: { amount: number; method?: string; referenceNo?: string };
@@ -368,6 +392,6 @@ export interface DiscountPayload {
   active?: boolean;
 }
 
-export { inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
+export { stockTransfersApi,expensesApi,inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
 export default api;
 

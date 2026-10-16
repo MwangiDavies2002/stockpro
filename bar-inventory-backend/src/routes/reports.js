@@ -3,6 +3,8 @@ const ctrl   = require('../controllers/reportController');
 const { authenticate, adminOnly } = require('../middleware/auth');
 
 router.use(authenticate);
+router.get('/stock-overview',require('../controllers/operationsReportController').stock);
+router.get('/expenses',require('../controllers/operationsReportController').expenses);
 router.get('/profit', adminOnly, ctrl.getProfit);
 router.get('/owner-intelligence', adminOnly, require('../controllers/intelligenceController').overview);
 

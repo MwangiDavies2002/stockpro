@@ -21,9 +21,59 @@
     "test:queue": "node scripts/offline-queue-test.js",
     "audit:desktop": "node scripts/desktop-feature-audit.js",
     "audit:pages": "node scripts/page-route-audit.js",
-    "audit:web": "npm --prefix bar-inventory-backend run audit:features --"
+    "audit:web": "npm --prefix bar-inventory-backend run audit:features --",
+    "test:documents": "node --test scripts/sales-document-test.js scripts/sales-document-ui-test.js",
+    "test:purchases": "node --test scripts/purchase-test.js",
+    "test:inventory": "node --test scripts/inventory-test.js",
+    "test:operations": "node --test scripts/operations-test.js scripts/operations-report-test.js"
   },
-  "devDependencies": { "electron": "^35.0.0", "electron-builder": "^26.0.0" },
-  "dependencies": { "better-sqlite3": "^11.8.1" },
-  "build": { "appId": "com.stockpro.pos", "productName": "StockPro", "npmRebuild": false, "files": ["electron/**/*", ".desktop-runtime/node_modules/**/*", ".desktop-runtime/package.json", "bar-inventory-system/out/**/*", "bar-inventory-backend/src/utils/salesMath.js", "bar-inventory-backend/src/utils/purchaseMath.js", "bar-inventory-backend/src/utils/journalValidation.js", "bar-inventory-backend/src/utils/ownerIntelligence.js", "package.json"], "asarUnpack": [".desktop-runtime/node_modules/better-sqlite3/build/Release/*.node"], "win": { "target": "nsis" }, "nsis": { "oneClick": false, "perMachine": false } }
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1"
+  },
+  "build": {
+    "appId": "com.stockpro.pos",
+    "productName": "StockPro",
+    "npmRebuild": false,
+    "files": [
+      "electron/**/*",
+      ".desktop-runtime/node_modules/**/*",
+      ".desktop-runtime/package.json",
+      "bar-inventory-system/out/**/*",
+      "bar-inventory-backend/src/utils/salesMath.js",
+      "bar-inventory-backend/src/utils/purchaseMath.js",
+      "bar-inventory-backend/src/utils/journalValidation.js",
+      "bar-inventory-backend/src/utils/ownerIntelligence.js",
+      "package.json",
+      "bar-inventory-backend/src/utils/accessPolicy.js",
+      "bar-inventory-backend/src/utils/platformPolicy.js",
+      "bar-inventory-backend/src/utils/platformCatalog.js",
+      "bar-inventory-backend/src/services/platform.js",
+      "bar-inventory-backend/src/services/platformBusiness.js",
+      "bar-inventory-backend/src/utils/accountPolicy.js",
+      "bar-inventory-backend/src/utils/accountTypes.json",
+      "bar-inventory-backend/src/utils/accountBook.js",
+      "bar-inventory-backend/src/utils/openingJournal.js",
+      "bar-inventory-backend/src/utils/treasuryPolicy.js",
+      "bar-inventory-backend/src/utils/salesDocumentPolicy.js",
+      "bar-inventory-backend/src/utils/purchasePolicy.js",
+      "bar-inventory-backend/src/utils/inventoryPolicy.js",
+      "bar-inventory-backend/src/utils/referencePolicy.js",
+      "bar-inventory-backend/src/utils/operationsPolicy.js",
+      "bar-inventory-backend/src/utils/stockReport.js"
+    ],
+    "asarUnpack": [
+      ".desktop-runtime/node_modules/better-sqlite3/build/Release/*.node"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false
+    }
+  }
 }

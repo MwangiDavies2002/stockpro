@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Settings } from 'lucide-react';
+import { Settings } from '../../components/TextMark';
 import Navbar from '../../components/Navbar';
+import AccountingNav from '../../components/accounting/AccountingNav';
 import { settingsApi, accountsApi, treasuryApi, authApi } from '../../lib/api';
 import { toast } from 'sonner';
 
@@ -72,12 +73,12 @@ export default function AccountingSettingsPage() {
         accountsApi.getAll(),
         treasuryApi.getAll()
       ]);
-      
+
       const settingsMap: Record<string, any> = {};
       sRes.data.forEach((s: any) => {
         settingsMap[s.setting_key] = s;
       });
-      
+
       setSettings(settingsMap);
       setAccounts(aRes.data);
       setTreasuries(tRes.data);
@@ -94,8 +95,8 @@ export default function AccountingSettingsPage() {
       await settingsApi.update(key, payload);
       setSettings({ ...settings, [key]: { ...settings[key], ...payload } });
       toast.success('Setting updated');
-    } catch {
-      toast.error('Failed to update setting');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to update setting');
     }
   }
 
@@ -113,6 +114,7 @@ export default function AccountingSettingsPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6"><AccountingNav/></div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Settings className="w-6 h-6 text-brand" />
@@ -122,18 +124,18 @@ export default function AccountingSettingsPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
+            <div className="animate-spin rounded-sm h-8 w-8 border-b-2 border-brand" />
           </div>
         ) : (
           <div className="space-y-6">
             {SETTING_GROUPS.map((group) => (
-              <div key={group.title} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div key={group.title} className="bg-white rounded-sm  border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                   <div className="flex items-center justify-between gap-4">
                     <h2 className="font-bold text-gray-900">{group.title}</h2>
                     {group.title === 'Opening Balances' && (
                       <button onClick={handleEnsureOpeningBalanceEquity} className="text-sm font-medium text-brand hover:underline">
-                        Create default equity account
+                        Set up opening equity account
                       </button>
                     )}
                   </div>
@@ -143,14 +145,14 @@ export default function AccountingSettingsPage() {
                     <div key={item.key} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                       <label className="text-sm font-medium text-gray-700">{item.label}</label>
                       <select
-                        className="w-full border rounded-lg px-3 py-2 text-sm"
+                        className="w-full border rounded-sm px-3 py-2 text-sm"
                         value={item.type === 'account' ? settings[item.key]?.account_id || '' : settings[item.key]?.treasury_id || ''}
                         onChange={(e) => handleUpdate(item.key, e.target.value, item.type as any)}
                       >
                         <option value="">-- Not Mapped --</option>
-                        {item.type === 'account' 
-                          ? accounts.filter(a => item.key !== 'opening_balance_equity' || a.account_type === 'Equity').map(a => <option key={a.id} value={a.id}>{a.account_code} - {a.account_name}</option>)
-                          : treasuries.map(t => <option key={t.id} value={t.id}>{t.name} (KES {t.current_balance})</option>)
+                        {item.type === 'account'
+                          ? accounts.filter(a => a.active).filter(a => item.key !== 'opening_balance_equity' || a.account_type === 'Equity').map(a => <option key={a.id} value={a.id}>{a.account_code} - {a.account_name}</option>)
+                          : treasuries.filter(t => t.status==='active').map(t => <option key={t.id} value={t.id}>{t.name} (KES {t.current_balance})</option>)
                         }
                       </select>
                     </div>

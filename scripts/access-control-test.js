@@ -1,0 +1,64 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {openDatabase,apiRequest}=require('../electron/db');
+const policy=require('../bar-inventory-backend/src/utils/accessPolicy');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'stockpro-access-'));
+const db=openDatabase(dir);
+const send=(token,url,method='get',data,params)=>apiRequest(db,{authorization:token?`Bearer ${token}`:undefined,url,method,data,params});
+const owner=send(null,'/auth/business-registration','post',{plan:'basic',business:{name:'Access test'},settings:{},owner:{firstName:'Owner',email:'owner@access.invalid',password:'AccessOnlyStrong123!',confirmPassword:'AccessOnlyStrong123!'}});
+const token=owner.token,main=owner.locationId;
+let other,itemA,itemB,staff,role;
+test('registration rejects missing and invalid packages',()=>{for(const plan of [undefined,'invalid','__proto__'])assert.throws(()=>send(null,'/auth/business-registration','post',{plan,owner:{}}),/package/);assert.equal(send(token,'/auth/me').access.plan.id,'basic');});
+test('Basic allows two locations, reports, and denies every accounting entry point',()=>{
+ other=send(token,'/locations','post',{name:'Second'}).id;
+ assert.throws(()=>send(token,'/locations','post',{name:'Third'}),/2 locations/);
+ for(const route of ['/accounts','/treasury','/accounting-settings','/journal-entries','/reports/ledger'])assert.throws(()=>send(token,route),error=>error.status===403);
+ assert.ok(Array.isArray(send(token,'/reports/stock')));
+ itemA=send(token,'/inventory','post',{name:'Main product',locationId:main,stock:20,price:10,cost:2});
+ itemB=send(token,'/inventory','post',{name:'Second product',locationId:other,stock:20,price:10,cost:2});
+});
+test('roles grant scoped access and members require an explicit assignment',()=>{
+ const permissions=policy.permissionDefaults(false);permissions.reports.view='all';
+ role=send(token,'/roles','post',{name:'Branch cashier',permissions});
+ assert.throws(()=>send(token,'/users','post',{name:'Unassigned',email:'unassigned@access.invalid',password:'AccessOnlyStrong123!',role:'employee'}),/at least one location/);
+ const user=send(token,'/users','post',{name:'Second cashier',email:'cashier@access.invalid',password:'AccessOnlyStrong123!',role:'employee',accessRoleId:role.id,locationIds:[other]});
+ assert.deepEqual(user.locationIds,[other]);
+ staff=send(null,'/auth/login','post',{email:user.email,password:'AccessOnlyStrong123!'}).token;
+ assert.deepEqual(send(staff,'/inventory').map(r=>r.id),[itemB.id]);
+ assert.deepEqual(send(staff,'/locations').map(r=>r.id),[other]);
+ for(const route of [`/inventory/${itemA.id}`,`/inventory/${itemA.id}/history`,`/locations/${main}/summary`])assert.throws(()=>send(staff,route),e=>e.status===404||e.status===403);
+ assert.throws(()=>send(staff,'/inventory','get',undefined,{locationId:main}),e=>e.status===404||e.status===403);
+ assert.deepEqual(send(staff,'/reports/stock').map(r=>r.id),[itemB.id]);
+ assert.throws(()=>send(staff,'/users'),e=>e.status===403);
+ assert.throws(()=>send(staff,'/roles'),e=>e.status===403);
+ assert.throws(()=>send(staff,`/inventory/${itemB.id}`,'put',{name:'Changed',locationId:other}),e=>e.status===403);
+});
+test('cross-location writes and price overrides are rejected, and sales reports stay scoped',()=>{
+ assert.throws(()=>send(staff,'/sales','post',{locationId:other,items:[{itemId:itemA.id,quantity:1}]}),e=>e.status===404||e.status===403);
+ assert.throws(()=>send(staff,'/sales','post',{locationId:other,items:[{itemId:itemB.id,quantity:1,unitPrice:1}]}),/selling prices/);
+ send(token,'/sales','post',{locationId:main,items:[{itemId:itemA.id,quantity:1}]});
+ send(staff,'/sales','post',{locationId:other,items:[{itemId:itemB.id,quantity:2}]});
+ assert.equal(send(staff,'/sales').length,1);
+ assert.equal(send(staff,'/reports/sales-trend')[0].revenue,20);
+ assert.equal(db.prepare('SELECT stock FROM inventory_items WHERE id=?').get(itemA.id).stock,19);
+ const permissions=policy.permissionDefaults(false);permissions.sales.create=false;
+ send(token,`/roles/${role.id}`,'put',{name:role.name,permissions});
+ assert.throws(()=>send(staff,'/sales','post',{locationId:other,items:[{itemId:itemB.id,quantity:1}]}),e=>e.status===403);
+ assert.throws(()=>send(token,`/roles/${role.id}`,'delete'),/Assign members/);
+});
+test('five members includes the owner; inactive members still count',()=>{
+ for(let i=0;i<3;i++)send(token,'/users','post',{name:`Member ${i}`,email:`member${i}@access.invalid`,password:'AccessOnlyStrong123!',role:'employee',locationIds:[main]});
+ assert.equal(send(token,'/users').length,5);
+ assert.throws(()=>send(token,'/users','post',{name:'Sixth',email:'six@access.invalid',password:'AccessOnlyStrong123!',locationIds:[main]}),/5 members/);
+ assert.throws(()=>send(token,`/users/${owner.user.id}`,'put',{name:'Owner',email:owner.user.email,role:'employee',locationIds:[main]}),/owner/);
+});
+test('an assigned role or location cannot come from a different business',()=>{
+ const foreign=send(null,'/auth/business-registration','post',{plan:'erp',business:{name:'Foreign'},settings:{},owner:{firstName:'Foreign',email:'foreign@access.invalid',password:'AccessOnlyStrong123!',confirmPassword:'AccessOnlyStrong123!'}});
+ const foreignRole=send(foreign.token,'/roles','post',{name:'Foreign role',permissions:policy.permissionDefaults(true)});
+ const member=send(token,'/users').find(r=>!r.is_owner);
+ assert.throws(()=>send(token,`/users/${member.id}`,'put',{...member,accessRoleId:foreignRole.id,locationIds:[other]}),/role/);
+ assert.throws(()=>send(token,`/users/${member.id}`,'put',{...member,locationIds:[foreign.locationId]}),/location|Record not found/i);
+ assert.deepEqual(send(foreign.token,'/inventory'),[]);
+});
+test.after(()=>{db.close();const target=path.resolve(dir),relative=path.relative(path.resolve(os.tmpdir()),target);assert.ok(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative)&&path.basename(target).startsWith('stockpro-access-'));fs.rmSync(target,{recursive:true,force:true});});

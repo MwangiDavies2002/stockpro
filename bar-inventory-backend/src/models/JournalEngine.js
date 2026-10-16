@@ -25,8 +25,9 @@ const JournalEngine = {
     const getTreasuryGL = async (treasuryId) => {
       if (!treasuryId) return null;
       const q = client ? client.query.bind(client) : query;
-      const { rows } = await q('SELECT linked_gl_account FROM treasury WHERE id = ? AND business_id=?', [treasuryId, currentBusinessId()]);
-      return rows.length > 0 ? rows[0].linked_gl_account : null;
+      const { rows } = await q("SELECT a.id linked_gl_account FROM treasury t JOIN chart_of_accounts a ON a.id=t.linked_gl_account AND a.business_id=t.business_id WHERE t.id=? AND t.business_id=? AND t.status='active' AND a.active=TRUE", [treasuryId,currentBusinessId()]);
+      if(!rows.length)throw Object.assign(new Error('The mapped Treasury or GL account is closed or inactive'),{status:400});
+      return rows[0].linked_gl_account;
     };
 
     switch (type) {
@@ -40,23 +41,16 @@ const JournalEngine = {
 
         treasuryId = treasuryMap[settingKey];
         const linkedGL = await getTreasuryGL(treasuryId);
-        const receivableAccount = linkedGL || map.sales_receivable;
+        const receivableAccount = linkedGL || map[settingKey] || map.payment_cash || map.sales_receivable;
         const revenueAccount = map.sales_revenue;
 
         if (revenueAccount && receivableAccount) {
-          // Calculate VAT if applicable
-          let vatAmount = 0;
-          let netAmount = amount;
-          if (map.sales_vat_output) {
-             // Assuming tax inclusive for now, or just calculate based on setting
-             // If we want to be precise, we'd need tax rate. 
-             // For now let's keep it simple or check if VAT account is mapped.
-          }
+          const tax=Number(data?.taxAmount||0),net=Number((amount-tax).toFixed(2));
+          if(tax>0&&!map.sales_vat_output)throw Object.assign(new Error('Map a VAT Output account before issuing a taxed invoice'),{status:400});
+          if(amount>0)lines.push({account_id:receivableAccount,debit:amount,description:type.replace('_',' ')});
+          if(net>0)lines.push({account_id:revenueAccount,credit:net,description:'Sales Revenue'});
+          if(tax>0)lines.push({account_id:map.sales_vat_output,credit:tax,description:'VAT Output'});
 
-          // Debit Treasury/Receivables, Credit Revenue
-          lines.push({ account_id: receivableAccount, debit: amount, description: `${type.replace('_', ' ')}` });
-          lines.push({ account_id: revenueAccount, credit: amount, description: 'Sales Revenue' });
-          
           // COGS Integration
           if (data && data.cogsAmount && map.inventory_cogs && map.inventory_asset) {
             lines.push({ account_id: map.inventory_cogs, debit: data.cogsAmount, description: 'COGS' });
@@ -83,7 +77,7 @@ const JournalEngine = {
         let settingKey = data?.settingKey || 'payment_cash';
         const treasuryId = data?.treasuryId || treasuryMap[settingKey]; 
         const linkedGL = await getTreasuryGL(treasuryId);
-        const cashAccount = linkedGL || map.sales_receivable;
+        const cashAccount = linkedGL || map[settingKey] || map.payment_cash || map.sales_receivable;
         
         if (cashAccount && map.sales_receivable) {
            // Debit Cash/Treasury, Credit Accounts Receivable (Customer Tab)
@@ -105,7 +99,7 @@ const JournalEngine = {
       case 'REFUND': {
         const treasuryId = data?.treasuryId || treasuryMap['payment_cash'];
         const linkedGL = await getTreasuryGL(treasuryId);
-        const cashAccount = linkedGL || map.sales_receivable;
+        const cashAccount = linkedGL || map.payment_cash || map.sales_receivable;
         const revenueAccount = map.sales_revenue;
 
         if (revenueAccount && cashAccount) {
@@ -134,8 +128,11 @@ const JournalEngine = {
       case 'CREDIT_SALE':
         if (map.sales_revenue && map.sales_receivable) {
           // Debit Receivables (Customer Tab), Credit Revenue
-          lines.push({ account_id: map.sales_receivable, debit: amount, description: 'Credit Sale' });
-          lines.push({ account_id: map.sales_revenue, credit: amount, description: 'Sales Revenue' });
+          const tax=Number(data?.taxAmount||0),net=Number((amount-tax).toFixed(2));
+          if(tax>0&&!map.sales_vat_output)throw Object.assign(new Error('Map a VAT Output account before issuing a taxed invoice'),{status:400});
+          if(amount>0)lines.push({account_id:map.sales_receivable,debit:amount,description:'Credit Sale'});
+          if(net>0)lines.push({account_id:map.sales_revenue,credit:net,description:'Sales Revenue'});
+          if(tax>0)lines.push({account_id:map.sales_vat_output,credit:tax,description:'VAT Output'});
 
           // COGS Integration
           if (data && data.cogsAmount && map.inventory_cogs && map.inventory_asset) {

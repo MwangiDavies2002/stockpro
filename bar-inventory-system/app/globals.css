@@ -14,11 +14,9 @@ html {
 }
 
 body {
-  background-color: #f9fafb;
-  color: #1f2937;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background-color: #eeece4;
+  color: #292e29;
+  font-family: 'Segoe UI', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -96,7 +94,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid rgb(var(--brand-ink-rgb, 53 79 67));
   outline-offset: 2px;
 }
 
@@ -120,3 +118,49 @@ textarea:focus-visible {
   body:has(.app-sidebar.md\:w-16) { padding-left: 4rem; }
 }
 @media (max-width: 767px) { body:has(.app-sidebar) { padding-left: 0; } }
+
+/* Shared paper surfaces and quiet controls. */
+:root { --background: 45 23% 92%; --foreground: 105 6% 17%; --border: 40 12% 77%; --input: 40 12% 77%; --ring: 151 20% 26%; --primary: 151 20% 26%; --primary-foreground: 45 40% 96%; --secondary: 45 17% 88%; --secondary-foreground: 105 6% 17%; --muted: 45 17% 88%; --muted-foreground: 100 5% 38%; --accent: 45 17% 88%; --accent-foreground: 105 6% 17%; --card: 45 40% 96%; --card-foreground: 105 6% 17%; --destructive: 16 40% 36%; --destructive-foreground: 45 40% 96%; --radius: 2px; }
+html { scroll-behavior: auto; }
+body { background: #eeece4; color: #292e29; }
+h1, h2, h3 { letter-spacing: -.015em; }
+h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400 !important; }
+button, input, select, textarea { border-radius: 2px; }
+button, a { transition: none !important; }
+button:not(:disabled), select { cursor: pointer; }
+input, select, textarea { background-color: #faf8f2; }
+.app-sidebar { background: #e4e1d6; border-color: #c8c5b8; }
+.app-sidebar button, .app-sidebar a { width: 100%; text-align: left; }
+.action-word { display: inline; flex-shrink: 0; font-size: .75rem; font-weight: 500; line-height: 1.25; }
+.site-footer { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 1.5rem 2rem; border-top: 1px solid #c8c5b8; font-size: .75rem; color: #5d6359; }
+.site-footer a { text-decoration: underline; text-underline-offset: 3px; }
+.skeleton-line { height: 1rem; background: #deddd3; margin: .75rem 0; }
+.skeleton-line:nth-child(even) { width: 72%; }
+.loading-sheet { padding: 2rem; border: 1px solid #c8c5b8; background: #faf8f2; }
+.fade-in, .slide-in { animation: none; }
+
+/* Dropdown direction is indicated by its native control or open content. */
+[class*="backdrop-blur"] { backdrop-filter: none; }
+[data-sonner-toast] { box-shadow: none !important; border-radius: 2px !important; background: #faf8f2 !important; color: #292e29 !important; }
+[data-sonner-toast] [data-icon] { display: none; }
+
+.theme-picker { position: relative; }
+.theme-options { position: absolute; top: calc(100% + 8px); right: 0; z-index: 100; width: 260px; color: #292e29; }
+.app-sidebar .theme-options { position: static; margin-top: 8px; width: 100%; }
+.text-brand { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.bg-brand { color: var(--brand-on, #fff); }
+.bg-brand-dark { color: var(--theme-on-700, #fff); }
+input[type="checkbox"], input[type="radio"] { accent-color: rgb(var(--brand-rgb, 53 79 67)); }
+.bg-green-500,.bg-emerald-500,.bg-blue-500,.bg-indigo-500,.bg-purple-500,.bg-violet-500,.bg-pink-500,.bg-cyan-500,.bg-teal-500,.bg-orange-500,.bg-yellow-500,.bg-lime-500,.bg-sky-500,.bg-fuchsia-500 { color: var(--theme-on-500, #fff); }
+.bg-green-600,.bg-emerald-600,.bg-blue-600,.bg-indigo-600,.bg-purple-600,.bg-violet-600,.bg-pink-600,.bg-cyan-600,.bg-teal-600,.bg-orange-600,.bg-yellow-600,.bg-lime-600,.bg-sky-600,.bg-fuchsia-600 { color: var(--theme-on-600, #fff); }
+.bg-green-700,.bg-emerald-700,.bg-blue-700,.bg-indigo-700,.bg-purple-700,.bg-violet-700,.bg-pink-700,.bg-cyan-700,.bg-teal-700,.bg-orange-700,.bg-yellow-700,.bg-lime-700,.bg-sky-700,.bg-fuchsia-700 { color: var(--theme-on-700, #fff); }
+.bg-green-800,.bg-emerald-800,.bg-blue-800,.bg-indigo-800,.bg-purple-800,.bg-violet-800,.bg-pink-800,.bg-cyan-800,.bg-teal-800,.bg-orange-800,.bg-yellow-800,.bg-lime-800,.bg-sky-800,.bg-fuchsia-800 { color: var(--theme-on-800, #fff); }
+.bg-green-900,.bg-emerald-900,.bg-blue-900,.bg-indigo-900,.bg-purple-900,.bg-violet-900,.bg-pink-900,.bg-cyan-900,.bg-teal-900,.bg-orange-900,.bg-yellow-900,.bg-lime-900,.bg-sky-900,.bg-fuchsia-900 { color: var(--theme-on-900, #fff); }
+.bg-green-950,.bg-emerald-950,.bg-blue-950,.bg-indigo-950,.bg-purple-950,.bg-violet-950,.bg-pink-950,.bg-cyan-950,.bg-teal-950,.bg-orange-950,.bg-yellow-950,.bg-lime-950,.bg-sky-950,.bg-fuchsia-950 { color: var(--theme-on-950, #fff); }
+.text-green-500,.text-emerald-500,.text-blue-500,.text-indigo-500,.text-purple-500,.text-violet-500,.text-pink-500,.text-cyan-500,.text-teal-500,.text-orange-500,.text-yellow-500,.text-lime-500,.text-sky-500,.text-fuchsia-500 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.text-green-600,.text-emerald-600,.text-blue-600,.text-indigo-600,.text-purple-600,.text-violet-600,.text-pink-600,.text-cyan-600,.text-teal-600,.text-orange-600,.text-yellow-600,.text-lime-600,.text-sky-600,.text-fuchsia-600 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.text-green-700,.text-emerald-700,.text-blue-700,.text-indigo-700,.text-purple-700,.text-violet-700,.text-pink-700,.text-cyan-700,.text-teal-700,.text-orange-700,.text-yellow-700,.text-lime-700,.text-sky-700,.text-fuchsia-700 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.text-green-800,.text-emerald-800,.text-blue-800,.text-indigo-800,.text-purple-800,.text-violet-800,.text-pink-800,.text-cyan-800,.text-teal-800,.text-orange-800,.text-yellow-800,.text-lime-800,.text-sky-800,.text-fuchsia-800 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.text-green-900,.text-emerald-900,.text-blue-900,.text-indigo-900,.text-purple-900,.text-violet-900,.text-pink-900,.text-cyan-900,.text-teal-900,.text-orange-900,.text-yellow-900,.text-lime-900,.text-sky-900,.text-fuchsia-900 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+
+:root { --brand-rgb: 53 79 67; --brand-ink-rgb: 53 79 67; --chart-accent: #354f43; --brand-on: #fff; --theme-50: 247 248 247; --theme-100: 237 239 238; --theme-200: 215 220 217; --theme-300: 178 188 184; --theme-400: 134 149 142; --theme-500: 83 105 95; --theme-600: 53 79 67; --theme-700: 45 67 57; --theme-800: 37 55 47; --theme-900: 26 40 34; --theme-950: 19 28 23; }

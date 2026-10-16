@@ -1,0 +1,2 @@
+async function migrateInventory(c){const [rows]=await c.query("SHOW COLUMNS FROM inventory_items LIKE 'brand'");if(!rows.length)await c.query('ALTER TABLE inventory_items ADD COLUMN brand VARCHAR(150) NULL');await c.query('ALTER TABLE inventory_items MODIFY COLUMN image_url MEDIUMTEXT NULL');await c.query("UPDATE inventory_items i JOIN brands b ON b.id=i.brand_id AND b.business_id=i.business_id SET i.brand=b.name WHERE i.brand IS NULL OR i.brand=''");}
+module.exports={migrateInventory};

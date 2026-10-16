@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Eye, CheckCircle, XCircle, Clock, Truck } from 'lucide-react';
+import { Plus, Eye, CheckCircle, XCircle, Clock, Truck } from '../components/TextMark';
 import Navbar from '../components/Navbar';
 import { toast } from 'sonner';
 import { inventoryApi, ordersApi, suppliersApi } from '../lib/api';
@@ -118,7 +118,7 @@ export default function OrdersPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-base font-semibold text-gray-900">Order Management</h1>
           <button onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-sm ">
             <Plus className="w-3.5 h-3.5" /> New Order
           </button>
         </div>
@@ -127,7 +127,7 @@ export default function OrdersPage() {
         <div className="flex gap-1.5 flex-wrap">
           {['all','pending','approved','delivered','cancelled'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors
+              className={`px-3 py-1.5 rounded-sm text-xs font-medium capitalize
                 ${statusFilter===s ? 'bg-brand text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
               {s}
             </button>
@@ -140,16 +140,16 @@ export default function OrdersPage() {
             const cfg = STATUS_CONFIG[s];
             const count = orders.filter(o => o.status === s).length;
             return (
-              <div key={s} className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+              <div key={s} className="bg-white border border-gray-200 rounded-sm p-4 text-center">
                 <div className="text-xl font-semibold">{count}</div>
-                <div className={`text-xs mt-1 px-2 py-0.5 rounded-full inline-block font-medium ${cfg.color}`}>{cfg.label}</div>
+                <div className={`text-xs mt-1 px-2 py-0.5 rounded-sm inline-block font-medium ${cfg.color}`}>{cfg.label}</div>
               </div>
             );
           })}
         </div>
 
         {/* Orders table */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -168,38 +168,38 @@ export default function OrdersPage() {
                   const cfg = STATUS_CONFIG[order.status];
                   const Icon = cfg.icon;
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={order.id} className="hover:bg-gray-50 ">
                       <td className="px-4 py-3 font-medium text-gray-900">ORD-{order.id}</td>
                       <td className="px-4 py-3 text-gray-700">{order.supplier}{order.transaction_type === 'opening_stock' && <span className="ml-2 text-xs text-purple-700">Opening stock</span>}</td>
                       <td className="px-4 py-3 text-gray-500">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</td>
                       <td className="px-4 py-3 font-medium">KES {order.total.toLocaleString()}</td>
                       <td className="px-4 py-3 text-gray-500">{order.date}</td>
                       <td className="px-4 py-3">
-                        <span className={`flex items-center gap-1 w-fit text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
+                        <span className={`flex items-center gap-1 w-fit text-xs px-2 py-0.5 rounded-sm font-medium ${cfg.color}`}>
                           <Icon className="w-3 h-3" />{cfg.label}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <button onClick={() => setViewOrder(order)}
-                            className="text-xs border border-gray-300 px-2 py-1 rounded-md hover:bg-gray-50 flex items-center gap-1">
+                            className="text-xs border border-gray-300 px-2 py-1 rounded-sm hover:bg-gray-50 flex items-center gap-1">
                             <Eye className="w-3 h-3" /> View
                           </button>
                           {order.status === 'pending' && (
                             <button onClick={() => updateStatus(order.id, 'approved')}
-                              className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md hover:bg-blue-100">
+                              className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-sm hover:bg-blue-100">
                               Approve
                             </button>
                           )}
                           {order.status === 'approved' && (
                             <button onClick={() => updateStatus(order.id, 'delivered')}
-                              className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-md hover:bg-green-100">
+                              className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-sm hover:bg-green-100">
                               Mark Delivered
                             </button>
                           )}
                           {order.status === 'pending' && (
                             <button onClick={() => updateStatus(order.id, 'cancelled')}
-                              className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-md hover:bg-red-100">
+                              className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-sm hover:bg-red-100">
                               Cancel
                             </button>
                           )}
@@ -220,7 +220,7 @@ export default function OrdersPage() {
       {/* View Order Modal */}
       {viewOrder && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg p-6 border border-gray-200 shadow-xl">
+          <div className="bg-white rounded-sm w-full max-w-lg p-6 border border-gray-200 ">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-semibold">Order ORD-{viewOrder.id}</h2>
               <button onClick={() => setViewOrder(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
@@ -228,11 +228,11 @@ export default function OrdersPage() {
             <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
               <div><span className="text-gray-500">Supplier:</span> <span className="font-medium">{viewOrder.supplier}</span></div>
               <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewOrder.date}</span></div>
-              <div><span className="text-gray-500">Status:</span> <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CONFIG[viewOrder.status].color}`}>{STATUS_CONFIG[viewOrder.status].label}</span></div>
+              <div><span className="text-gray-500">Status:</span> <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${STATUS_CONFIG[viewOrder.status].color}`}>{STATUS_CONFIG[viewOrder.status].label}</span></div>
               <div><span className="text-gray-500">Total:</span> <span className="font-semibold text-brand">KES {viewOrder.total.toLocaleString()}</span></div>
             </div>
-            {viewOrder.notes && <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded-lg">{viewOrder.notes}</p>}
-            <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            {viewOrder.notes && <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded-sm">{viewOrder.notes}</p>}
+            <table className="w-full text-sm border border-gray-200 rounded-sm overflow-hidden">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Item</th>
@@ -253,7 +253,7 @@ export default function OrdersPage() {
               </tbody>
             </table>
             <div className="flex justify-end mt-4">
-              <button onClick={() => setViewOrder(null)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Close</button>
+              <button onClick={() => setViewOrder(null)} className="border border-gray-300 px-4 py-2 rounded-sm text-sm hover:bg-gray-50">Close</button>
             </div>
           </div>
         </div>
@@ -262,7 +262,7 @@ export default function OrdersPage() {
       {/* New Order Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg p-6 border border-gray-200 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-sm w-full max-w-lg p-6 border border-gray-200  max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-semibold">Create Purchase Order</h2>
               <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
@@ -272,7 +272,7 @@ export default function OrdersPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">Supplier</label>
                 <select value={newOrder.transactionType}
                   onChange={e => setNewOrder(o => ({ ...o, transactionType: e.target.value as 'purchase' | 'opening_stock', supplierId: e.target.value === 'opening_stock' ? 0 : o.supplierId }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                  className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                   <option value="purchase">Purchase order</option><option value="opening_stock">Opening stock</option>
                 </select>
               </div>
@@ -280,7 +280,7 @@ export default function OrdersPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">Transaction type</label>
                 <select value={newOrder.supplierId}
                   onChange={e => setNewOrder(o => ({ ...o, supplierId: +e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                  className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                   <option value={0}>Select supplier</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>}
@@ -294,15 +294,15 @@ export default function OrdersPage() {
                 {newOrder.items.map((line, i) => (
                   <div key={i} className="grid grid-cols-3 gap-2 mb-2">
                     <select value={line.itemId} onChange={e => selectItem(i, +e.target.value)}
-                      className="col-span-3 sm:col-span-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                      className="col-span-3 sm:col-span-1 border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                       <option value={0}>Select item</option>{inventory.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                     </select>
                     <input type="number" placeholder="Qty" min={1} value={line.quantity}
                       onChange={e => updateLine(i, 'quantity', +e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                      className="border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                     <input type="number" placeholder="Unit price" min={0} value={line.unitPrice}
                       onChange={e => updateLine(i, 'unitPrice', +e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                      className="border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                   </div>
                 ))}
               </div>
@@ -310,15 +310,15 @@ export default function OrdersPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">Notes (optional)</label>
                 <textarea value={newOrder.notes} onChange={e => setNewOrder(o => ({ ...o, notes: e.target.value }))}
                   rows={2} placeholder="e.g. Monthly restock"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
               </div>
               <div className="text-sm font-medium text-right text-brand">
                 Total: KES {newOrder.items.reduce((a,l) => a + l.quantity * l.unitPrice, 0).toLocaleString()}
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button onClick={handleCreateOrder} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark disabled:opacity-60">{saving ? 'Saving...' : 'Create Order'}</button>
+              <button onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-sm text-sm hover:bg-gray-50">Cancel</button>
+              <button onClick={handleCreateOrder} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-sm text-sm hover:bg-brand-dark disabled:opacity-60">{saving ? 'Saving...' : 'Create Order'}</button>
             </div>
           </div>
         </div>

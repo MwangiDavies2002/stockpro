@@ -2,6 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/subscriptionController');
 const { authenticate, adminOnly } = require('../middleware/auth');
 router.use(authenticate);
+router.post('/quote',async(req,res,next)=>{try{res.json(await require('../utils/platformCatalog').subscriptionQuote(req.body.plan,req.body.couponCode,req.user.business_id));}catch(e){next(e);}});
 router.get('/', ctrl.getAll);
 router.get('/current', ctrl.getCurrent);
 router.post('/', ctrl.create);

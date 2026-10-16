@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { X, Globe, Plus, Trash2 } from 'lucide-react';
-import { accountsApi } from '../../lib/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Globe, Plus, Trash2 } from '../TextMark';
+import { accountsApi, treasuryApi } from '../../lib/api';
 
 interface EditAccountModalProps {
   account: any;
@@ -11,6 +11,8 @@ interface EditAccountModalProps {
 
 export default function EditAccountModal({ account, onClose, onSave }: EditAccountModalProps) {
   const [formData, setFormData] = useState({
+    opening_balance: 0,
+    payment_setting: '',
     account_name: '',
     account_number: '',
     account_type: '',
@@ -18,6 +20,11 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
     notes: '',
     details: [] as { label: string; value: string }[]
   });
+  const [glAccounts, setGlAccounts] = useState<any[]>([]);
+  const [linked, setLinked] = useState('');
+  useEffect(() => { accountsApi.getAll().then(r => setGlAccounts(r.data)).catch(() => setError('Unable to load Chart of Accounts')); setLinked(String(account?.linked_gl_account || '')); }, [account]);
+  const submitting=useRef(false);
+  const [requestId]=useState(()=>crypto.randomUUID());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -28,7 +35,7 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
       try {
         const detailsJson = typeof account.details === 'string' ? JSON.parse(account.details) : account.details;
         if (Array.isArray(detailsJson)) {
-            detailsArray = detailsJson;
+            detailsArray = detailsJson.map((detail:any)=>({...detail}));
         } else if (detailsJson && typeof detailsJson === 'object') {
             detailsArray = Object.entries(detailsJson).map(([label, value]) => ({ label, value: String(value) }));
         }
@@ -42,6 +49,8 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
       }
 
       setFormData({
+        opening_balance: 0,
+        payment_setting: '',
         account_name: account.name || account.account_name || '',
         account_number: account.account_number || '',
         account_type: account.type || account.account_type || '',
@@ -52,6 +61,8 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
     } else {
       // New account - 6 empty rows
       setFormData({
+        opening_balance: 0,
+        payment_setting: '',
         account_name: '',
         account_number: '',
         account_type: '',
@@ -70,6 +81,7 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(submitting.current)return;submitting.current=true;
     setLoading(true);
     setError('');
 
@@ -77,51 +89,52 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
       // Convert details array back to a simpler object or keep as array based on backend needs
       // The spec says "This must save as JSON."
       const detailsJson = formData.details.filter(d => d.label.trim() || d.value.trim());
-      
+
       const payload = {
-        ...formData,
+        ...formData,requestId,
+        name: formData.account_name, type: formData.account_type || 'Cash', linked_gl_account: Number(linked),
         details: detailsJson
       };
 
       if (account?.id) {
-        await accountsApi.update(account.id, payload);
+        await treasuryApi.update(account.id, payload);
       } else {
-        await accountsApi.create(payload);
+        await treasuryApi.create(payload);
       }
       onSave();
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save account');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to save account');
     } finally {
-      setLoading(false);
+      submitting.current=false;setLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div role="dialog" aria-modal="true" aria-label={account ? 'Edit Treasury account' : 'Add Treasury account'} className="bg-white rounded-sm  w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">{account ? 'Edit Account' : 'Add Account'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+          <button disabled={loading} onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            Close
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-          {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded border border-red-200 text-sm">{error}</div>}
-          
-          <div className="space-y-4">
+        <form id="treasury-account-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-sm border border-red-200 text-sm">{error}</div>}
+
+          <fieldset disabled={loading} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name:*</label>
               <input
                 type="text"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={formData.account_name}
                 onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
-                placeholder="e.g. NCBA"
+                maxLength={100} placeholder="Account name"
               />
             </div>
 
@@ -130,35 +143,38 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
               <input
                 type="text"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={formData.account_number}
                 onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                placeholder="e.g. 100107"
+                maxLength={50} placeholder="Account number"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Account Type:</label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.account_type}
-                onChange={(e) => setFormData({ ...formData, account_type: e.target.value })}
-              >
-                <option value="">Please Select</option>
-                <option value="NCBA">NCBA</option>
-                <option value="KCB Account">KCB Account</option>
-                <option value="Petty Cash">Petty Cash</option>
-                <option value="Secondary Petty Cash">Secondary Petty Cash</option>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Chart of Accounts account:*</label>
+              <select required disabled={!!account?.id} value={linked} onChange={e => setLinked(e.target.value)} className="w-full px-3 py-2 border border-gray-300">
+                <option value="">Select an existing asset account</option>
+                {glAccounts.filter(a => a.account_type === 'Assets' && (a.active||String(a.id)===linked)).map(a => <option key={a.id} value={a.id}>{[a.account_type, a.account_subtype, a.detail_type, a.account_name].filter(Boolean).join(' / ')} ({a.account_code})</option>)}
               </select>
+              <p className="text-sm text-gray-600 mt-2">Choose any active asset account you created in Chart of Accounts. Its name is up to you; Treasury will use the selected account and its ledger balance.</p>
             </div>
 
+            {!account?.id && <label className="block text-sm font-medium">Opening Treasury balance (KES)
+              <input type="number" min="0" max="999999999999.99" step="0.01" value={formData.opening_balance} onChange={e=>setFormData({...formData,opening_balance:Number(e.target.value)})} className="block w-full border p-2 mt-1"/>
+            </label>}
+            <label className="block text-sm font-medium">Treasury type<select className="block w-full border p-2 mt-1" value={formData.account_type||'Cash'} onChange={e=>setFormData({...formData,account_type:e.target.value})}>{Array.from(new Set(['Cash','Bank','Mobile Money',formData.account_type].filter(Boolean))).map(type=><option key={type}>{type}</option>)}</select></label>
+            {!account?.id && <label className="block text-sm font-medium">Payments received here
+              <select className="block w-full border p-2 mt-1" value={formData.payment_setting} onChange={e=>setFormData({...formData,payment_setting:e.target.value})}>
+                <option value="">Configure later in Posting settings</option><option value="payment_cash">Cash payments</option><option value="payment_bank">Bank payments</option><option value="payment_mobile">Mobile money payments</option>
+              </select><span className="block text-xs text-gray-600 mt-1">Assigning a method replaces its current destination. Sales revenue keeps its separate Income mapping.</span>
+            </label>}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Currency:*</label>
               <div className="relative">
                 <Globe className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <select
                   required
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   value={formData.currency}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                 >
@@ -178,15 +194,15 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
                   <div key={idx} className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="Label"
+                      className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      maxLength={120} placeholder="Label"
                       value={detail.label}
                       onChange={(e) => handleDetailChange(idx, 'label', e.target.value)}
                     />
                     <input
                       type="text"
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="Value"
+                      className="px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      maxLength={500} placeholder="Value"
                       value={detail.value}
                       onChange={(e) => handleDetailChange(idx, 'value', e.target.value)}
                     />
@@ -198,29 +214,29 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Note:</label>
               <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 rows={3}
-                placeholder="Note"
+                maxLength={4000} placeholder="Note"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               ></textarea>
             </div>
-          </div>
+          </fieldset>
         </form>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+            disabled={loading} onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-sm text-sm font-medium text-gray-700 hover:bg-gray-100 "
           >
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit" form="treasury-account-form"
             disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-6 py-2 bg-blue-600 text-white rounded-sm text-sm font-medium hover:bg-blue-700 disabled:opacity-50 "
           >
             {loading ? 'Saving...' : 'Save'}
           </button>

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import {useAccess} from './AccessBoundary';
+import {canAct} from '../lib/access';
+import { useState, useEffect } from 'react';
+import { AlertTriangle } from './TextMark';
 
 export interface InventoryItem {
   id: number;
@@ -14,6 +16,11 @@ export interface InventoryItem {
   price: number;
   sold: number;
   supplierId?: number;
+  sku?: string;
+  barcode?: string;
+  brand?: string;
+  location_id?: number;
+  location_name?: string;
   image_url?: string;
 }
 
@@ -44,12 +51,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function InventoryTable({
   items, isAdmin, onEdit, onDelete, onRestock, onAdjust, onView, onDuplicate,
 }: InventoryTableProps) {
+  const {access}=useAccess();
   const [sortKey, setSortKey] = useState<keyof InventoryItem>('name');
+  const [page,setPage]=useState(1);
+  useEffect(()=>setPage(1),[items]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
 
   function ProductActions({ item }: { item: InventoryItem }) {
-    return <select aria-label={`Actions for ${item.name}`} value="" className="max-w-40 rounded-lg border border-gray-300 bg-white p-2 text-sm" onChange={event => {
+    return <select aria-label={`Actions for ${item.name}`} value="" className="max-w-40 rounded-sm border border-gray-300 bg-white p-2 text-sm" onChange={event => {
       const action = event.target.value;
       if (action === 'view') onView?.(item);
       if (action === 'edit') onEdit(item);
@@ -60,16 +70,17 @@ export default function InventoryTable({
     }}>
       <option value="" disabled>Actions</option>
       {onView && <option value="view">View / Stock history</option>}
-      {isAdmin && <option value="edit">Edit product</option>}
-      {isAdmin && <option value="restock">Restock</option>}
-      {isAdmin && onAdjust && <option value="adjust">Adjust stock</option>}
-      {isAdmin && onDuplicate && <option value="duplicate">Duplicate product</option>}
-      {isAdmin && <option value="delete">Delete product</option>}
+      {canAct(access,'inventory','update') && <option value="edit">Edit product</option>}
+      {canAct(access,'purchases','create') && <option value="restock">Receive purchase</option>}
+      {canAct(access,'inventory','update') && onAdjust && <option value="adjust">Adjust stock</option>}
+      {canAct(access,'inventory','create') && onDuplicate && <option value="duplicate">Duplicate product</option>}
+      {canAct(access,'inventory','delete') && <option value="delete">Delete product</option>}
     </select>;
   }
 
   /** Toggle sorting key/direction for table columns. */
   function toggleSort(key: keyof InventoryItem) {
+    setPage(1);
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
   }
@@ -80,6 +91,8 @@ export default function InventoryTable({
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     return sortDir === 'asc' ? Number(av) - Number(bv) : Number(bv) - Number(av);
   });
+
+  const pages=Math.max(1,Math.ceil(sorted.length/25)),currentPage=Math.min(page,pages),pageItems=sorted.slice((currentPage-1)*25,currentPage*25);
 
   /** Small helper to render current sort direction for a column. */
   function SortIcon({ col }: { col: keyof InventoryItem }) {
@@ -97,10 +110,10 @@ export default function InventoryTable({
     const label = critical ? 'Critical' : low ? 'Low' : 'OK';
     return (
       <div className="flex items-center gap-2">
-        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full stock-bar-fill ${color}`} style={{ width: `${pct}%` }} />
+        <div className="w-16 h-1.5 bg-gray-100 rounded-sm overflow-hidden">
+          <div className={`h-full rounded-sm stock-bar-fill ${color}`} style={{ width: `${pct}%` }} />
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge} ${critical ? 'low-stock-pulse' : ''}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${badge} ${critical ? 'low-stock-pulse' : ''}`}>
           {label}
         </span>
       </div>
@@ -146,20 +159,20 @@ export default function InventoryTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {sorted.map((item) => {
+          {pageItems.map((item) => {
             const catClass = CATEGORY_COLORS[item.category] || 'bg-gray-100 text-gray-700';
             const isLow = item.stock <= item.threshold;
             return (
-              <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-red-50/30' : ''}`}>
+              <tr key={item.id} className={`hover:bg-gray-50  ${isLow ? 'bg-red-50/30' : ''}`}>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   <button type="button" onClick={() => onView?.(item)} className="text-left hover:text-brand hover:underline">
-                  {item.image_url ? <img src={item.image_url} alt="" className="inline-block w-8 h-8 rounded object-cover mr-2 align-middle" /> : null}
+                  {item.image_url ? <img src={item.image_url} alt="" className="inline-block w-8 h-8 rounded-sm object-cover mr-2 align-middle" /> : null}
                   {isLow && <AlertTriangle className="inline w-3 h-3 text-amber-500 mr-1" />}
-                  {item.name}
+                  {item.name}<span className="block text-xs font-normal text-gray-500">{item.sku}{item.location_name&&` | ${item.location_name}`}{item.brand&&` | ${item.brand}`}</span>
                   </button>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${catClass}`}>
                     {item.category}
                   </span>
                 </td>
@@ -182,15 +195,15 @@ export default function InventoryTable({
 
       {/* Mobile: stacked cards */}
       <div className="sm:hidden space-y-3">
-        {sorted.map((item) => {
+        {pageItems.map((item) => {
           const catClass = CATEGORY_COLORS[item.category] || 'bg-gray-100 text-gray-700';
           const isLow = item.stock <= item.threshold;
           return (
-            <div key={item.id} className={`bg-white border border-gray-200 rounded-lg p-3 flex items-start justify-between ${isLow ? 'ring-2 ring-amber-200' : ''}`}>
+            <div key={item.id} className={`bg-white border border-gray-200 rounded-sm p-3 flex items-start justify-between ${isLow ? 'ring-2 ring-amber-200' : ''}`}>
               <div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => onView?.(item)} className="font-medium text-gray-900 text-left hover:text-brand hover:underline">{item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded object-cover inline-block mr-2 align-middle" />}{item.name}</button>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${catClass}`}>{item.category}</span>
+                  <button type="button" onClick={() => onView?.(item)} className="font-medium text-gray-900 text-left hover:text-brand hover:underline">{item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded-sm object-cover inline-block mr-2 align-middle" />}{item.name}</button>
+                  <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${catClass}`}>{item.category}</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">{item.unit} • KES {item.price.toLocaleString()}</div>
                 <div className="mt-2 text-sm space-y-1">
@@ -204,6 +217,7 @@ export default function InventoryTable({
           );
         })}
       </div>
+      <div className="mt-4 flex justify-between items-center gap-3 text-sm"><span>{items.length} products | Page {currentPage} of {pages}</span><div className="flex gap-2"><button type="button" disabled={currentPage<=1} className="border rounded-sm px-3 py-2 disabled:opacity-50" onClick={()=>setPage(n=>n-1)}>Previous</button><button type="button" disabled={currentPage>=pages} className="border rounded-sm px-3 py-2 disabled:opacity-50" onClick={()=>setPage(n=>n+1)}>Next</button></div></div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Plus, Users as UsersIcon, Phone, X } from 'lucide-react';
+import { Plus, Users as UsersIcon, Phone, X } from '../components/TextMark';
 import Navbar from '../components/Navbar';
 import { customersApi, authApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -116,12 +116,12 @@ export default function CustomersPage() {
             <h1 className="text-base font-semibold text-gray-900">Customers</h1>
             <p className="text-xs text-gray-500 mt-0.5">Running tabs and credit accounts</p>
           </div>
-          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-lg">
+          <button onClick={() => setModalOpen(true)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-sm">
             <Plus className="w-3.5 h-3.5" /> Add Customer
           </button>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -139,10 +139,10 @@ export default function CustomersPage() {
                 {customers.map((c) => {
                   const over = Number(c.balance) > Number(c.credit_limit);
                   return (
-                    <tr key={c.id} onClick={() => openStatement(c)} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <tr key={c.id} onClick={() => openStatement(c)} className="hover:bg-gray-50 cursor-pointer ">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-green-600 text-white text-xs flex items-center justify-center font-medium">
+                          <div className="w-7 h-7 rounded-sm bg-green-600 text-white text-xs flex items-center justify-center font-medium">
                             {c.name[0]}
                           </div>
                           <span className="font-medium text-gray-900">{c.name}</span>
@@ -156,7 +156,7 @@ export default function CustomersPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500">KSh {Number(c.credit_limit).toLocaleString()}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${
                           !c.active ? 'bg-gray-100 text-gray-500' : over ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'
                         }`}>
                           {!c.active ? 'Inactive' : over ? 'Over limit' : 'Good standing'}
@@ -174,26 +174,26 @@ export default function CustomersPage() {
       {/* Add customer modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">Add Customer</h2>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <label htmlFor="customers-customer-name" className="text-xs font-medium text-gray-600 mb-1 block">Customer name</label>
+              <input id="customers-customer-name" type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Phone</label>
-              <input type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <label htmlFor="customers-customer-phone" className="text-xs font-medium text-gray-600 mb-1 block">Mobile number</label>
+              <input id="customers-customer-phone" type="text" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
-              <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <label htmlFor="customers-customer-credit" className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
+              <input id="customers-customer-credit" type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm text-sm disabled:opacity-50">
                 {saving ? 'Saving...' : 'Add Customer'}
               </button>
             </div>
@@ -204,7 +204,7 @@ export default function CustomersPage() {
       {/* Statement modal */}
       {statementCustomer && statement && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-sm max-w-lg w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{statementCustomer.name}</h2>
               <button onClick={() => { setStatementCustomer(null); setStatement(null); }}>
@@ -212,7 +212,7 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
+            <div className="bg-gray-50 rounded-sm p-3 flex items-center justify-between">
               <span className="text-sm text-gray-600">Current Balance</span>
               <span className="text-lg font-semibold text-gray-900">KSh {Number(statement.customer.balance).toLocaleString()}</span>
             </div>
@@ -220,8 +220,8 @@ export default function CustomersPage() {
             <div className="flex gap-2">
               <input type="number" placeholder="Payment amount" value={paymentAmount || ''}
                 onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <button onClick={recordPayment} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm whitespace-nowrap">
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <button onClick={recordPayment} className="px-4 py-2 bg-green-600 text-white rounded-sm text-sm whitespace-nowrap">
                 Record Payment
               </button>
             </div>

@@ -1,4 +1,5 @@
 'use client';
+import {canVisit} from './lib/access';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,12 +7,13 @@ import Cookies from 'js-cookie';
 import {
   Package, TrendingUp, AlertTriangle, CreditCard,
   ArrowUpRight, ArrowDownRight,
-} from 'lucide-react';
+} from './components/TextMark';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import Navbar from './components/Navbar';
+import LoadingSheet from './components/LoadingSheet';
 import { reportsApi, authApi } from './lib/api';
 import { toast } from 'sonner';
 
@@ -45,10 +47,10 @@ interface SizeGroup {
 }
 
 const GROUP_META: Record<string, { range: string; color: string }> = {
-  Micro:  { range: 'KES 0–50',      color: '#1D9E75' },
-  Small:  { range: 'KES 51–500',    color: '#378ADD' },
-  Medium: { range: 'KES 501–1000',  color: '#BA7517' },
-  Large:  { range: 'KES 1001+',     color: '#D85A30' },
+  Micro:  { range: 'KES 0–50',      color: 'var(--chart-accent, #354f43)' },
+  Small:  { range: 'KES 51–500',    color: 'var(--chart-accent, #354f43)' },
+  Medium: { range: 'KES 501–1000',  color: 'var(--chart-accent, #354f43)' },
+  Large:  { range: 'KES 1001+',     color: 'var(--chart-accent, #354f43)' },
 };
 
 export default function DashboardPage() {
@@ -74,7 +76,7 @@ export default function DashboardPage() {
     authApi.me()
       .then((res) => {
         setUser(res.data);
-        if (res.data.role !== 'admin') {
+        if (!canVisit(res.data.access,window.location.pathname)) {
           router.push('/pos');
         }
       })
@@ -172,15 +174,15 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
+        <header className="border-b border-gray-300 pb-5"><p className="text-sm text-gray-500 mb-2">Your business today</p><h1 className="text-3xl">Sales and stock</h1><p className="mt-2 text-sm text-gray-600">Track sales, check stock levels, and plan your next order.</p></header>
+        {loading ? <LoadingSheet label="Loading sales and stock" /> : <>
         {/* Metric cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {metrics.map(({ label, value, icon: Icon, sub, up }) => (
-            <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div key={label} className="bg-white border border-gray-200 rounded-sm p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-gray-500">{label}</span>
-                <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Icon className="w-3.5 h-3.5 text-gray-600" />
-                </div>
+
               </div>
               <div className="text-xl font-semibold text-gray-900">{loading ? '—' : value}</div>
               <div className={`flex items-center gap-1 mt-1 text-xs ${up ? 'text-green-600' : 'text-red-500'}`}>
@@ -191,33 +193,33 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-medium">Daily Sales Pace</h2><p className="text-xs text-gray-500">Target progress and revenue goal tracking</p></div><div className="flex items-center gap-2"><label className="text-xs text-gray-500">Target KES</label><input type="number" min={1} value={dailyTarget} onChange={(e) => setDailyTarget(Number(e.target.value) || 1)} className="w-28 border rounded px-2 py-1 text-sm" /></div></div>
+        <div className="bg-white border border-gray-200 rounded-sm p-5">
+          <div className="flex items-center justify-between mb-3"><div><h2 className="text-sm font-medium">Daily Sales Pace</h2><p className="text-xs text-gray-500">Target progress and revenue goal tracking</p></div><div className="flex items-center gap-2"><label className="text-xs text-gray-500">Target KES</label><input type="number" min={1} value={dailyTarget} onChange={(e) => setDailyTarget(Number(e.target.value) || 1)} className="w-28 border rounded-sm px-2 py-1 text-sm" /></div></div>
           <div className="flex justify-between text-xs mb-1"><span>Today: KES {todayRevenue.toLocaleString()}</span><span>{targetProgress}% of KES {dailyTarget.toLocaleString()}</span></div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-400 via-yellow-400 to-green-500" style={{ width: `${targetProgress}%` }} /></div>
+          <div className="h-3 bg-gray-100 rounded-sm overflow-hidden"><div className="h-full bg-brand   " style={{ width: `${targetProgress}%` }} /></div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Sales by the Hour</h2><span className="text-xs text-green-600">Last 3 days</span></div><ResponsiveContainer width="100%" height={220}><LineChart data={hourly}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="hour" tickFormatter={(v) => `${v}:00`} tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Line type="monotone" dataKey="revenue" stroke="#16a34a" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
-          <div className="bg-white border border-gray-200 rounded-xl p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Top Selling Products</h2><span className="text-xs text-green-600">Live rank</span></div><div className="space-y-2">{topSelling.map((item, i) => <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50"><span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-semibold">{i + 1}</span><div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{item.name}</div><div className="text-[11px] text-gray-500">{Number(item.units_sold).toLocaleString()} sold</div></div><span className="text-xs font-semibold text-green-700">KES {Number(item.revenue).toLocaleString()}</span></div>)}{!topSelling.length && <p className="text-sm text-gray-400">No sales yet</p>}</div></div>
+        <div className="grid grid-cols-1 gap-6">
+          <div className=" bg-white border border-gray-200 rounded-sm p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Sales by the Hour</h2><span className="text-xs text-green-600">Last 3 days</span></div><ResponsiveContainer width="100%" height={220}><LineChart data={hourly}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" /><XAxis dataKey="hour" tickFormatter={(v) => `${v}:00`} tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Line type="monotone" dataKey="revenue" stroke="var(--chart-accent, #354f43)" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
+          <div className="bg-white border border-gray-200 rounded-sm p-5"><div className="flex justify-between mb-4"><h2 className="text-sm font-medium">Top Selling Products</h2><span className="text-xs text-green-600">Live rank</span></div><div className="space-y-2">{topSelling.map((item, i) => <div key={item.id} className="flex items-center gap-2 p-2 rounded-sm bg-gray-50"><span className="w-6 h-6 rounded-sm bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-semibold">{i + 1}</span><div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{item.name}</div><div className="text-[11px] text-gray-500">{Number(item.units_sold).toLocaleString()} sold</div></div><span className="text-xs font-semibold text-green-700">KES {Number(item.revenue).toLocaleString()}</span></div>)}{!topSelling.length && <p className="text-sm text-gray-400">No sales yet</p>}</div></div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
 
           {/* Sale Size Groups */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="bg-white border border-gray-200 rounded-sm p-5">
             <h2 className="text-sm font-medium mb-4">Sale Size Groups</h2>
             <div className="grid grid-cols-4 gap-2 mb-4">
               {Object.entries(GROUP_META).map(([label, meta]) => {
                 const g = groups.find((x) => x.price_group === label);
                 return (
-                  <div key={label} className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+                  <div key={label} className="bg-gray-50 rounded-sm p-3 text-center border border-gray-100">
                     <div className="text-[10px] text-gray-400 mb-1">{meta.range}</div>
                     <div className="text-lg font-semibold" style={{ color: meta.color }}>
                       {g?.count || 0}
                     </div>
                     <div className="text-[10px] text-gray-500 mt-0.5">{label}</div>
-                    <div className="h-0.5 rounded-full mt-2" style={{ background: meta.color, opacity: 0.5 }} />
+                    <div className="h-0.5 rounded-sm mt-2" style={{ background: meta.color, opacity: 0.5 }} />
                   </div>
                 );
               })}
@@ -225,10 +227,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Low Stock */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="bg-white border border-gray-200 rounded-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium">Low Stock Alerts</h2>
-              <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium">
+              <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-sm font-medium">
                 {lowStock.length} items
               </span>
             </div>
@@ -236,13 +238,13 @@ export default function DashboardPage() {
               {lowStock.map((item) => {
                 const critical = item.stock <= Math.floor(item.threshold / 2);
                 return (
-                  <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${critical ? 'bg-red-500' : 'bg-amber-400'}`} />
+                  <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-sm bg-gray-50">
+                    <div className={`w-2 h-2 rounded-sm flex-shrink-0 ${critical ? 'bg-red-500' : 'bg-amber-400'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
                       <div className="text-xs text-gray-500">{item.stock} left · threshold: {item.threshold}</div>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${
                       critical ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'
                     }`}>
                       {critical ? 'Critical' : 'Low'}
@@ -258,10 +260,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
 
           {/* Sales trend */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="bg-white border border-gray-200 rounded-sm p-5">
             <h2 className="text-sm font-medium mb-4">Sales Trend (14 Days)</h2>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={trend}>
@@ -269,24 +271,25 @@ export default function DashboardPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, 'Revenue']} />
-                <Line type="monotone" dataKey="revenue" stroke="#16a34a" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="revenue" stroke="var(--chart-accent, #354f43)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           {/* Sales by category */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <div className="bg-white border border-gray-200 rounded-sm p-5">
             <h2 className="text-sm font-medium mb-4">Units Sold by Category (14d)</h2>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={categoryData}>
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                 <Tooltip />
-                <Bar dataKey="sold" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sold" fill="var(--chart-accent, #354f43)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
+        </>}
       </main>
     </div>
   );

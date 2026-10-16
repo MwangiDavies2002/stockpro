@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, Receipt, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Calendar, Receipt, ChevronDown, ChevronUp, Download } from '../components/TextMark';
 import Navbar from '../components/Navbar';
 import { salesApi,authApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -156,7 +156,7 @@ export default function SalesHistoryPage() {
                   value={fromDate}
                   max={toDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
               <span className="text-gray-400 text-sm">to</span>
@@ -168,7 +168,7 @@ export default function SalesHistoryPage() {
                   min={fromDate}
                   max={todayISO()}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="pl-10 pr-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
             </div>
@@ -181,14 +181,14 @@ export default function SalesHistoryPage() {
                 <button
                   key={r.label}
                   onClick={() => setQuickRange(r.days)}
-                  className="px-2.5 py-1 text-xs rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  className="px-2.5 py-1 text-xs rounded-sm border border-gray-300 text-gray-600 hover:bg-gray-50"
                 >
                   {r.label}
                 </button>
               ))}
               <button
                 onClick={exportSales}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-sm border border-gray-300 text-gray-600 hover:bg-gray-50"
               >
                 <Download className="w-3 h-3" /> Export
               </button>
@@ -198,18 +198,18 @@ export default function SalesHistoryPage() {
 
         {/* Secondary summary */}
         <div className="grid grid-cols-2 gap-4 max-w-md">
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-sm p-4">
             <div className="text-xs text-gray-500 mb-1">Sales</div>
             <div className="text-xl font-semibold text-gray-900">{filtered.length}</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="bg-white border border-gray-200 rounded-sm p-4">
             <div className="text-xs text-gray-500 mb-1">Items Sold</div>
             <div className="text-xl font-semibold text-gray-900">{totalItems}</div>
           </div>
         </div>
 
         {/* Sales list */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-green-600" />
             <h2 className="text-sm font-medium">Sales — {rangeLabel}</h2>

@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
+import {Suspense} from 'react';
+import AccessBoundary from './components/AccessBoundary';
+import ThemeProvider from './components/ThemeProvider';
 import { Toaster } from 'sonner';
 
-const inter = Inter({ subsets: ['latin'] });
+
 
 export const metadata: Metadata = {
   title: 'StockPro ',
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#16a34a',
+  themeColor: '#354f43',
 };
 
 export default function RootLayout({
@@ -27,9 +29,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        {children}
-        <Toaster position="top-right" richColors />
+      <body>
+        <ThemeProvider>
+        <Suspense fallback={<p className="p-8">Loading workspace...</p>}><AccessBoundary>{children}</AccessBoundary></Suspense>
+        <footer className="site-footer"><span>StockPro</span><a href="/terms">Terms of use</a><a href="/privacy">Privacy</a></footer>
+        <Toaster position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

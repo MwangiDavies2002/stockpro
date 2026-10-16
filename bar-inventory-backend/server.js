@@ -66,6 +66,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+app.use('/api/inventory', express.json({limit:'4mb'}));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
@@ -79,8 +80,11 @@ app.use(rateLimit({
 app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many login attempts. Try again later.' } }));
 
 /* ── Routes ────────────────────────────────────────── */
+app.use('/api/superadmin', require('./src/routes/superadmin'));
 app.use('/api/auth',      authRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/stock-transfers',require('./src/routes/stockTransfers'));
+app.use('/api/expenses',require('./src/routes/expenses'));
 app.use('/api/orders',    orderRoutes);
 app.use('/api/reports',   reportRoutes);
 app.use('/api/owner-network', require('./src/routes/ownerNetwork'));
@@ -89,6 +93,7 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/mpesa',     mpesaRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/roles', require('./src/routes/roles'));
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/locations',locationRoutes);
 app.use('/api/customers', customerRoutes);

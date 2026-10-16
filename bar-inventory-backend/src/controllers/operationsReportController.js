@@ -1,0 +1,10 @@
+const{query}=require('../config/db');const{getBusinessId}=require('../utils/tenant');const r=require('../utils/stockReport');
+async function context(req){const bid=getBusinessId(req),business=(await query('SELECT name,currency,timezone FROM businesses WHERE id=?',[bid])).rows[0],window=r.windowFor(req.query,business.timezone||'Africa/Nairobi');if(window.locationId&&!(await query('SELECT id FROM locations WHERE id=? AND business_id=?',[window.locationId,bid])).rows.length)throw Object.assign(new Error('Report location not found'),{status:404});return{bid,business,window};}
+async function stockData(req){const{bid,business,window}=await context(req);const dates=r.range(window);const [items,sales,returns,locations]=await Promise.all([
+ query('SELECT * FROM inventory_items WHERE business_id=?',[bid]),
+ query('SELECT si.* FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?',[bid,new Date(dates.since),new Date(dates.until)]),
+ query("SELECT si.* FROM sales_document_items si JOIN sales_documents s ON s.id=si.document_id WHERE s.business_id=? AND s.type='credit_note' AND s.status='issued' AND s.created_at>=? AND s.created_at<?",[bid,new Date(dates.since),new Date(dates.until)]),
+ query('SELECT id,name FROM locations WHERE business_id=?',[bid])]);return r.buildStock(business,window,items.rows,sales.rows,returns.rows,locations.rows);}
+async function stock(req,res,next){try{res.json(await stockData(req));}catch(e){next(e);}}
+async function expenses(req,res,next){try{const{bid,business,window}=await context(req);const rows=(await query('SELECT e.*,a.account_name expense_account_name,a.account_code,l.name location_name FROM expenses e JOIN chart_of_accounts a ON a.id=e.expense_account_id AND a.business_id=e.business_id JOIN locations l ON l.id=e.location_id AND l.business_id=e.business_id WHERE e.business_id=? AND ((e.expense_date>=? AND e.expense_date<=?) OR (e.reversal_date>=? AND e.reversal_date<=?))',[bid,window.start,window.end,window.start,window.end])).rows;res.json(r.buildExpenses(business,window,rows));}catch(e){next(e);}}
+module.exports={stock,expenses,context,stockData};

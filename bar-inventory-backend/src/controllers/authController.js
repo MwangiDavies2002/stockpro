@@ -1,5 +1,7 @@
 ﻿const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const {PACKAGES}=require('../utils/accessPolicy');
+const {loadAccess}=require('../utils/accessService');
 const { query, getClient } = require('../config/db');
 
 function publicBusiness(row = {}) {
@@ -76,35 +78,7 @@ async function getDefaultBusinessId() {
   return insertId;
 }
 
-async function register(req, res, next) {
-  try {
-    const { name, email, password, confirmPassword, role = 'employee', phone } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ message: 'name, email and password are required' });
-    const passwordError = validatePassword(password);
-    if (passwordError) return res.status(400).json({ message: passwordError });
-    if (confirmPassword && confirmPassword !== password) return res.status(400).json({ message: 'Passwords do not match' });
-    const existing = await query('SELECT id FROM users WHERE email=?', [email]);
-    if (existing.rows.length) return res.status(409).json({ message: 'Email already registered' });
-    if (!req.user?.business_id) {
-      return res.status(400).json({ message: 'Create a shop through business registration' });
-    }
-    const businessId = req.user.business_id;
-    const hash = await bcrypt.hash(password, 12);
-    const { insertId } = await query(
-      'INSERT INTO users (business_id,name,email,password,role,phone) VALUES (?,?,?,?,?,?)',
-      [businessId, name, email, hash, role, phone || null]
-    );
-    const { rows } = await query(
-      `SELECT u.*, b.name AS business_name, b.currency, b.timezone, b.locale, b.business_type, b.default_tax_rate, b.tax_number,
-              b.selling_price_tax_type, b.stock_accounting_method, b.default_low_stock_threshold,
-              b.feature_pos_offline, b.feature_multi_currency_sales, b.feature_barcode_scanning, b.feature_service_repair, b.financial_year_start_month
-       FROM users u LEFT JOIN businesses b ON b.id=u.business_id WHERE u.id=?`,
-      [insertId]
-    );
-    const user = rows[0];
-    res.status(201).json({ token: signToken(user), user: publicUser(user) });
-  } catch (err) { next(err); }
-}
+async function register(req,res,next){return require('./userController').create(req,res,next);}
 
 function requiredString(body, key, label = key) {
   const value = String(body[key] || '').trim();
@@ -115,6 +89,10 @@ function requiredString(body, key, label = key) {
 async function onboardBusiness(req, res, next) {
   const client = await getClient();
   try {
+    const plan=req.body.plan;
+    const catalog=require('../utils/platformCatalog');
+    if((await catalog.settings()).registrationEnabled===false)return res.status(403).json({message:'New business registration is currently closed'});
+    if(!(await catalog.getPackage(plan))?.active)return res.status(400).json({message:'Choose a valid package'});
     const b = req.body.business || {};
     const s = req.body.settings || {};
     const o = req.body.owner || {};
@@ -130,6 +108,7 @@ async function onboardBusiness(req, res, next) {
     const username = requiredString(o, 'username', 'Username');
     const email = requiredString(o, 'email', 'Email');
     const password = requiredString(o, 'password', 'Password');
+    const passwordError=validatePassword(password);if(passwordError)return res.status(400).json({message:passwordError});
     if (password !== String(o.confirmPassword || '')) return res.status(400).json({ message: 'Passwords do not match' });
     if (!/^[A-Z]{3}$/.test(currency)) return res.status(400).json({ message: 'Currency must be a 3-letter ISO code' });
     const method = String(s.stockAccountingMethod || 'weighted_average');
@@ -151,6 +130,7 @@ async function onboardBusiness(req, res, next) {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [businessName, b.startDate || null, currency, b.logoUrl || null, b.website || null, b.contactNumber || null, b.alternateContactNumber || null, country, state, city, zipCode, landmark, timezone, b.locale || 'en-KE', s.businessType || 'Retail', s.businessTypeOther || null, Number(s.defaultTaxRate || 0), s.taxNumber || null, taxType, method, Number(s.defaultLowStockThreshold || 5), !!s.featurePosOffline, !!s.featureMultiCurrencySales, s.featureBarcodeScanning !== false, !!s.featureServiceRepair, fyMonth]
     );
+    await client.query('UPDATE businesses SET registration_plan=? WHERE id=?',[plan,businessId]);
     const { insertId: locationId } = await client.query(
       'INSERT INTO locations (business_id,name,address) VALUES (?,?,?)',
       [businessId, s.defaultBusinessLocation || 'Main Branch', `${city}, ${state}`]
@@ -193,7 +173,7 @@ async function login(req, res, next) {
     if (!user.active) return res.status(403).json({ message: 'Account is inactive' });
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ message: 'Invalid credentials' });
-    res.json({ token: signToken(user), user: publicUser(user) });
+    res.json({ token: signToken(user), user: {...publicUser(user),access:await loadAccess(user)} });
   } catch (err) { next(err); }
 }
 
@@ -210,7 +190,7 @@ async function me(req, res, next) {
       [req.user.id]
     );
     if (!rows.length) return res.status(404).json({ message: 'User not found' });
-    res.json(publicUser(rows[0]));
+    res.json({...publicUser(rows[0]),access:req.user.access});
   } catch (err) { next(err); }
 }
 

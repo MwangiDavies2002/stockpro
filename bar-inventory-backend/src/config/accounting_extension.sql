@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
   parent_id       INT NULL,
   account_type    ENUM('Assets', 'Liabilities', 'Equity', 'Income', 'Expenses') NOT NULL,
   account_subtype VARCHAR(50),
-  detail_type     VARCHAR(50),
+  detail_type     VARCHAR(100),
   normal_balance  ENUM('Debit', 'Credit') NOT NULL,
   active          BOOLEAN DEFAULT TRUE,
   created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS treasury (
   current_balance   DECIMAL(15, 2) DEFAULT 0.00,
   status            VARCHAR(20) DEFAULT 'active',
   notes             TEXT,
+  details           JSON NULL,
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (linked_gl_account) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS accounting_settings (
 -- Module 5: Journal Entries
 CREATE TABLE IF NOT EXISTS journal_entries (
   id            INT AUTO_INCREMENT PRIMARY KEY,
+  entry_type    VARCHAR(20) NOT NULL DEFAULT 'system',
   posting_date  DATE NOT NULL,
   description   TEXT,
   reference     VARCHAR(100),

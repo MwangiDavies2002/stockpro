@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function AccountingNav(){return <nav aria-label="Accounting" className="flex flex-wrap gap-5 text-sm border-b pb-4"><Link href="/accounting/dashboard">Overview</Link><Link href="/accounts">Chart of Accounts</Link><Link href="/accounting/journal-entry">Journal entries</Link><Link href="/accounts/ledger">General ledger</Link><Link href="/treasury">Treasury / transfers</Link><Link href="/accounts/settings">Posting settings</Link></nav>;}

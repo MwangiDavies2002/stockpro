@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
-import { Search, X, Banknote, Smartphone, CreditCard, Trash2, WifiOff, CloudUpload, Plus, ScanLine } from 'lucide-react';
+import { Search, X, Banknote, Smartphone, CreditCard, Trash2, WifiOff, CloudUpload, Plus, ScanLine } from '../components/TextMark';
 import Navbar from '../components/Navbar';
+import {useAccess} from '../components/AccessBoundary';
+import {canAct} from '../lib/access';
 import Receipt from '../components/Receipt';
 import { inventoryApi, salesDocumentsApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi } from '../lib/api';
 import {showDone} from '../lib/feedback';
@@ -39,6 +41,7 @@ const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60
 
 export default function POSPage() {
   const router = useRouter();
+  const {access}=useAccess();
   const [user, setUser] = useState<{ id: number; business_id: number; name: string; role: string; email: string } | null>(null);
   const [locations, setLocations] = useState<Array<{id:number;name:string;active:boolean|number}>>([]);
   const [locationId,setLocationId] = useState('');
@@ -261,6 +264,7 @@ export default function POSPage() {
   }
 
   function updatePrice(id: number, price: number) {
+    if(!canAct(access,'sales','price'))return toast.error('Your role cannot change selling prices');
     if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
     checkoutRequestId.current=null;
     setCart((prev) => prev.map((l) => {
@@ -470,15 +474,15 @@ export default function POSPage() {
       <Navbar user={user} />
 
       <div className="max-w-[1600px] mx-auto px-4 pt-3 space-y-2">
-        <label className="block text-sm font-medium">Business location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>setLocationId(event.target.value)} className="ml-3 rounded-lg border border-gray-300 p-2"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
+        <label className="block text-sm font-medium">Business location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>setLocationId(event.target.value)} className="ml-3 rounded-sm border border-gray-300 p-2"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
         {!isOnline && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-800">
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-sm px-4 py-2 text-sm text-red-800">
             <WifiOff className="w-4 h-4" />
             You're offline — sales will be saved locally and synced automatically when you're back online.
           </div>
         )}
         {isOnline && pendingSales.length > 0 && (
-          <div className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+          <div className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-sm px-4 py-2 text-sm text-blue-800">
             <span className="flex items-center gap-2">
               <CloudUpload className="w-4 h-4" />
               {syncing ? 'Syncing offline sales...' : `${pendingSales.length} offline sale(s) waiting to sync`}
@@ -491,7 +495,7 @@ export default function POSPage() {
           </div>
         )}
         {shift ? (
-          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-sm">
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-sm px-4 py-2 text-sm">
             <span className="text-green-800">
               Shift open · Float: KSh {Number(shift.opening_float).toLocaleString()}
             </span>
@@ -500,7 +504,7 @@ export default function POSPage() {
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm">
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-sm px-4 py-2 text-sm">
             <span className="text-amber-800">No shift open — sales won't be tracked in cash reconciliation</span>
             <button onClick={() => setShiftModalOpen(true)} className="text-amber-700 font-medium hover:underline">
               Open Shift
@@ -511,7 +515,7 @@ export default function POSPage() {
 
       <main className="max-w-[1600px] mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
         {/* -- Left: Cart ------------------------------- */}
-        <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
+        <div className="bg-white rounded-sm border border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <h1 className="text-base font-semibold text-gray-900">New Sale</h1>
             <p className="text-xs text-gray-500 mt-0.5">{itemCount} item(s) in cart</p>
@@ -546,7 +550,7 @@ export default function POSPage() {
                       max={line.maxStock}
                       value={line.quantity}
                       onChange={(e) => updateQuantity(line.id, parseInt(e.target.value) || 1)}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
                   <div>
@@ -554,9 +558,9 @@ export default function POSPage() {
                     <input
                       type="number"
                       min={0}
-                      value={line.price}
+                      disabled={!canAct(access,'sales','price')} value={line.price}
                       onChange={(e) => updatePrice(line.id, parseFloat(e.target.value) || 0)}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="w-full px-2 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
                   <div>
@@ -584,30 +588,30 @@ export default function POSPage() {
               <button
                 onClick={() => checkout('cash')}
                 disabled={checkingOut || !cart.length}
-                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-sm"
               >
                 <Banknote className="w-4 h-4" /> Cash
               </button>
               <button
                 onClick={() => checkout('card')}
                 disabled={checkingOut || !cart.length}
-                className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-sm"
               >
                 <CreditCard className="w-4 h-4" /> Card
               </button>
               <button
                 onClick={() => checkout('mpesa')}
                 disabled={checkingOut || !cart.length}
-                className="flex items-center justify-center gap-2 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+                className="flex items-center justify-center gap-2 bg-green-800 hover:bg-green-900 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-sm"
               >
                 <Smartphone className="w-4 h-4" /> M-Pesa
               </button>
             </div>
-            <label className="block text-xs text-gray-600">M-Pesa phone number<input type="tel" placeholder="07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} disabled={checkingOut} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"/></label>
+            <label className="block text-xs text-gray-600">M-Pesa phone number<input type="tel" placeholder="07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} disabled={checkingOut} className="mt-1 w-full border rounded-sm px-3 py-2 text-sm"/></label>
             <button
               onClick={() => setCreditModalOpen(true)}
               disabled={checkingOut || !cart.length}
-              className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg"
+              className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-sm"
             >
               Credit / Tab
             </button>
@@ -628,8 +632,8 @@ export default function POSPage() {
               <ScanLine className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               <input type="text" placeholder="Scan barcode or enter SKU..." value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') scanBarcode(); }}
-                className="flex-1 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <button onClick={scanBarcode} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">Scan / Add</button>
+                className="flex-1 pl-10 pr-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <button onClick={scanBarcode} className="px-4 py-2 rounded-sm bg-gray-900 text-white text-sm">Scan / Add</button>
             </div>
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -638,7 +642,7 @@ export default function POSPage() {
                 placeholder="Search products..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
             <div className="flex gap-1.5 flex-wrap">
@@ -646,7 +650,7 @@ export default function POSPage() {
                 <button
                   key={c}
                   onClick={() => setCatFilter(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                  className={`px-3 py-1.5 rounded-sm text-xs font-medium border ${
                     catFilter === c
                       ? 'bg-green-600 text-white border-green-600'
                       : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
@@ -659,13 +663,13 @@ export default function POSPage() {
           </div>
 
           {!loading && topSellers.length > 0 && (
-            <section className="rounded-lg border border-green-200 bg-green-50 p-3" aria-label="Top selling product suggestions">
+            <section className="rounded-sm border border-green-200 bg-green-50 p-3" aria-label="Top selling product suggestions">
               <h2 className="text-sm font-semibold text-green-900">Suggested top sellers</h2>
               <p className="text-xs text-green-700 mt-1">Ranked by total units sold. Tap to add to your cart.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                 {topSellers.map((product, index) => (
                   <button key={product.id} onClick={() => addToCart(product)}
-                    className="rounded-lg border border-green-200 bg-white p-3 text-left hover:border-green-500 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
+                    className="rounded-sm border border-green-200 bg-white p-3 text-left hover:border-green-500  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
                     <span className="text-[11px] font-semibold text-green-700">#{index + 1} best seller</span>
                     <p className="text-sm font-medium text-gray-900 line-clamp-2 mt-1">{product.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{Number(product.sold).toLocaleString()} sold · {product.stock} in stock</p>
@@ -685,9 +689,9 @@ export default function POSPage() {
                   key={product.id}
                   onClick={() => addToCart(product)}
                   disabled={product.stock <= 0}
-                  className="bg-white border border-gray-200 rounded-lg p-3 text-left hover:border-green-500 hover:shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-white border border-gray-200 rounded-sm p-3 text-left hover:border-green-500  transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {product.image_url && <img src={product.image_url} alt="" className="w-full h-28 object-cover rounded-md mb-2" />}
+                  {product.image_url && <img src={product.image_url} alt="" className="w-full h-28 object-cover rounded-sm mb-2" />}
                   <p className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                   <div className="flex items-center justify-between mt-2">
@@ -713,19 +717,19 @@ export default function POSPage() {
       {/* -- Credit sale: customer picker ------------------- */}
       {ageModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">Age verification required</h2>
             <p className="text-sm text-gray-600">Confirm the customer is legally permitted to purchase alcohol before completing this sale.</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ageVerified} onChange={(e) => setAgeVerified(e.target.checked)} /> Customer is of legal drinking age</label>
-            <div className="flex gap-2"><button onClick={() => { setAgeModalOpen(false); setPendingPayment(null); }} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-              <button disabled={!ageVerified} onClick={() => { setAgeModalOpen(false); const method = pendingPayment; setPendingPayment(null); if (method) checkout(method); }} className="flex-1 bg-green-600 disabled:opacity-50 text-white rounded-lg py-2 text-sm">Verify & Continue</button></div>
+            <div className="flex gap-2"><button onClick={() => { setAgeModalOpen(false); setPendingPayment(null); }} className="flex-1 border rounded-sm py-2 text-sm">Cancel</button>
+              <button disabled={!ageVerified} onClick={() => { setAgeModalOpen(false); const method = pendingPayment; setPendingPayment(null); if (method) checkout(method); }} className="flex-1 bg-green-600 disabled:opacity-50 text-white rounded-sm py-2 text-sm">Verify & Continue</button></div>
           </div>
         </div>
       )}
 
       {creditModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sell on Credit</h2>
               <button onClick={() => { setCreditModalOpen(false); setSelectedCustomerId(null); setCustomerSearch(''); }}>
@@ -740,12 +744,12 @@ export default function POSPage() {
                   placeholder="Search customer..."
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <button
                 onClick={() => setNewCustomerModalOpen(true)}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-sm text-sm "
                 title="Add New Customer"
               >
                 <Plus className="w-4 h-4" />
@@ -760,7 +764,7 @@ export default function POSPage() {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCustomerId(c.id)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-sm border text-left ${
                         selectedCustomerId === c.id ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -789,7 +793,7 @@ export default function POSPage() {
                 setCustomerSearch('');
               }}
               disabled={!selectedCustomerId}
-              className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+              className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-sm text-sm font-medium"
             >
               Confirm Credit Sale
             </button>
@@ -801,47 +805,47 @@ export default function POSPage() {
       {/* -- Add Customer Modal ------------------- */}
       {newCustomerModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">Add New Customer</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Full Name</label>
-                <input
+                <label htmlFor="pos-customer-name" className="text-xs font-medium text-gray-600 mb-1 block">Customer name</label>
+                <input id="pos-customer-name"
                   type="text"
                   value={newCustomer.name}
                   onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Phone Number</label>
-                <input
+                <label htmlFor="pos-customer-phone" className="text-xs font-medium text-gray-600 mb-1 block">Mobile number</label>
+                <input id="pos-customer-phone"
                   type="text"
                   value={newCustomer.phone}
                   onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
-                <input
+                <label htmlFor="pos-customer-credit" className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
+                <input id="pos-customer-credit"
                   type="number"
                   value={newCustomer.creditLimit}
                   onChange={(e) => setNewCustomer({ ...newCustomer, creditLimit: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setNewCustomerModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddCustomer}
-                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium"
+                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-sm text-sm font-medium"
               >
                 Save & Select
               </button>
@@ -853,7 +857,7 @@ export default function POSPage() {
       {/* -- Shift open/close modal ----------------------- */}
       {shiftModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             {shift ? (
               <>
                 <h2 className="text-lg font-semibold">Close Shift</h2>
@@ -867,12 +871,12 @@ export default function POSPage() {
                     min={0}
                     value={closingCash}
                     onChange={(e) => setClosingCash(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-                  <button onClick={closeShift} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Close Shift</button>
+                  <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>
+                  <button onClick={closeShift} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm text-sm">Close Shift</button>
                 </div>
               </>
             ) : (
@@ -885,12 +889,12 @@ export default function POSPage() {
                     min={0}
                     value={openingFloat}
                     onChange={(e) => setOpeningFloat(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-                  <button onClick={openShift} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Open Shift</button>
+                  <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>
+                  <button onClick={openShift} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm text-sm">Open Shift</button>
                 </div>
               </>
             )}

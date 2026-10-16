@@ -1,275 +1,32 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History } from 'lucide-react';
+"use client";
+import {useEffect,useRef,useState} from 'react';
+import Link from 'next/link';
 import Navbar from '../components/Navbar';
-import { treasuryApi, authApi, accountsApi } from '../lib/api';
-import { toast } from 'sonner';
-
-export default function TreasuryPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
-  const [treasuries, setTreasuries] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Modal states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'create' | 'deposit' | 'withdraw' | 'transfer'>('create');
-  const [selectedTreasury, setSelectedTreasury] = useState<any>(null);
-  
-  const [form, setForm] = useState({
-    name: '', type: 'Cash', account_number: '', linked_gl_account: '', opening_balance: 0, notes: ''
-  });
-  const [txForm, setTxForm] = useState({
-    amount: 0, reference: '', description: '', toTreasuryId: ''
-  });
-
-  useEffect(() => {
-    const token = Cookies.get('token');
-    if (!token) { router.push('/login'); return; }
-    authApi.me().then(res => setUser(res.data)).catch(() => router.push('/login'));
-    loadData();
-  }, []);
-
-  async function loadData() {
-    setLoading(true);
-    try {
-      const [tRes, aRes] = await Promise.all([treasuryApi.getAll(), accountsApi.getAll()]);
-      setTreasuries(tRes.data);
-      setAccounts(aRes.data);
-    } catch (err) {
-      toast.error('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCreate() {
-    try {
-      await treasuryApi.create(form);
-      toast.success('Treasury account created');
-      setModalOpen(false);
-      loadData();
-    } catch (err) {
-      toast.error('Failed to create account');
-    }
-  }
-
-  async function handleTransaction() {
-    if (txForm.amount <= 0) return toast.error('Amount must be greater than 0');
-    try {
-      if (modalType === 'deposit') {
-        await treasuryApi.deposit(selectedTreasury.id, txForm);
-        toast.success('Deposit successful');
-      } else if (modalType === 'withdraw') {
-        await treasuryApi.withdraw(selectedTreasury.id, txForm);
-        toast.success('Withdrawal successful');
-      } else if (modalType === 'transfer') {
-        await treasuryApi.transfer({
-          fromTreasuryId: selectedTreasury.id,
-          toTreasuryId: Number(txForm.toTreasuryId),
-          amount: txForm.amount,
-          reference: txForm.reference,
-          description: txForm.description
-        });
-        toast.success('Transfer successful');
-      }
-      setModalOpen(false);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Transaction failed');
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar user={user} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-brand" />
-            Treasury Management
-          </h1>
-          <button
-            onClick={() => { setModalType('create'); setModalOpen(true); }}
-            className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-lg hover:bg-brand/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Account
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {treasuries.map(t => (
-              <div key={t.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-bold text-gray-900">{t.name}</h3>
-                    <p className="text-sm text-gray-500">{t.type}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {t.status}
-                  </span>
-                </div>
-                <div className="mb-6">
-                  <p className="text-sm text-gray-500">Current Balance</p>
-                  <p className="text-3xl font-bold text-gray-900">
-                    KES {Number(t.current_balance).toLocaleString()}
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => { setSelectedTreasury(t); setModalType('deposit'); setModalOpen(true); }}
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors"
-                  >
-                    <ArrowDownLeft className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">DEPOSIT</span>
-                  </button>
-                  <button
-                    onClick={() => { setSelectedTreasury(t); setModalType('withdraw'); setModalOpen(true); }}
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                  >
-                    <ArrowUpRight className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">WITHDRAW</span>
-                  </button>
-                  <button
-                    onClick={() => { setSelectedTreasury(t); setModalType('transfer'); setModalOpen(true); }}
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
-                  >
-                    <ArrowLeftRight className="w-5 h-5" />
-                    <span className="text-[10px] font-bold">TRANSFER</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4 capitalize">
-              {modalType === 'create' ? 'New Treasury Account' : `${modalType} funds`}
-            </h2>
-            
-            {modalType === 'create' ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={form.name}
-                    onChange={e => setForm({...form, name: e.target.value})}
-                    placeholder="e.g. Main Cash"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={form.type}
-                    onChange={e => setForm({...form, type: e.target.value})}
-                  >
-                    <option>Cash</option>
-                    <option>Bank</option>
-                    <option>Mobile Money</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Linked GL Account</label>
-                  <select
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={form.linked_gl_account}
-                    onChange={e => setForm({...form, linked_gl_account: e.target.value})}
-                  >
-                    <option value="">None</option>
-                    {accounts.filter(a => a.account_type === 'Assets').map(a => (
-                      <option key={a.id} value={a.id}>{a.account_code} - {a.account_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Opening Balance</label>
-                  <input
-                    type="number"
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={form.opening_balance}
-                    onChange={e => setForm({...form, opening_balance: Number(e.target.value)})}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                  <input
-                    type="number"
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={txForm.amount}
-                    onChange={e => setTxForm({...txForm, amount: Number(e.target.value)})}
-                  />
-                </div>
-                {modalType === 'transfer' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">To Treasury</label>
-                    <select
-                      className="w-full border rounded-lg px-3 py-2"
-                      value={txForm.toTreasuryId}
-                      onChange={e => setTxForm({...txForm, toTreasuryId: e.target.value})}
-                    >
-                      <option value="">Select destination</option>
-                      {treasuries.filter(t => t.id !== selectedTreasury?.id).map(t => (
-                        <option key={t.id} value={t.id}>{t.name} (KES {t.current_balance})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
-                  <input
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={txForm.reference}
-                    onChange={e => setTxForm({...txForm, reference: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    className="w-full border rounded-lg px-3 py-2"
-                    value={txForm.description}
-                    onChange={e => setTxForm({...txForm, description: e.target.value})}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={modalType === 'create' ? handleCreate : handleTransaction}
-                className="flex-1 px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+import AccountingNav from '../components/accounting/AccountingNav';
+import EditAccountModal from '../components/treasury/EditAccountModal';
+import {treasuryApi,accountsApi,settingsApi} from '../lib/api';
+import {downloadCsv} from '../lib/csv';
+import {toast} from 'sonner';
+const money=(n:any)=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const methods:Record<string,string>={payment_cash:'Cash',payment_bank:'Bank',payment_mobile:'Mobile money'};
+type Movement={kind:'deposit'|'withdraw'|'transfer';account:any;amount:string;reference:string;description:string;to:string;requestId:string;attempted:boolean};
+export default function TreasuryPage(){
+ const[rows,setRows]=useState<any[]>([]),[accounts,setAccounts]=useState<any[]>([]),[settings,setSettings]=useState<any[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const[search,setSearch]=useState(''),[status,setStatus]=useState('active'),[page,setPage]=useState(1),[size,setSize]=useState(25),[edit,setEdit]=useState<any>(undefined),[movement,setMovement]=useState<Movement|null>(null),[busy,setBusy]=useState(false),[txError,setTxError]=useState('');
+ const submitting=useRef(false);
+ async function load(){setLoading(true);try{const[t,a,s]=await Promise.all([treasuryApi.getAll(),accountsApi.getAll(),settingsApi.getAll()]);setRows(t.data);setAccounts(a.data);setSettings(s.data);setError('');}catch(e:any){setError(e.response?.data?.error||'Unable to load Treasury');}finally{setLoading(false);}}
+ useEffect(()=>{load();},[]);useEffect(()=>{setPage(1);},[search,status,size]);
+ const filtered=rows.filter(t=>(!status||t.status===status)&&[t.name,t.account_number,t.type,accounts.find(a=>a.id===t.linked_gl_account)?.account_name].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const pages=Math.max(1,Math.ceil(filtered.length/size)),current=Math.min(page,pages),shown=filtered.slice((current-1)*size,current*size);
+ const destinations=(t:any)=>settings.filter(s=>methods[s.setting_key]&&(Number(s.treasury_id)===t.id||!s.treasury_id&&Number(s.account_id)===t.linked_gl_account)).map(s=>methods[s.setting_key]).join(', ');
+ function open(kind:Movement['kind'],account:any){setTxError('');setMovement({kind,account,amount:'',reference:'',description:'',to:'',requestId:crypto.randomUUID(),attempted:false});}
+ async function changeStatus(t:any){if(submitting.current)return;submitting.current=true;setBusy(true);try{await treasuryApi.update(t.id,{status:t.status==='active'?'closed':'active'});toast.success(t.status==='active'?'Account closed':'Account reopened');await load();}catch(e:any){toast.error(e.response?.data?.error||'Unable to change account status');}finally{submitting.current=false;setBusy(false);}}
+ async function submit(e:React.FormEvent){e.preventDefault();if(!movement||submitting.current)return;const m=movement;submitting.current=true;setBusy(true);setTxError('');setMovement({...m,attempted:true});try{const data={amount:Number(m.amount),reference:m.reference,description:m.description,requestId:m.requestId};if(m.kind==='transfer')await treasuryApi.transfer({...data,fromTreasuryId:m.account.id,toTreasuryId:Number(m.to)});else if(m.kind==='deposit')await treasuryApi.deposit(m.account.id,data);else await treasuryApi.withdraw(m.account.id,data);toast.success('Treasury transaction posted');setMovement(null);await load();}catch(e:any){setTxError((e.response?.data?.error||'The result could not be confirmed.')+' Retry submits the same request safely.');}finally{submitting.current=false;setBusy(false);}}
+ function csv(){downloadCsv('treasury-accounts.csv',[['Name','Number','Type','Linked account','Receipt methods','Status','Balance (KES)'],...filtered.map(t=>[t.name,t.account_number,t.type,accounts.find(a=>a.id===t.linked_gl_account)?.account_name,destinations(t),t.status,t.current_balance])]);}
+ return <div className="min-h-screen"><Navbar/><main className="max-w-7xl mx-auto p-6 space-y-6"><AccountingNav/><header className="flex justify-between items-center gap-4"><div><h1 className="text-3xl">Treasury</h1><p className="text-sm mt-2 text-gray-600">Account balances come from the linked ledger. Receipt destinations are set by your payment mappings.</p></div><button className="bg-brand text-white px-4 py-2" onClick={()=>setEdit(null)}>Add account</button></header>
+ {error&&<p role="alert" className="border p-3">{error}</p>}<div className="flex flex-wrap gap-3 items-end"><label className="text-sm">Search<input className="block border p-2 mt-1" value={search} onChange={e=>setSearch(e.target.value)}/></label><label className="text-sm">Status<select className="block border p-2 mt-1" value={status} onChange={e=>setStatus(e.target.value)}><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="closed">Closed</option></select></label><button onClick={load} className="p-2 underline">Refresh</button><button onClick={csv} disabled={loading||!filtered.length} className="p-2 underline">Export CSV</button></div>
+ {loading?<p role="status">Loading accounts...</p>:<><div className="overflow-x-auto border bg-white"><table className="w-full text-sm text-left"><thead><tr className="border-b">{['Name / number','Type','Linked ledger account','Receives payments','Status','Balance (KES)','Actions'].map(h=><th className="p-3" key={h}>{h}</th>)}</tr></thead><tbody>{shown.map(t=><tr key={t.id} className="border-b"><td className="p-3">{t.name}<span className="block text-xs text-gray-600">{t.account_number||'-'}</span></td><td>{t.type}</td><td>{accounts.find(a=>a.id===t.linked_gl_account)?.account_name||'Unlinked'}</td><td>{destinations(t)||'-'}</td><td>{t.status}</td><td>{money(t.current_balance)}</td><td className="p-3"><div className="flex flex-wrap gap-3"><button onClick={()=>setEdit(t)} className="underline">Edit</button><Link className="underline" href={'/treasury/book?id='+t.id}>Account book</Link><button disabled={busy||t.status!=='active'} onClick={()=>open('deposit',t)} className="underline disabled:opacity-40">Deposit</button><button disabled={busy||t.status!=='active'} onClick={()=>open('withdraw',t)} className="underline disabled:opacity-40">Withdraw</button><button disabled={busy||t.status!=='active'||!rows.some(r=>r.id!==t.id&&r.status==='active')} onClick={()=>open('transfer',t)} className="underline disabled:opacity-40">Transfer</button><button disabled={busy} onClick={()=>changeStatus(t)} className="underline">{t.status==='active'?'Close':'Reopen'}</button></div></td></tr>)}</tbody></table>{!shown.length&&<p className="p-4">No accounts match these filters.</p>}</div><footer className="flex flex-wrap justify-between gap-3 text-sm"><label>Show <select className="border p-1" value={size} onChange={e=>setSize(Number(e.target.value))}>{[25,50,100].map(n=><option key={n}>{n}</option>)}</select> entries</label><span>{filtered.length} accounts / KES {money(filtered.reduce((sum,t)=>sum+Number(t.current_balance),0))}</span><div className="space-x-3"><button disabled={current<=1} onClick={()=>setPage(current-1)}>Previous</button><span>{current} / {pages}</span><button disabled={current>=pages} onClick={()=>setPage(current+1)}>Next</button></div></footer></>}
+ {edit!==undefined&&<EditAccountModal account={edit} onClose={()=>setEdit(undefined)} onSave={load}/>}
+ {movement&&<div className="fixed inset-0 bg-black/50 z-50 p-4 flex items-center justify-center"><section role="dialog" aria-modal="true" aria-label="Treasury movement" className="bg-white p-6 w-full max-w-lg max-h-[90vh] overflow-auto space-y-4"><h2 className="text-2xl capitalize">{movement.kind} / {movement.account.name}</h2><p className="text-sm text-gray-600">{movement.kind==='transfer'?'Transfer between your Treasury accounts.':'These deposits and withdrawals use your Opening Balance Equity mapping. Record customer receipts through sales and payments.'}</p>{txError&&<p role="alert" className="border p-3">{txError}</p>}<form onSubmit={submit} className="space-y-4"><fieldset disabled={busy||movement.attempted} className="space-y-4"><label className="block text-sm">Amount (KES)<input className="block w-full border p-2 mt-1" type="number" min="0.01" max="999999999999.99" step="0.01" required value={movement.amount} onChange={e=>setMovement({...movement,amount:e.target.value})}/></label>{movement.kind==='transfer'&&<label className="block text-sm">Destination<select className="block w-full border p-2 mt-1" required value={movement.to} onChange={e=>setMovement({...movement,to:e.target.value})}><option value="">Select an active account</option>{rows.filter(t=>t.status==='active'&&t.id!==movement.account.id).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>}<label className="block text-sm">Reference<input className="block w-full border p-2 mt-1" maxLength={100} value={movement.reference} onChange={e=>setMovement({...movement,reference:e.target.value})}/></label><label className="block text-sm">Description<textarea className="block w-full border p-2 mt-1" maxLength={200} value={movement.description} onChange={e=>setMovement({...movement,description:e.target.value})}/></label></fieldset><div className="flex justify-end gap-3"><button type="button" disabled={busy} className="border px-4 py-2" onClick={()=>setMovement(null)}>Cancel</button><button disabled={busy} className="bg-brand text-white px-4 py-2">{busy?'Posting...':movement.attempted?'Retry same request':'Post transaction'}</button></div></form></section></div>}
+ </main></div>;
 }

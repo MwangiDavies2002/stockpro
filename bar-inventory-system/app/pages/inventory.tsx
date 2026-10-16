@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Search, Plus, Download } from 'lucide-react';
+import { Search, Plus, Download } from '../components/TextMark';
 import Navbar from '../components/Navbar';
 import InventoryTable from '../components/InventoryTable';
 import type { InventoryItem } from '../components/InventoryTable';
@@ -168,11 +168,11 @@ export default function InventoryPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-base font-semibold text-gray-900">Inventory Management</h1>
           <div className="flex gap-2">
-            <button type="button" onClick={exportExcel} className="flex items-center gap-2 border border-gray-300 bg-white text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
+            <button type="button" onClick={exportExcel} className="flex items-center gap-2 border border-gray-300 bg-white text-sm px-3 py-2 rounded-sm hover:bg-gray-50  text-gray-700">
               <Download className="w-3.5 h-3.5" /> Export
             </button>
             {isAdmin && (
-              <button type="button" onClick={openAdd} className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-lg transition-colors">
+              <button type="button" onClick={openAdd} className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white text-sm px-3 py-2 rounded-sm ">
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
             )}
@@ -187,7 +187,7 @@ export default function InventoryPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search items..."
-              className="border border-gray-300 bg-white rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand w-52"
+              className="border border-gray-300 bg-white rounded-sm pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand w-52"
             />
           </div>
           <div className="flex gap-1.5 flex-wrap">
@@ -196,7 +196,7 @@ export default function InventoryPage() {
                 key={c}
                 type="button"
                 onClick={() => setCatFilter(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors
+                className={`px-3 py-1.5 rounded-sm text-xs font-medium
                   ${catFilter === c ? 'bg-brand text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}
               >
                 {c}
@@ -207,22 +207,22 @@ export default function InventoryPage() {
 
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="bg-white border border-gray-200 rounded-sm p-3">
             <div className="text-lg font-semibold">{items.length}</div>
             <div className="text-xs text-gray-500">Total Items</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="bg-white border border-gray-200 rounded-sm p-3">
             <div className="text-lg font-semibold text-amber-600">{items.filter(i=>i.stock<=i.threshold).length}</div>
             <div className="text-xs text-gray-500">Low Stock</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
+          <div className="bg-white border border-gray-200 rounded-sm p-3">
             <div className="text-lg font-semibold">{items.reduce((a,i)=>a+i.sold,0).toLocaleString()}</div>
             <div className="text-xs text-gray-500">Total Sold</div>
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
           <InventoryTable
             items={filtered}
             isAdmin={isAdmin}
@@ -238,7 +238,7 @@ export default function InventoryPage() {
       {/* Add/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl border border-gray-200">
+          <div className="bg-white rounded-sm w-full max-w-md p-6  border border-gray-200">
             <div className="flex items-start justify-between mb-5">
               <h2 className="text-base font-semibold">{editItem ? 'Edit Item' : 'Add Inventory Item'}</h2>
               <button type="button" onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-700">
@@ -254,49 +254,49 @@ export default function InventoryPage() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Tusker Lager"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="select-category" className="block text-xs font-medium text-gray-700 mb-1">Category</label>
                   <select id="select-category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                     {CATEGORIES.slice(1).map((c) => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label htmlFor="select-unit" className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
                   <select id="select-unit" value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
                     {UNITS.map((u) => <option key={u}>{u}</option>)}
                   </select>
                 </div>
                 <div>
                   <label htmlFor="input-stock" className="block text-xs font-medium text-gray-700 mb-1">Stock Qty</label>
                   <input id="input-stock" type="number" min={0} value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: +e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div>
                   <label htmlFor="input-threshold" className="block text-xs font-medium text-gray-700 mb-1">Low-Stock Threshold</label>
                   <input id="input-threshold" type="number" min={1} value={form.threshold} onChange={(e) => setForm((f) => ({ ...f, threshold: +e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div className="col-span-2">
                   <label htmlFor="input-cost" className="block text-xs font-medium text-gray-700 mb-1">Cost (KES)</label>
                   <input id="input-cost" type="number" min={0} value={form.cost} onChange={(e) => setForm((f) => ({ ...f, cost: +e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 <div className="col-span-2">
                   <label htmlFor="input-price" className="block text-xs font-medium text-gray-700 mb-1">Price (KES)</label>
                   <input id="input-price" type="number" min={0} value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: +e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                    className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-5">
-              <button type="button" onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button type="button" onClick={handleSave} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark disabled:opacity-60">
+              <button type="button" onClick={() => setModalOpen(false)} className="border border-gray-300 px-4 py-2 rounded-sm text-sm hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={handleSave} disabled={saving} className="bg-brand text-white px-4 py-2 rounded-sm text-sm hover:bg-brand-dark disabled:opacity-60">
                 {saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Item'}
               </button>
             </div>
@@ -307,7 +307,7 @@ export default function InventoryPage() {
       {/* Restock Modal */}
       {restockItem && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-sm w-full max-w-sm p-6 border border-gray-200">
             <div className="flex items-start justify-between mb-1">
               <h2 className="text-base font-semibold">Restock Item</h2>
               <button type="button" onClick={() => setRestockItem(null)} className="text-gray-400 hover:text-gray-700">
@@ -317,10 +317,10 @@ export default function InventoryPage() {
             <p className="text-sm text-gray-500 mb-4">{restockItem.name} — current stock: {restockItem.stock}</p>
             <label htmlFor="restock-qty" className="block text-xs font-medium text-gray-700 mb-1">Quantity to add</label>
             <input id="restock-qty" type="number" min={1} value={restockQty} onChange={(e) => setRestockQty(+e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4" />
+              className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand mb-4" />
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => setRestockItem(null)} className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button type="button" onClick={handleRestock} className="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-brand-dark">Confirm Restock</button>
+              <button type="button" onClick={() => setRestockItem(null)} className="border border-gray-300 px-4 py-2 rounded-sm text-sm hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={handleRestock} className="bg-brand text-white px-4 py-2 rounded-sm text-sm hover:bg-brand-dark">Confirm Restock</button>
             </div>
           </div>
         </div>

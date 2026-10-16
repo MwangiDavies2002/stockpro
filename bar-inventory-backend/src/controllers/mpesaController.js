@@ -6,6 +6,7 @@ const fail=message=>{throw Object.assign(new Error(message),{status:400});};
 const group=amount=>amount<=50?'Micro':amount<=500?'Small':amount<=1000?'Medium':'Large';
 async function settleVerified(payment){
   if(!payment.verified_at||!payment.mpesa_receipt)fail('Only verified payments can be recovered');
+  if(payment.purpose==='subscription')return payment.reference_id;
   if(payment.reference_id||!payment.payload_json)return payment.reference_id;
   const sale=typeof payment.payload_json==='string'?JSON.parse(payment.payload_json):payment.payload_json;
   const{rows:[actor]}=await query('SELECT id,business_id,role,name FROM users WHERE id=? AND business_id=?',[payment.created_by,payment.business_id]);
@@ -22,13 +23,14 @@ async function stkPush(req,res,next){try{
   const businessId=getBusinessId(req),purpose=req.body.purpose||'sale',referenceId=Number(req.body.referenceId)||null;
   if(!['sale','subscription'].includes(purpose))fail('Invalid payment purpose');
   if(referenceId){const table=purpose==='subscription'?'subscriptions':'sales_documents';const{rows}=await query(`SELECT * FROM ${table} WHERE id=? AND business_id=?`,[referenceId,businessId]);if(!rows.length)fail('Payment reference does not belong to your shop');}
-  if(purpose==='subscription'){const prices={basic:1000,growth:5000,erp:30000};if(!prices[req.body.plan]||prices[req.body.plan]!==amount)fail('Subscription amount must match the selected plan');}
+  let subscriptionPricing=null;
+  if(purpose==='subscription'){subscriptionPricing=await require('../utils/platformCatalog').subscriptionQuote(req.body.plan,req.body.couponCode,businessId);if(subscriptionPricing.amount!==amount)fail('Subscription amount must match the package and coupon');}
   const sale=req.body.sale;
   if(sale){if(purpose!=='sale'||sale.type!=='pos'||!Array.isArray(sale.items)||!sale.items.length)fail('Invalid sale payment request');const location=await query('SELECT id FROM locations WHERE id=? AND business_id=?',[sale.locationId,businessId]);if(!location.rows.length)fail('Sale location must belong to your shop');let expected=0;for(const line of sale.items){const{rows:[item]}=await query('SELECT id,stock FROM inventory_items WHERE id=? AND business_id=? AND location_id=?',[line.itemId,businessId,sale.locationId]);if(!item||item.stock<line.quantity)fail('Sale item is unavailable');expected+=require('../utils/salesMath').calculateSalesLine(line).lineTotal;}if(Number(expected.toFixed(2))!==amount)fail('Payment amount must match the sale total');}
   const client=await getClient();try{await client.query('BEGIN');
     const result=await once(client,businessId,'mpesa-stk',req.body.requestId||sale?.requestId,async()=>{
       const data=await provider.initiate({phone,amount,reference:`SP${businessId}`});
-      await client.query('INSERT INTO mpesa_payments(business_id,transaction_id,phone,amount,price_group,status,purpose,reference_id,payload_json,created_by) VALUES (?,?,?,?,?,\'pending\',?,?,?,?)',[businessId,data.CheckoutRequestID,phone,amount,group(amount),purpose,referenceId,sale?JSON.stringify(sale):null,req.user.id]);
+      await client.query('INSERT INTO mpesa_payments(business_id,transaction_id,phone,amount,price_group,status,purpose,reference_id,payload_json,created_by) VALUES (?,?,?,?,?,\'pending\',?,?,?,?)',[businessId,data.CheckoutRequestID,phone,amount,group(amount),purpose,referenceId,sale?JSON.stringify(sale):subscriptionPricing?JSON.stringify({kind:'subscription',quote:subscriptionPricing}):null,req.user.id]);
       return{checkoutRequestId:data.CheckoutRequestID,message:'Payment request sent; awaiting verified confirmation'};
     });await client.query('COMMIT');res.json(result);
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}

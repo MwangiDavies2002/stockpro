@@ -8,10 +8,15 @@ const source = fs.readFileSync(path.join(__dirname, '../bar-inventory-system/app
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const helper = { exports: {} };
 new Function('exports', compiled)(helper.exports);
-const { mapInventoryImportRow } = helper.exports;
+const { mapInventoryImportRow, isInventoryTemplatePlaceholder } = helper.exports;
+assert.equal(isInventoryTemplatePlaceholder({'Product Name':'', 'Barcode Type':'C128','Manage Stock?':1,'Alert quantity':5,'Product Type':'single','Opening Stock':0}),true);
+assert.equal(isInventoryTemplatePlaceholder({'Product Name':'MPESA product','Opening Stock':0}),false);
+assert.equal(isInventoryTemplatePlaceholder({'SKU':'ABC'}),false);
 const expected = { name: 'Test', category: 'Parts', unit: 'Pieces', sku: 'ABC', stock: 10, threshold: 0, cost: 12.5, price: 20 };
 assert.deepEqual(mapInventoryImportRow({ ' NAME ': 'Test', CATEGORY: 'Parts', UNIT: 'Pieces', 'SKU (Leave blank to auto generate sku)': 'ABC', 'OPENING STOCK': 10, 'ALERT QUANTITY': 0, 'PURCHASE PRICE (Including tax)': 12.5, 'SELLING PRICE': 20 }), expected);
 assert.deepEqual(mapInventoryImportRow(expected), expected);
+assert.equal(mapInventoryImportRow({'Product Name':'Part',Brand:'Maker',Barcode:'000123'}).brand,'Maker');
+assert.equal(mapInventoryImportRow({'Product Name':'Part',Brand:'Maker',Barcode:'000123'}).barcode,'000123');
 assert.equal(mapInventoryImportRow({ 'Product Name': 'Test', 'Purchase Price (Including Tax)': '', 'Purchase Price (Excluding Tax)': 15 }).cost, 15);
 
 let items = [expected, { ...expected, name: 'No category', category: '', sku: 'NO-CATEGORY' }];

@@ -1,39 +1,6 @@
 const { query, getClient } = require('../config/db');
-const { sendLowStockAlert } = require('../utils/notifications');
 const JournalEngine = require('../models/JournalEngine');
 const { getBusinessId } = require('../utils/tenant');
-
-function badRequest(message) { return Object.assign(new Error(message), { status: 400 }); }
-function generateSku() { return `SKU-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`; }
-function validateNumbers(body) {
-  for (const key of ['stock', 'threshold', 'cost', 'price']) {
-    const value = Number(body[key] ?? (key === 'threshold' ? 5 : 0));
-    if (!Number.isFinite(value) || value < 0 || (['stock', 'threshold'].includes(key) && !Number.isInteger(value)) || (['cost', 'price'].includes(key) && value > 99999999.99)) throw badRequest('Purchase price, selling price and quantities must be valid non-negative values');
-  }
-}
-
-async function resolveReferences(body, businessId = 1) {
-  const locationId = Number(body.locationId || body.location_id || 1);
-  if (!Number.isInteger(locationId) || locationId <= 0) throw badRequest('Business location is required');
-  const refs = { locationId, category: String(body.category || '').trim(), unit: String(body.unit || '').trim(), brand: String(body.brand || '').trim(), categoryId: body.categoryId || null, unitId: body.unitId || null, brandId: body.brandId || null };
-
-  const lookups = [
-    ['categoryId', 'categories', 'category'],
-    ['unitId', 'units', 'unit'],
-    ['brandId', 'brands', 'brand'],
-  ];
-  for (const [idKey, table, textKey] of lookups) {
-    if (!refs[idKey]) continue;
-    const id = Number(refs[idKey]);
-    if (!Number.isInteger(id) || id <= 0) throw badRequest(`${textKey} is invalid`);
-    const { rows } = await query(`SELECT id, name FROM ${table} WHERE id=? AND location_id=? AND business_id=?`, [id, locationId, businessId]);
-    if (!rows.length) throw badRequest(`${textKey} must belong to the selected business location`);
-    refs[idKey] = id;
-    refs[textKey] = rows[0].name;
-  }
-  if (!refs.unit) refs.unit = 'Unit';
-  return refs;
-}
 
 /* GET /api/inventory */
 /**
@@ -75,7 +42,7 @@ async function getLowStock(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const { rows } = await query(
-      'SELECT i.*, s.name AS supplier_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id AND s.business_id=i.business_id WHERE i.id=? AND i.business_id=?',
+      'SELECT i.*, s.name AS supplier_name,l.name AS location_name FROM inventory_items i LEFT JOIN suppliers s ON s.id=i.supplier_id AND s.business_id=i.business_id LEFT JOIN locations l ON l.id=i.location_id AND l.business_id=i.business_id WHERE i.id=? AND i.business_id=?',
       [req.params.id, getBusinessId(req)]
     );
     if (!rows.length) return res.status(404).json({ message: 'Item not found' });
@@ -102,89 +69,14 @@ async function getHistory(req, res, next) {
 /**
  * Create a new inventory item. Required: `name`. Category is optional.
  */
-async function create(req, res, next) {
-  try {
-    validateNumbers(req.body);
-    const { name, stock, threshold, cost, price, supplierId, sku, barcode, imageUrl } = req.body;
-    if (!String(name || '').trim()) return res.status(400).json({ message: 'name is required' });
-    const refs = await resolveReferences(req.body, getBusinessId(req));
-    const { insertId } = await query(
-      'INSERT INTO inventory_items (business_id,name,category,unit,stock,threshold,cost,price,supplier_id,location_id,sku,barcode,image_url,category_id,unit_id,brand_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [getBusinessId(req), String(name).trim(), refs.category, refs.unit || 'Pieces', stock ?? 0, threshold ?? 5, cost ?? 0, price ?? 0, supplierId || null, refs.locationId, sku?.trim() || generateSku(), barcode?.trim() || null, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId]
-    );
-    const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
-    res.status(201).json(rows[0]);
-  } catch (err) { next(err); }
-}
-
-/* PUT /api/inventory/:id */
-/**
- * Update an existing inventory item by ID.
- */
-async function update(req, res, next) {
-  try {
-    validateNumbers(req.body);
-    const { name, stock, threshold, cost, price, supplierId, imageUrl } = req.body;
-    const refs = await resolveReferences(req.body, getBusinessId(req));
-    const { rowCount } = await query(
-      `UPDATE inventory_items
-       SET name=?,category=?,unit=?,stock=?,threshold=?,cost=?,price=?,supplier_id=?,location_id=?,image_url=?,category_id=?,unit_id=?,brand_id=?,updated_at=NOW()
-       WHERE id=? AND business_id=?`,
-      [String(name || '').trim(), refs.category, refs.unit, stock, threshold, cost || 0, price, supplierId || null, refs.locationId, imageUrl || null, refs.categoryId, refs.unitId, refs.brandId, req.params.id, getBusinessId(req)]
-    );
-    if (!rowCount) return res.status(404).json({ message: 'Item not found' });
-    const { rows } = await query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-    res.json(rows[0]);
-  } catch (err) { next(err); }
-}
-
-/* DELETE /api/inventory/:id */
-/**
- * Delete an inventory item by ID.
- */
-async function remove(req, res, next) {
-  try {
-    const { rowCount } = await query('DELETE FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-    if (!rowCount) return res.status(404).json({ message: 'Item not found' });
-    res.json({ message: 'Item deleted' });
-  } catch (err) { next(err); }
-}
+const {create,update,remove}=require('../services/inventoryCatalog');
 
 /* PATCH /api/inventory/:id/restock */
 /**
  * Increase stock for an item by `quantity`.
  * Uses a dedicated connection so BEGIN/COMMIT/ROLLBACK are atomic.
  */
-async function restock(req, res, next) {
-  const client = await getClient();
-  try {
-    const { quantity, note } = req.body;
-    if (!quantity || quantity < 1) return res.status(400).json({ message: 'quantity must be >= 1' });
-
-    const check = await client.query('SELECT stock, threshold, name FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-    if (!check.rows.length) return res.status(404).json({ message: 'Item not found' });
-    const beforeStock = check.rows[0].stock;
-
-    await client.query('BEGIN');
-    await client.query(
-      'UPDATE inventory_items SET stock=stock+?,updated_at=NOW() WHERE id=? AND business_id=?',
-      [quantity, req.params.id, getBusinessId(req)]
-    );
-    const { rows: [item] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-
-    await client.query(
-      'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
-      [req.params.id, 'restock', quantity, beforeStock, item.stock, req.user?.id || null, note || 'Stock restocked']
-    );
-    await client.query('COMMIT');
-    res.json(item);
-  } catch (err) {
-    await client.query('ROLLBACK');
-    next(err);
-  } finally {
-    client.release();
-  }
-}
+async function restock(req,res){res.status(400).json({message:'Receive supplier stock through Purchases. Use stock correction for a physical-count difference.'});}
 
 /* PATCH /api/inventory/:id/adjustment
  * Post-launch correction only. Opening stock and purchases must use their own workflows.
@@ -195,9 +87,12 @@ async function adjustStock(req, res, next) {
     const quantity = Number(req.body.quantity);
     const reason = String(req.body.reason || '').trim();
     if (!Number.isInteger(quantity) || quantity === 0) return res.status(400).json({ message: 'quantity must be a non-zero whole number' });
-    if (reason.length < 5) return res.status(400).json({ message: 'A correction reason of at least 5 characters is required' });
+    if (reason.length < 5 || reason.length > 255) return res.status(400).json({ message: 'A correction reason of at least 5 characters is required' });
 
     await client.query('BEGIN');
+    await client.query('SELECT id FROM businesses WHERE id=? FOR UPDATE',[getBusinessId(req)]);
+    require('../utils/treasuryPolicy').requestKey(req.body.requestId);
+    if(req.body.requestId){const previous=(await client.query('SELECT result_json FROM operation_requests WHERE business_id=? AND operation=? AND request_key=? FOR UPDATE',[getBusinessId(req),`inventory-adjust-${req.params.id}`,req.body.requestId])).rows[0];if(previous?.result_json){await client.query('COMMIT');return res.json({...JSON.parse(typeof previous.result_json==='string'?previous.result_json:JSON.stringify(previous.result_json)),replayed:true});}}
     const { rows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE', [req.params.id, getBusinessId(req)]);
     if (!rows.length) throw new Error('Item not found');
     const item = rows[0];
@@ -205,9 +100,11 @@ async function adjustStock(req, res, next) {
     const afterStock = beforeStock + quantity;
     if (afterStock < 0) throw new Error('Adjustment would make stock negative');
 
+    if(Math.abs(quantity)>2147483647||afterStock>2147483647)throw new Error('Quantity exceeds the supported stock range');
     const amount = Math.abs(quantity) * Number(item.cost || 0);
     if (amount > 0) {
-      const journalId = await JournalEngine.generate('STOCK_ADJUSTMENT', amount, `ADJ-${item.id}-${Date.now()}`, `Stock correction: ${item.name} â€” ${reason}`, client, { quantity });
+      await require('../utils/accountingDefaults').ensureMappings([{key:'inventory_asset',code:'1200',name:'Inventory Asset',type:'Assets',normal:'Debit'},{key:'inventory_adjustment',code:'5200',name:'Inventory Adjustment',type:'Expenses',normal:'Debit'}],client);
+      const journalId = await JournalEngine.generate('STOCK_ADJUSTMENT', amount, `ADJ-${item.id}-${Date.now()}`, `Stock correction: ${item.name} / ${reason}`, client, { quantity });
       if (!journalId) throw new Error('Set up Inventory Asset and Inventory Adjustment accounts before posting a stock adjustment');
     }
 
@@ -217,6 +114,7 @@ async function adjustStock(req, res, next) {
       [item.id, 'adjustment', quantity, beforeStock, afterStock, req.user?.id || null, reason]
     );
     const { rows: updatedRows } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [item.id, getBusinessId(req)]);
+    if(req.body.requestId)await client.query('INSERT INTO operation_requests(business_id,operation,request_key,result_json) VALUES (?,?,?,?)',[getBusinessId(req),`inventory-adjust-${item.id}`,req.body.requestId,JSON.stringify(updatedRows[0])]);
     await client.query('COMMIT');
     res.json(updatedRows[0]);
   } catch (err) {
@@ -233,54 +131,7 @@ async function adjustStock(req, res, next) {
  * Record a sale for an item: decrease stock, create a sale record, and log inventory movement.
  * Uses a dedicated connection so BEGIN/COMMIT/ROLLBACK are atomic.
  */
-async function sell(req, res, next) {
-  const client = await getClient();
-  try {
-    const quantity = Number(req.body.quantity || 1);
-    if (!Number.isInteger(quantity) || quantity < 1) return res.status(400).json({ message: 'quantity must be a positive integer' });
-
-    const check = await client.query('SELECT stock, threshold, name, price, cost FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-    if (!check.rows.length) return res.status(404).json({ message: 'Item not found' });
-    const item = check.rows[0];
-    if (item.stock < quantity) return res.status(400).json({ message: 'Insufficient stock' });
-
-    await client.query('BEGIN');
-    const total = (item.price || 0) * quantity;
-    const { insertId: saleId } = await client.query(
-      'INSERT INTO sales (business_id,total,created_by,notes) VALUES (?,?,?,?)',
-      [getBusinessId(req), total, req.user?.id || null, req.body.note || 'Sale recorded']
-    );
-    const { rows: [sale] } = await client.query('SELECT * FROM sales WHERE id=? AND business_id=?', [saleId, getBusinessId(req)]);
-
-    await client.query(
-      'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price, unit_cost, net_revenue) VALUES (?,?,?,?,?,?,?)',
-      [sale.id, req.params.id, item.name, quantity, item.price || 0, item.cost, total]
-    );
-
-    await client.query(
-      'UPDATE inventory_items SET stock=stock-?,sold=sold+?,updated_at=NOW() WHERE id=? AND business_id=?',
-      [quantity, quantity, req.params.id, getBusinessId(req)]
-    );
-    const { rows: [updatedItem] } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
-
-    await client.query(
-      'INSERT INTO inventory_stock_log (item_id, change_type, qty_change, before_stock, after_stock, user_id, note) VALUES (?,?,?,?,?,?,?)',
-      [req.params.id, 'sale', quantity, item.stock, updatedItem.stock, req.user?.id || null, req.body.note || 'Sale transaction']
-    );
-
-    await client.query('COMMIT');
-    if (updatedItem.stock <= updatedItem.threshold) {
-      await sendLowStockAlert(updatedItem).catch(() => {});
-    }
-
-    res.json({ sale, item: updatedItem });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    next(err);
-  } finally {
-    client.release();
-  }
-}
+async function sell(req,res,next){try{require('../utils/accessPolicy').assertAccess(req.user.access,'/sales','post',req.body);}catch(e){return next(e);}req.body={items:[{itemId:Number(req.params.id),quantity:req.body.quantity??1}],paymentMethod:'cash',note:req.body.note};return require('./salesController').create(req,res,next);}
 
 /* POST /api/inventory/import */
 /**

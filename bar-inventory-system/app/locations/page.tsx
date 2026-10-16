@@ -1,10 +1,12 @@
 'use client';
+import {canVisit} from '../lib/access';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Plus, MapPin, Edit2, Trash2, TrendingUp, Package, AlertTriangle } from 'lucide-react';
+import { Plus, MapPin, Edit2, Trash2, TrendingUp, Package, AlertTriangle } from '../components/TextMark';
 import Navbar from '../components/Navbar';
+import {useAccess} from '../components/AccessBoundary';
 import { locationsApi, authApi, treasuryApi } from '../lib/api';
 import { toast } from 'sonner';
 
@@ -26,6 +28,7 @@ const EMPTY = { name: '', address: '', invoiceSchemePos:'Default', invoiceLayout
 
 export default function LocationsPage() {
   const router = useRouter();
+  const {access}=useAccess();
   const [user, setUser] = useState<{ name: string; role: string; email: string } | null>(null);
 
   const [locations, setLocations] = useState<Location[]>([]);
@@ -43,7 +46,7 @@ export default function LocationsPage() {
     authApi.me()
       .then((res) => {
         setUser(res.data);
-        if (res.data.role !== 'admin') router.push('/pos');
+        if (!canVisit(res.data.access,window.location.pathname)) router.push('/pos');
       })
       .catch(() => { Cookies.remove('token'); router.push('/login'); });
   }, []);
@@ -124,9 +127,9 @@ export default function LocationsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Locations</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Manage your branches / outlets</p>
+            <p className="text-xs text-gray-500 mt-0.5">{locations.length} of {access?.plan.maxLocations??'unlimited'} locations in your package</p>
           </div>
-          <button onClick={openAdd} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-lg">
+          <button disabled={!access?.owner||(access.plan.maxLocations!==null&&locations.length>=access.plan.maxLocations)} onClick={openAdd} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-sm">
             <Plus className="w-3.5 h-3.5" /> Add Location
           </button>
         </div>
@@ -138,7 +141,7 @@ export default function LocationsPage() {
             {locations.map((loc) => {
               const s = summaries[loc.id];
               return (
-                <div key={loc.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                <div key={loc.id} className="bg-white border border-gray-200 rounded-sm p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-green-600" />
@@ -148,11 +151,11 @@ export default function LocationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(loc)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400">
+                      <button disabled={!access?.owner} onClick={() => openEdit(loc)} className="p-1.5 rounded-sm hover:bg-gray-100 text-gray-400">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      {loc.id !== 1 && (
-                        <button onClick={() => handleDelete(loc.id)} className="p-1.5 rounded-md hover:bg-red-50 text-red-400">
+                      {access?.owner && loc.id !== 1 && (
+                        <button onClick={() => handleDelete(loc.id)} className="p-1.5 rounded-sm hover:bg-red-50 text-red-400">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
@@ -161,17 +164,17 @@ export default function LocationsPage() {
 
                   {s && (
                     <div className="grid grid-cols-3 gap-2 mt-4">
-                      <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                      <div className="bg-gray-50 rounded-sm p-2.5 text-center">
                         <Package className="w-3.5 h-3.5 text-gray-400 mx-auto mb-1" />
                         <p className="text-sm font-semibold">{s.totalProducts}</p>
                         <p className="text-[10px] text-gray-500">Products</p>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                      <div className="bg-gray-50 rounded-sm p-2.5 text-center">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
                         <p className="text-sm font-semibold">{s.lowStockCount}</p>
                         <p className="text-[10px] text-gray-500">Low Stock</p>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                      <div className="bg-gray-50 rounded-sm p-2.5 text-center">
                         <TrendingUp className="w-3.5 h-3.5 text-green-600 mx-auto mb-1" />
                         <p className="text-sm font-semibold">KSh {(s.revenue30d / 1000).toFixed(1)}k</p>
                         <p className="text-[10px] text-gray-500">Revenue 30d</p>
@@ -187,28 +190,28 @@ export default function LocationsPage() {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 space-y-4">
+          <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">{editLoc ? 'Edit Location' : 'Add Location'}</h2>
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
               <input type="text" placeholder="e.g. Westlands Branch" value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div className="grid grid-cols-2 gap-3 border-t pt-3">
-              {([['invoiceSchemePos','POS invoice scheme'],['invoiceLayoutPos','POS invoice layout'],['invoiceSchemeSale','Sales invoice scheme'],['invoiceLayoutSale','Sales invoice layout']] as const).map(([key,label]) => <label key={key} className="text-xs font-medium text-gray-600">{label}<select value={(form as any)[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="mt-1 w-full rounded-lg border px-2 py-2"><option>Default</option></select></label>)}
-              <label className="text-xs font-medium text-gray-600">Type<select value={form.locationType} onChange={e => setForm({ ...form, locationType: e.target.value })} className="mt-1 w-full rounded-lg border px-2 py-2"><option value="selling">Selling</option><option value="both">Selling & purchasing</option></select></label>
+              {([['invoiceSchemePos','POS invoice scheme'],['invoiceLayoutPos','POS invoice layout'],['invoiceSchemeSale','Sales invoice scheme'],['invoiceLayoutSale','Sales invoice layout']] as const).map(([key,label]) => <label key={key} className="text-xs font-medium text-gray-600">{label}<select value={(form as any)[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="mt-1 w-full rounded-sm border px-2 py-2"><option>Default</option></select></label>)}
+              <label className="text-xs font-medium text-gray-600">Type<select value={form.locationType} onChange={e => setForm({ ...form, locationType: e.target.value })} className="mt-1 w-full rounded-sm border px-2 py-2"><option value="selling">Selling</option><option value="both">Selling & purchasing</option></select></label>
             </div>
-            <div className="border-t pt-3"><p className="mb-2 text-sm font-semibold">Payment options and default treasury accounts</p>{Object.keys(form.paymentOptions).map(method => <label key={method} className="mb-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={!!(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.checked ? ((treasuries[0]?.id || '') as any) : '' } })}/><span className="w-28">{method}</span><select value={(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.value } })} className="flex-1 rounded border px-2 py-1"><option value="">Select treasury account</option>{treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>)}</div>
+            <div className="border-t pt-3"><p className="mb-2 text-sm font-semibold">Payment options and default treasury accounts</p>{Object.keys(form.paymentOptions).map(method => <label key={method} className="mb-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={!!(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.checked ? ((treasuries[0]?.id || '') as any) : '' } })}/><span className="w-28">{method}</span><select value={(form.paymentOptions as any)[method]} onChange={e => setForm({ ...form, paymentOptions: { ...form.paymentOptions, [method]: e.target.value } })} className="flex-1 rounded-sm border px-2 py-1"><option value="">Select treasury account</option>{treasuries.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>)}</div>
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Address (optional)</label>
               <input type="text" placeholder="e.g. Waiyaki Way, Nairobi" value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm disabled:opacity-50">
+              <button onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm text-sm disabled:opacity-50">
                 {saving ? 'Saving...' : editLoc ? 'Save Changes' : 'Add Location'}
               </button>
             </div>

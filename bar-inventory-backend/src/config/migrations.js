@@ -42,5 +42,18 @@ async function migrate(connection) {
   await step('006-shift-sale-boundary',async()=>{
     await add('shifts','sales_start_id','BIGINT NULL');
   });
+  await step('007-packages-roles-locations',()=>require('./accessMigration').migrateAccess(connection));
+
+  await step('008-platform-superadmin',()=>require('./platformMigration').migratePlatform(connection));
+
+  await step('009-themes-business-creation',()=>require('./platformMigration').migratePlatform(connection));
+  await step('010-accounting-detail-length',()=>require('./accountingDetailMigration').migrateAccountingDetails(connection));
+  await step('011-opening-journal-policy',()=>require('./journalMigration').migrateJournals(connection));
+  await step('012-treasury-details',()=>require('./treasuryMigration').migrateTreasury(connection));
+  await step('013-sales-document-workflow',()=>require('./salesWorkflowMigration').migrateSalesWorkflow(connection));
+  await step('014-purchase-payables',()=>require('./purchaseWorkflowMigration').migratePurchases(connection));
+  await step('015-inventory-catalog-integrity',()=>require('./inventoryMigration').migrateInventory(connection));
+  await step('016-stock-transfers-expenses',()=>require('./operationsMigration').migrateOperations(connection));
+
 }
 module.exports = { migrate };

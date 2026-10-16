@@ -1,0 +1,1 @@
+require('dotenv').config();const{db}=require('./src/config/db');(async()=>{const c=await db.getConnection();try{await require('./src/config/operationsMigration').migrateOperations(c);console.log('Transfer and expense schema ready');}finally{c.release();await db.end();}})().catch(e=>{console.error(e.message);process.exitCode=1;});

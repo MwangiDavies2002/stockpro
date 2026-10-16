@@ -1,46 +1,27 @@
 const {getClient}=require('../config/db');
 const {getBusinessId}=require('../utils/tenant');
 const {once}=require('../utils/idempotency');
-const crypto=require('node:crypto');
+const p=require('../utils/inventoryPolicy');
 async function bulkImport(req,res,next){
-  const {items,requestId}=req.body;
-  if(!Array.isArray(items)||!items.length) return res.status(400).json({message:'No items to import'});
-  const client=await getClient();
-  try{
-    const businessId=getBusinessId(req);
-    const locations=await client.query('SELECT id FROM locations WHERE business_id=? AND active=TRUE ORDER BY id',[businessId]);
-    const locationId=Number(req.body.locationId||locations.rows[0]?.id);
-    if(!locations.rows.some(row=>row.id===locationId))return res.status(400).json({message:'Choose an active location belonging to your shop'});
-    await client.query('BEGIN');
-    const result=await once(client,businessId,'inventory-import',requestId,async()=>{
-      const created=[],errors=[],pending=[],existing=(await client.query('SELECT sku FROM inventory_items WHERE business_id=? AND location_id=?',[businessId,locationId])).rows;
-      const skus=new Set(existing.map(row=>row.sku).filter(Boolean)); let skippedCount=0;
-      items.forEach((row,index)=>{
-        const number=index+2;
-        try{
-          const name=String(row.name||'').trim(),category=String(row.category||'').trim(),unit=String(row.unit||'Pieces').trim();
-          const sku=String(row.sku||'').trim()||`SKU-${crypto.randomUUID()}`;
-          if(!name)throw new Error('name is required');
-          if(name.length>150||category.length>512||unit.length>30||sku.length>100)throw new Error('Name, category, unit or SKU exceeds the allowed length');
-          const values=['stock','threshold','cost','price'].map(key=>Number(row[key]??(key==='threshold'?5:0)));
-          if(values.some(value=>!Number.isFinite(value)||value<0)||!Number.isInteger(values[0])||!Number.isInteger(values[1])||values[2]>99999999.99||values[3]>99999999.99)throw new Error('Stock, threshold, cost and price must be valid non-negative values');
-          if(skus.has(sku)){skippedCount++;return;} skus.add(sku);
-          pending.push({row:number,name,sku,values:[businessId,name,category,unit,...values,row.supplierId||null,sku,locationId]});
-        }catch(error){errors.push({row:number,name:row.name||'(blank)',message:error.message});}
-      });
-      const insert='INSERT INTO inventory_items(business_id,name,category,unit,stock,threshold,cost,price,supplier_id,sku,location_id) VALUES ';
-      for(let index=0;index<pending.length;index+=100){
-        const batch=pending.slice(index,index+100);
-        try{
-          await client.query(insert+batch.map(()=>'(?,?,?,?,?,?,?,?,?,?,?)').join(','),batch.flatMap(row=>row.values));
-          for(const row of batch)created.push({row:row.row,name:row.name,sku:row.sku});
-        }catch(error){
-          for(const row of batch){try{const result=await client.query(insert+'(?,?,?,?,?,?,?,?,?,?,?)',row.values);created.push({row:row.row,id:result.insertId,name:row.name});}catch(failure){errors.push({row:row.row,name:row.name,message:failure.message});}}
-        }
-      }
-      return {createdCount:created.length,errorCount:errors.length,skippedCount,locationId,created,errors};
-    });
-    await client.query('COMMIT');res.status(result.errorCount===items.length?400:201).json(result);
-  }catch(error){await client.query('ROLLBACK');next(error);}finally{client.release();}
+ const {items,requestId}=req.body;if(!Array.isArray(items)||!items.length||items.length>20000)return res.status(400).json({message:'Import between 1 and 20,000 products at a time'});
+ const c=await getClient(),bid=getBusinessId(req);try{
+ await c.query('BEGIN');await c.query('SELECT id FROM businesses WHERE id=? FOR UPDATE',[bid]);require('../utils/treasuryPolicy').requestKey(requestId);
+ const locations=(await c.query('SELECT id FROM locations WHERE business_id=? AND active=TRUE ORDER BY id',[bid])).rows,locationId=Number(req.body.locationId||locations[0]?.id);if(!locations.some(l=>l.id===locationId))p.fail('Choose an active location belonging to your shop');
+ const result=await once(c,bid,'inventory-import',requestId,async()=>{
+  const existing=(await c.query('SELECT sku,barcode FROM inventory_items WHERE business_id=? AND location_id=?',[bid,locationId])).rows,skus=new Set(existing.map(r=>String(r.sku||'').toLowerCase()).filter(Boolean)),barcodes=new Set(existing.map(r=>String(r.barcode||'').toLowerCase()).filter(Boolean)),refs={};
+  for(const table of ['categories','units','brands'])refs[table]=(await c.query(`SELECT * FROM ${table} WHERE business_id=? AND location_id=?`,[bid,locationId])).rows;
+  const suppliers=new Set((await c.query('SELECT id FROM suppliers WHERE business_id=?',[bid])).rows.map(s=>s.id)),pending=[],created=[],errors=[];let skippedCount=0;
+  for(const[index,row]of items.entries()){try{const data=p.normalize({...row,locationId},null,locationId);if(skus.has(data.sku.toLowerCase())){skippedCount++;continue;}if(data.barcode&&barcodes.has(data.barcode.toLowerCase()))p.fail('Barcode already exists at this location');
+   if(data.supplier_id&&!suppliers.has(data.supplier_id))p.fail('Supplier must belong to your business');
+   for(const[column,table,field]of [['category_id','categories','category'],['unit_id','units','unit'],['brand_id','brands','brand']]){const matches=refs[table].filter(r=>data[column]?r.id===data[column]:r.name.toLowerCase()===data[field].toLowerCase());if(data[column]&&!matches.length)p.fail(field+' must belong to the selected location');if(matches.length===1){data[column]=matches[0].id;data[field]=matches[0].name;if(table==='units'&&matches[0].allow_decimal)p.fail('Choose a whole stock unit');}}
+   skus.add(data.sku.toLowerCase());if(data.barcode)barcodes.add(data.barcode.toLowerCase());pending.push({row:index+2,data});
+  }catch(e){errors.push({row:index+2,name:row?.name||'(blank)',message:e.message});}}
+  const fields=['business_id','name','category','unit','brand','stock','threshold','cost','price','supplier_id','sku','barcode','image_url','location_id','category_id','unit_id','brand_id'];const insert='INSERT INTO inventory_items('+fields.join(',')+') VALUES ';
+  const values=r=>fields.map(f=>f==='business_id'?bid:r.data[f]);const added=[];
+  for(let index=0;index<pending.length;index+=100){const batch=pending.slice(index,index+100);try{await c.query(insert+batch.map(()=>`(${fields.map(()=>'?').join(',')})`).join(','),batch.flatMap(values));added.push(...batch);}catch(e){for(const row of batch){try{await c.query(insert+`(${fields.map(()=>'?').join(',')})`,values(row));added.push(row);}catch(failure){errors.push({row:row.row,name:row.data.name,message:failure.message});}}}}
+  for(let i=0;i<added.length;i+=100){const batch=added.slice(i,i+100),rows=(await c.query(`SELECT id,sku,stock FROM inventory_items WHERE business_id=? AND location_id=? AND sku IN (${batch.map(()=>'?').join(',')})`,[bid,locationId,...batch.map(r=>r.data.sku)])).rows;const stock=rows.filter(r=>Number(r.stock)>0);if(stock.length)await c.query('INSERT INTO inventory_stock_log(item_id,change_type,qty_change,before_stock,after_stock,user_id,note) VALUES '+stock.map(()=>"(?,'opening_stock',?,0,?,?,?)").join(','),stock.flatMap(r=>[r.id,r.stock,r.stock,req.user.id,'Imported initial quantity; opening journal is recorded separately']));for(const row of batch)created.push({row:row.row,id:rows.find(r=>r.sku===row.data.sku)?.id,name:row.data.name,sku:row.data.sku});}
+  return{createdCount:created.length,errorCount:errors.length,skippedCount,locationId,created,errors};
+ });await c.query('COMMIT');res.status(!result.createdCount&&result.errorCount>0?400:201).json(result);
+ }catch(e){await c.query('ROLLBACK');next(e);}finally{c.release();}
 }
 module.exports={bulkImport};

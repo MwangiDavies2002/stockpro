@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { BookText, FileText, Calendar } from 'lucide-react';
+import { BookText, FileText, Calendar } from '../../components/TextMark';
 import Navbar from '../../components/Navbar';
+import AccountingNav from '../../components/accounting/AccountingNav';
 import { reportsApi, authApi } from '../../lib/api';
 import { toast } from 'sonner';
 
@@ -38,6 +39,7 @@ export default function LedgerPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6"><AccountingNav/></div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <BookText className="w-6 h-6 text-brand" />
@@ -48,16 +50,16 @@ export default function LedgerPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
+            <div className="animate-spin rounded-sm h-8 w-8 border-b-2 border-brand" />
           </div>
         ) : entries.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-500">
+          <div className="bg-white rounded-sm  border border-gray-200 p-12 text-center text-gray-500">
             No journal entries found.
           </div>
         ) : (
           <div className="space-y-6">
             {entries.map((je) => (
-              <div key={je.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div key={je.id} className="bg-white rounded-sm  border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 text-sm font-medium text-gray-900">

@@ -5,6 +5,8 @@
 // EXCEPT: query() is now async and returns a Promise — any call site that
 // wasn't already using `await query(...)` must add `await`.
 
+const {currentUser}=require('../utils/tenant');
+const {scopeSelect}=require('../utils/accessPolicy');
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
@@ -16,11 +18,14 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   decimalNumbers: true,
+  timezone: 'Z',
   // Managed MySQL providers commonly require TLS in production.
   ssl: process.env.DB_SSL === 'true'
     ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
     : undefined,
 });
+// Store, compare and decode subscription and support-session times in UTC.
+pool.on('connection', connection => connection.query("SET time_zone = '+00:00'"));
 
 /**
  * Run a query against MySQL.
@@ -32,7 +37,7 @@ const pool = mysql.createPool({
  */
 async function query(text, params = []) {
   // Convert Postgres-style $1, $2... placeholders to MySQL ? placeholders
-  const sql = text.includes('$') ? text.replace(/\$\d+/g, '?') : text;
+  const sql = scopeSelect(text.includes('$') ? text.replace(/\$\d+/g, '?') : text,currentUser());
 
   try {
     // Using query() instead of execute(): execute() uses MySQL's prepared
@@ -68,7 +73,7 @@ async function getClient() {
   const conn = await pool.getConnection();
   return {
     query: async (text, params = []) => {
-      const sql = text.includes('$') ? text.replace(/\$\d+/g, '?') : text;
+      const sql = scopeSelect(text.includes('$') ? text.replace(/\$\d+/g, '?') : text,currentUser());
       const [result] = await conn.query(sql, params);
       if (Array.isArray(result)) {
         return { rows: result, rowCount: result.length };

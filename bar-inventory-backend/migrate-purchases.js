@@ -1,6 +1,5 @@
 require('dotenv').config();
 const { query, db } = require('./src/config/db');
-const { ensurePurchaseAccountingMappings } = require('./src/utils/accountingDefaults');
 
 async function migrate() {
   const columns = {
@@ -27,8 +26,9 @@ async function migrate() {
     }
   }
   await query('ALTER TABLE order_items MODIFY COLUMN unit_price DECIMAL(15,4) NOT NULL');
-  await ensurePurchaseAccountingMappings();
-  console.log('Purchase schema ready.');
+  const connection=await db.getConnection();
+  try { await require('./src/config/purchaseWorkflowMigration').migratePurchases(connection); } finally { connection.release(); }
+  console.log('Purchase and payable workflow schema is ready.');
 }
 if (require.main === module) migrate().catch(e => { console.error(e.message); process.exitCode = 1; }).finally(() => db.end());
 module.exports = migrate;

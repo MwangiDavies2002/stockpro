@@ -5,7 +5,7 @@ const { calculateLine } = require('../src/utils/purchaseMath');
 const database = require('../src/config/db');
 const {runForBusiness}=require('../src/utils/tenant');
 let connection, controller, inventory, suppliers, referenceData;
-const tables = ['chart_of_accounts', 'units', 'categories', 'brands', 'inventory_items', 'orders', 'order_items', 'suppliers', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
+const tables = ['sale_items','sales_document_items','purchase_events','purchase_payments','operation_requests','businesses','users','treasury','treasury_transactions','chart_of_accounts', 'units', 'categories', 'brands', 'inventory_items', 'orders', 'order_items', 'suppliers', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
 const run = async (sql, params = []) => {
   const [result] = await connection.query(sql.replace(/\$\d+/g, '?').replace(new RegExp('\\b(' + tables.join('|') + ')\\b', 'g'), 'test_purchase_$1'), params);
   return { rows: Array.isArray(result) ? result : [], insertId: result.insertId, rowCount: result.affectedRows };
@@ -29,6 +29,8 @@ before(async () => {
 after(async () => { if (connection) { await connection.rollback(); connection.release(); } await database.db.end(); });
 beforeEach(async () => {
   for (const table of tables) await run(`DELETE FROM ${table}`);
+  await run("INSERT INTO businesses(id,name,currency,country,state,city,zip_code,landmark,timezone) VALUES (1,'Purchase test','KES','Kenya','Nairobi','Nairobi','00100','Test','Africa/Nairobi')");
+  await run("INSERT INTO users(id,business_id,name,email,password,role,active) VALUES (1,1,'Test buyer','buyer@test.invalid','unused','admin',TRUE)");
   await run("INSERT INTO suppliers (id,business_id,name) VALUES (1,1,'Test supplier')");
   await run("INSERT INTO locations (id,business_id,name) VALUES (1,1,'Test location'),(2,1,'Other location')");
   await run("INSERT INTO inventory_items (id,business_id,name,category,unit,stock,cost,price,location_id,sku,barcode) VALUES (1,1,'Test lager','Beers','Bottles',10,50,90,1,'SKU-TEST','123456789'),(2,1,'Other item','Beers','Bottles',2,10,20,2,'OTHER','987654321')");
@@ -96,7 +98,7 @@ test('pending purchase receives once through status transitions', async () => {
   await invoke(controller.updateStatus, { status: 'approved' }, { id: result.id });
   await invoke(controller.updateStatus, { status: 'delivered' }, { id: result.id });
   const repeated = await invoke(controller.updateStatus, { status: 'delivered' }, { id: result.id });
-  assert.equal(repeated.code, 400);
+  assert.equal(repeated.code, 200);assert.equal(repeated.result.replayed,true);
   assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock, 12);
 });
 test('missing purchase accounting settings are mapped before receipt', async () => {
@@ -156,3 +158,14 @@ test('reference data is location scoped and can back product creation', async ()
 });
 
 
+
+test('expense items do not change stock and capitalized tax reconciles to inventory cost',async()=>{
+ const data=payload();data.items[0].accountType='expense';await invoke(controller.create,data);assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock,10);
+});
+test('recoverable input tax and shipping are posted separately and stock cost reconciles',async()=>{
+ const data={...payload(),taxTreatment:'recoverable',shippingCost:20,otherCost:5};const result=(await invoke(controller.create,data)).result;assert.equal(Number(result.total),233.8);const item=(await run('SELECT stock,cost FROM inventory_items WHERE id=1')).rows[0];assert.equal(item.stock,12);assert.ok(Math.abs(Number(item.cost)-700/12)<0.005);
+ const journal=(await run('SELECT SUM(debit) debit,SUM(credit) credit FROM journal_entry_lines')).rows[0];assert.equal(Number(journal.debit),233.8);assert.equal(Number(journal.credit),233.8);
+ const inventory=(await run('SELECT SUM(debit) amount FROM journal_entry_lines WHERE account_id=1')).rows[0];assert.equal(Number(inventory.amount),200);
+});
+
+test('small shipping amounts allocate exactly without negative stock costs',()=>{const p=require('../src/utils/purchasePolicy'),lines=p.lines([1,2,3,4].map(itemId=>({itemId,quantity:1,costBeforeDiscount:0})));const post=p.posting({shipping_cost:0.02},lines);assert.equal(post.asset,0.02);assert.equal(post.total,0.02);assert.ok(Object.values(post.costs).every(n=>n>=0));assert.equal(Object.values(post.costs).reduce((n,v)=>n+v,0),0.02);});

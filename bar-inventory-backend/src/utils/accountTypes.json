@@ -1,0 +1,121 @@
+{
+  "Assets": {
+    "Accounts Receivable (A/R)": [
+      "Accounts Receivable (A/R)"
+    ],
+    "Current assets": [
+      "Inventory",
+      "Prepaid expenses",
+      "Other current assets"
+    ],
+    "Cash and cash equivalents": [
+      "Cash",
+      "Bank",
+      "Mobile money",
+      "Petty cash",
+      "Cash equivalents"
+    ],
+    "Fixed assets": [
+      "Buildings",
+      "Equipment",
+      "Furniture",
+      "Vehicles",
+      "Accumulated depreciation"
+    ],
+    "Non-current assets": [
+      "Long-term investments",
+      "Intangible assets",
+      "Other non-current assets"
+    ]
+  },
+  "Expenses": {
+    "Cost of sales": [
+      "Cost of labour - COS",
+      "Equipment rental - COS",
+      "Freight and delivery - COS",
+      "Other costs of sales - COS",
+      "Supplies and materials - COS",
+      "Cost of sales"
+    ],
+    "Expenses": [
+      "Bank charges",
+      "Depreciation",
+      "General expenses",
+      "Interest paid",
+      "Legal and professional fees",
+      "Loss on discontinued operations, net of tax",
+      "Management compensation",
+      "Meals and entertainment",
+      "Office/General Administrative Expenses",
+      "Rent",
+      "Salaries",
+      "Transport",
+      "Utilities"
+    ],
+    "Other Expense": [
+      "Other expense"
+    ]
+  },
+  "Income": {
+    "Income": [
+      "Discounts/Refunds Given",
+      "Non-Profit Income",
+      "Other Primary Income",
+      "Revenue - General",
+      "Sales - retail",
+      "Sales revenue",
+      "Service income"
+    ],
+    "Other income": [
+      "Interest income",
+      "Other income"
+    ]
+  },
+  "Equity": {
+    "Owner's Equity": [
+      "Accumulated adjustment",
+      "Dividend disbursed",
+      "Equity in earnings of subsidiaries",
+      "Opening Balance Equity",
+      "Ordinary shares",
+      "Owner capital",
+      "Retained Earnings",
+      "Drawings",
+      "Partner Distributions",
+      "Partner's Equity",
+      "Preferred shares",
+      "Share capital",
+      "Treasury Shares"
+    ]
+  },
+  "Liabilities": {
+    "Accounts Payable (A/P)": [
+      "Accounts Payable (A/P)"
+    ],
+    "Credit Card": [
+      "Credit Card"
+    ],
+    "Current liabilities": [
+      "Accrued liabilities",
+      "Client Trust Accounts - Liabilities",
+      "Current Tax Liability",
+      "Current portion of obligations under finance leases",
+      "Dividends payable",
+      "Income tax payable",
+      "Insurance payable",
+      "Line of Credit",
+      "Loan Payable",
+      "Other current liabilities",
+      "Payroll Clearing",
+      "Payroll liabilities",
+      "Prepaid Expenses Payable",
+      "Rents in trust - Liability",
+      "Sales and service tax payable",
+      "VAT"
+    ],
+    "Non-current liabilities": [
+      "Loans",
+      "Other non-current liabilities"
+    ]
+  }
+}

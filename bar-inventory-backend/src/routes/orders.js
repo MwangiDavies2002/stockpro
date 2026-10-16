@@ -10,5 +10,6 @@ router.post('/',             adminOnly, ctrl.create);
 router.put('/:id',           adminOnly, ctrl.update);
 router.delete('/:id',        adminOnly, ctrl.remove);
 router.patch('/:id/status',  adminOnly, ctrl.updateStatus);
+router.post('/:id/payments',adminOnly,ctrl.addPayment);
 
 module.exports = router;

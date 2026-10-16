@@ -1,0 +1,5 @@
+const path=require('node:path'),fs=require('node:fs');
+const root=path.resolve(process.argv[process.argv.indexOf('--data-dir')+1]||'');const email=process.argv[process.argv.indexOf('--email')+1];
+if(!process.argv.includes('--data-dir')||!email||!fs.existsSync(path.join(root,'data','stockpro.sqlite')))throw new Error('Provide --data-dir for an existing desktop profile and --email for an existing active account');
+const db=require('../electron/db').openDatabase(root);
+try{const user=db.prepare('SELECT id,email,active FROM users WHERE lower(email)=lower(?)').get(email);if(!user?.active)throw new Error('No active matching desktop account');db.transaction(()=>{db.prepare('UPDATE users SET is_superadmin=1 WHERE id=?').run(user.id);db.prepare('INSERT INTO platform_audit(actor_user_id,action,details_json) VALUES (?,?,?)').run(user.id,'superadmin.grant',JSON.stringify({source:'local operator CLI',email:user.email}));})();console.log('Granted desktop Superadmin access to '+user.email);}finally{db.close();}

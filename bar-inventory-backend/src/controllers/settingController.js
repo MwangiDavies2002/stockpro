@@ -16,8 +16,8 @@ exports.updateSetting = async (req, res) => {
     const { key } = req.params;
     for (const [field, table] of [['account_id','chart_of_accounts'], ['treasury_id','treasury']]) {
       if (!req.body[field]) continue;
-      const { rows } = await query(`SELECT id FROM ${table} WHERE id=? AND business_id=?`, [req.body[field], getBusinessId(req)]);
-      if (!rows.length) return res.status(400).json({ error: 'Accounting mapping must belong to your shop' });
+      const { rows } = await query(`SELECT id FROM ${table} WHERE id=? AND business_id=?${table==='treasury'?" AND status='active'":' AND active=TRUE'}`, [req.body[field], getBusinessId(req)]);
+      if (!rows.length) return res.status(400).json({ error: 'Choose an active accounting account belonging to your shop' });
     }
     await Setting.update(key, req.body);
     res.json({ message: 'Setting updated' });

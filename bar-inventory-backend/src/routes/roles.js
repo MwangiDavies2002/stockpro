@@ -1,0 +1,11 @@
+const router=require('express').Router();
+const {authenticate}=require('../middleware/auth');
+const {query}=require('../config/db');
+const {MODULES,normalizePermissions}=require('../utils/accessPolicy');
+router.use(authenticate);
+router.use((req,res,next)=>req.user.is_owner?next():res.status(403).json({message:'Only the owner can manage roles'}));
+router.get('/',async(req,res,next)=>{try{const {rows}=await query('SELECT * FROM access_roles WHERE business_id=? ORDER BY name',[req.user.business_id]);res.json({roles:rows.map(r=>({...r,permissions:normalizePermissions(r.permissions_json)})),modules:MODULES,package:req.user.access.plan});}catch(e){next(e);}});
+async function save(req,res,next){try{const name=String(req.body.name||'').trim();if(!name||name.length>100)return res.status(400).json({message:'Enter a role name up to 100 characters'});const permissions=normalizePermissions(req.body.permissions);for(const module of MODULES)if(!req.user.access.plan.modules.includes(module.key)){permissions[module.key]={view:'none',create:false,update:false,delete:false,payments:false,price:false,discount:false,export:false};}let id=req.params.id;if(id){const result=await query('UPDATE access_roles SET name=?,permissions_json=? WHERE id=? AND business_id=?',[name,JSON.stringify(permissions),id,req.user.business_id]);if(!result.rowCount)return res.status(404).json({message:'Role not found'});}else{id=(await query('INSERT INTO access_roles (business_id,name,permissions_json) VALUES (?,?,?)',[req.user.business_id,name,JSON.stringify(permissions)])).insertId;}res.json({id,name,permissions});}catch(e){if(e.code==='ER_DUP_ENTRY')return res.status(409).json({message:'A role with this name already exists'});next(e);}}
+router.post('/',save);router.put('/:id',save);
+router.delete('/:id',async(req,res,next)=>{try{const {rows}=await query('SELECT id FROM users WHERE access_role_id=? AND business_id=?',[req.params.id,req.user.business_id]);if(rows.length)return res.status(409).json({message:'Assign members to another role before deleting this role'});const result=await query('DELETE FROM access_roles WHERE id=? AND business_id=?',[req.params.id,req.user.business_id]);if(!result.rowCount)return res.status(404).json({message:'Role not found'});res.json({message:'Role deleted'});}catch(e){next(e);}});
+module.exports=router;

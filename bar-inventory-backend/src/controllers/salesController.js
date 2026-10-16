@@ -44,7 +44,7 @@ async function create(req, res, next) {
     const stockChecks = [];
     for (const line of items) {
       const { rows } = await client.query(
-        'SELECT id, name, stock, threshold, price, cost FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE',
+        'SELECT id, name, stock, threshold, price, cost, location_id FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE',
         [line.itemId, getBusinessId(req)]
       );
       if (!rows.length) {
@@ -61,6 +61,8 @@ async function create(req, res, next) {
       stockChecks.push({ item, line });
     }
 
+    const saleLocation=Number(locationId||stockChecks[0].item.location_id);
+    if(stockChecks.some(({item})=>Number(item.location_id)!==saleLocation))throw Object.assign(new Error('All sale products must belong to the selected location'),{status:400});
     const total = stockChecks.reduce(
       (sum, { item, line }) => sum + (line.unitPrice ?? item.price) * line.quantity,
       0
@@ -102,7 +104,7 @@ async function create(req, res, next) {
     const saleNote = note || (paymentMethod ? `Sale via ${paymentMethod}` : 'Sale recorded');
     const { insertId: saleId } = await client.query(
       'INSERT INTO sales (business_id,total,created_by,notes,payment_method,location_id,customer_id) VALUES (?,?,?,?,?,?,?)',
-      [getBusinessId(req), total, req.user?.id || null, saleNote, paymentMethod || 'cash', locationId || 1, customerId || null]
+      [getBusinessId(req), total, req.user?.id || null, saleNote, paymentMethod || 'cash', saleLocation, customerId || null]
     );
 
     const updatedItems = [];
@@ -132,6 +134,7 @@ async function create(req, res, next) {
       updatedItems.push(updated);
     }
 
+    await require('../utils/accountingDefaults').ensureSalesAccountingMappings(client);
     if (paymentMethod === 'credit') {
       await client.query('UPDATE customers SET balance = balance + ? WHERE id=? AND business_id=?', [total, customerId, getBusinessId(req)]);
       // 2. Journal Entry for Credit Sale

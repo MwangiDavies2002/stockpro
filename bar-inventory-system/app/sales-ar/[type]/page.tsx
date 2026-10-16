@@ -1,3 +1,4 @@
+import {Suspense} from 'react';
 import SalesARClient from './SalesARClient';
 
 export function generateStaticParams() {
@@ -11,5 +12,5 @@ export function generateStaticParams() {
 }
 
 export default function SalesARPage() {
-  return <SalesARClient />;
+  return <Suspense fallback={<p>Loading sales documents...</p>}><SalesARClient /></Suspense>;
 }

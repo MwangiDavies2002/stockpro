@@ -1,4 +1,6 @@
-const { query } = require('../config/db');
+const {assertCapacity}=require('../utils/accessPolicy');
+const {loadAccess}=require('../utils/accessService');
+const { query, getClient } = require('../config/db');
 const { getBusinessId } = require('../utils/tenant');
 async function getAll(req, res, next) {
   try {
@@ -8,17 +10,23 @@ async function getAll(req, res, next) {
 }
 
 async function create(req, res, next) {
+  const db=await getClient();
   try {
     const { name, address, paymentOptions } = req.body;
     if (!name) return res.status(400).json({ message: 'name is required' });
-    const { insertId } = await query(
+    await db.query('BEGIN');
+    await db.query('SELECT id FROM businesses WHERE id=? FOR UPDATE',[getBusinessId(req)]);
+    const {rows:[count]}=await db.query('SELECT COUNT(*) count FROM locations WHERE business_id=?',[getBusinessId(req)]);
+    assertCapacity((await loadAccess(req.user,db)).plan,'locations',count.count);
+    const { insertId } = await db.query(
       `INSERT INTO locations (business_id,name,address,invoice_scheme_pos,invoice_layout_pos,invoice_scheme_sale,invoice_layout_sale,location_type,payment_options)
        VALUES (?,?,?,'Default','Default','Default','Default','selling',?)`,
       [getBusinessId(req), name, address || null, paymentOptions ? JSON.stringify(paymentOptions) : null]
     );
-    const { rows } = await query('SELECT * FROM locations WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
+    const { rows } = await db.query('SELECT * FROM locations WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
+    await db.query('COMMIT');
     res.status(201).json(rows[0]);
-  } catch (err) { next(err); }
+  } catch (err) { await db.query('ROLLBACK');next(err); } finally {db.release();}
 }
 
 async function update(req, res, next) {
@@ -39,6 +47,10 @@ async function remove(req, res, next) {
     if (Number(req.params.id) === 1) {
       return res.status(400).json({ message: 'Cannot delete the default location' });
     }
+    const used=await query('SELECT user_id FROM user_locations WHERE location_id=? AND business_id=?',[req.params.id,getBusinessId(req)]);
+    if(used.rows.length)return res.status(409).json({message:'Reassign members before deleting this location'});
+    const products=await query('SELECT id FROM inventory_items WHERE location_id=? AND business_id=? LIMIT 1',[req.params.id,getBusinessId(req)]);
+    if(products.rows.length)return res.status(409).json({message:'Move or remove products before deleting this location'});
     const { rowCount } = await query('DELETE FROM locations WHERE id=? AND business_id=?', [req.params.id, getBusinessId(req)]);
     if (!rowCount) return res.status(404).json({ message: 'Location not found' });
     res.json({ message: 'Location deleted' });

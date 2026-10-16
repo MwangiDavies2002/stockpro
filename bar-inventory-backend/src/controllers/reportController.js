@@ -1,12 +1,14 @@
 const { query } = require('../config/db');
 const Journal = require('../models/Journal');
+const stockReport=require('../utils/stockReport'),operationsReport=require('./operationsReportController');
+async function reportingWindow(req,defaultDays=30){const{bid,business,window}=await operationsReport.context({...req,query:{...req.query,days:req.query.days??defaultDays}});const range=stockReport.range(window);return{bid,business,window,since:new Date(range.since),until:new Date(range.until)};}
+async function series(req,kind,days){const w=await reportingWindow(req,days);const{rows}=await query('SELECT total,created_at FROM sales WHERE business_id=? AND created_at>=? AND created_at<?',[w.bid,w.since,w.until]);return stockReport.salesSeries(rows,w.window.timezone,kind);}
 const { getBusinessId } = require('../utils/tenant');
 
 async function getProfit(req, res, next) {
   try {
-    const days = Number(req.query.days ?? 30);
-    if (!Number.isInteger(days) || days < 1 || days > 3660) return res.status(400).json({ message: 'Days must be between 1 and 3660' });
-    const businessId = getBusinessId(req);
+    const requestedDays=Number(req.query.days??30);if(!Number.isInteger(requestedDays)||requestedDays<1||requestedDays>3660)return res.status(400).json({message:'Days must be a whole number between 1 and 3660'});
+    const {bid:businessId,window:{days},since,until}=await reportingWindow(req);
     const { rows } = await query(`
       SELECT item_id, item_name, SUM(quantity) AS units_sold,
              ROUND(SUM(revenue),2) AS net_revenue,
@@ -18,14 +20,14 @@ async function getProfit(req, res, next) {
         SELECT si.item_id, si.item_name, si.quantity, si.unit_cost,
                COALESCE(si.net_revenue,si.quantity*si.unit_price) AS revenue
         FROM sale_items si JOIN sales s ON s.id=si.sale_id
-        WHERE s.business_id=? AND s.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        WHERE s.business_id=? AND s.created_at >= ? AND s.created_at < ?
         UNION ALL
         SELECT ci.item_id, ci.item_name, -ci.quantity, ci.unit_cost, -ci.subtotal
         FROM sales_document_items ci JOIN sales_documents cn ON cn.id=ci.document_id
         WHERE cn.business_id=? AND cn.type='credit_note' AND cn.status='issued'
-          AND cn.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+          AND cn.created_at >= ? AND cn.created_at < ?
       ) profit_events
-      GROUP BY item_id,item_name ORDER BY net_revenue DESC`, [businessId, days, businessId, days]);
+      GROUP BY item_id,item_name ORDER BY net_revenue DESC`, [businessId, since,until,businessId,since,until]);
     const items = rows.map(row => ({ ...row, units_sold: Number(row.units_sold), net_revenue: Number(row.net_revenue), recorded_cost: Number(row.recorded_cost), missing_cost_lines: Number(row.missing_cost_lines), gross_profit: row.gross_profit === null ? null : Number(row.gross_profit) }));
     const revenue = Number(items.reduce((sum, row) => sum + row.net_revenue, 0).toFixed(2));
     const cost = Number(items.reduce((sum, row) => sum + row.recorded_cost, 0).toFixed(2));
@@ -43,7 +45,7 @@ async function getStock(req, res, next) {
     const { rows } = await query(`
       SELECT
         i.*,
-        CASE WHEN i.stock <= i.threshold THEN 'LOW' ELSE 'OK' END AS status,
+        CASE WHEN i.stock=0 THEN 'OUT' WHEN i.stock <= i.threshold THEN 'LOW' ELSE 'OK' END AS status,
         s.name AS supplier_name
       FROM inventory_items i
       LEFT JOIN suppliers s ON s.id = i.supplier_id AND s.business_id = i.business_id
@@ -59,92 +61,16 @@ async function getStock(req, res, next) {
  * Report: units sold and revenue per item over a time window (days),
  * derived from real sale_items/sales rows.
  */
-async function getUsage(req, res, next) {
-  try {
-    const days = parseInt(req.query.days) || 30;
-    const { rows } = await query(
-      `SELECT
-         i.id, i.name, i.category, i.price, i.stock, i.threshold,
-         COALESCE(u.qty, 0)     AS units_sold,
-         COALESCE(u.revenue, 0) AS revenue
-       FROM inventory_items i
-       LEFT JOIN (
-         SELECT si.item_id,
-                SUM(si.quantity)               AS qty,
-                SUM(si.quantity * si.unit_price) AS revenue
-         FROM sale_items si
-         JOIN sales s ON s.id = si.sale_id
-         WHERE s.business_id = ? AND s.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-         GROUP BY si.item_id
-       ) u ON u.item_id = i.id
-       WHERE i.business_id = ?
-       ORDER BY revenue DESC`,
-      [getBusinessId(req), days, getBusinessId(req)]
-    );
-    res.json(rows);
-  } catch (err) { next(err); }
-}
+async function getUsage(req,res,next){try{const report=await operationsReport.stockData(req);res.json(report.items.map(i=>({...i,units_sold:i.net_units_sold})).sort((a,b)=>b.units_sold-a.units_sold||b.revenue-a.revenue));}catch(e){next(e);}}
 
 /* GET /api/reports/sale-size-groups */
 /**
  * Report: sales bucketed by transaction size (Micro/Small/Medium/Large),
  * derived from the real sales table.
  */
-async function getSaleSizeGroups(req, res, next) {
-  try {
-    const { rows } = await query(`
-      SELECT
-        CASE
-          WHEN total <= 50   THEN 'Micro'
-          WHEN total <= 500  THEN 'Small'
-          WHEN total <= 1000 THEN 'Medium'
-          ELSE 'Large'
-        END AS price_group,
-        COUNT(*)     AS count,
-        SUM(total)   AS total,
-        AVG(total)   AS avg_amount
-      FROM sales
-      WHERE business_id = ?
-      GROUP BY price_group
-    `, [getBusinessId(req)]);
-    res.json(rows);
-  } catch (err) { next(err); }
-}
-
-/* GET /api/reports/sales-trend?days=14 */
-/**
- * Report: daily revenue and transaction count for the given period,
- * derived from the real sales table.
- */
-async function getSalesTrend(req, res, next) {
-  try {
-    const days = parseInt(req.query.days) || 14;
-    const { rows } = await query(
-      `SELECT
-         DATE(created_at) AS date,
-         SUM(total)       AS revenue,
-         COUNT(*)         AS transactions
-       FROM sales
-       WHERE business_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-       GROUP BY DATE(created_at)
-       ORDER BY date ASC`,
-      [getBusinessId(req), days]
-    );
-    res.json(rows);
-  } catch (err) { next(err); }
-}
-
-async function getHourlySales(req, res, next) {
-  try {
-    const days = parseInt(req.query.days) || 3;
-    const { rows } = await query(`
-      SELECT HOUR(created_at) AS hour, SUM(total) AS revenue, COUNT(*) AS transactions
-      FROM sales
-      WHERE business_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      GROUP BY HOUR(created_at) ORDER BY hour ASC`, [getBusinessId(req), days]);
-    res.json(rows);
-  } catch (err) { next(err); }
-}
+async function getSaleSizeGroups(req,res,next){try{res.json(await series(req,'size',30));}catch(e){next(e);}}
+async function getSalesTrend(req,res,next){try{res.json(await series(req,'day',14));}catch(e){next(e);}}
+async function getHourlySales(req,res,next){try{res.json(await series(req,'hour',3));}catch(e){next(e);}}
 
 async function getBenchmarks(req, res, next) {
   try {
@@ -174,9 +100,9 @@ async function getLossAlerts(req, res, next) {
   try {
     const { rows } = await query(`
       SELECT s.id AS sale_id, s.created_at, s.payment_method, si.item_name, si.quantity,
-             si.unit_price, i.cost, (i.cost - si.unit_price) * si.quantity AS estimated_loss
+             si.unit_price, si.unit_cost AS cost, (si.unit_cost - si.unit_price) * si.quantity AS estimated_loss
       FROM sales s JOIN sale_items si ON si.sale_id=s.id JOIN inventory_items i ON i.id=si.item_id
-      WHERE s.business_id=? AND si.unit_price < i.cost AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      WHERE s.business_id=? AND si.unit_cost IS NOT NULL AND si.unit_price < si.unit_cost AND s.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
       ORDER BY estimated_loss DESC LIMIT 20`, [getBusinessId(req)]);
     res.json(rows);
   } catch (err) { next(err); }

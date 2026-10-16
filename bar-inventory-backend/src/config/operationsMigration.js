@@ -1,0 +1,11 @@
+async function migrateOperations(c){
+ const tables=[
+ `CREATE TABLE IF NOT EXISTS stock_transfers(id INT AUTO_INCREMENT PRIMARY KEY,business_id INT NOT NULL,from_location_id INT NOT NULL,to_location_id INT NOT NULL,transfer_date DATE NOT NULL,reference_no VARCHAR(100) NULL,notes TEXT NULL,status VARCHAR(20) NOT NULL DEFAULT 'completed',created_by INT NOT NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX(business_id,from_location_id,to_location_id))`,
+ `CREATE TABLE IF NOT EXISTS stock_transfer_items(id INT AUTO_INCREMENT PRIMARY KEY,transfer_id INT NOT NULL,source_item_id INT NOT NULL,destination_item_id INT NOT NULL,item_name VARCHAR(150) NOT NULL,sku VARCHAR(100) NOT NULL,unit VARCHAR(30) NOT NULL,quantity INT NOT NULL,unit_cost DECIMAL(15,4) NOT NULL)`,
+ `CREATE TABLE IF NOT EXISTS expense_categories(id INT AUTO_INCREMENT PRIMARY KEY,business_id INT NOT NULL,name VARCHAR(150) NOT NULL,account_id INT NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(business_id,name))`,
+ `CREATE TABLE IF NOT EXISTS expenses(id INT AUTO_INCREMENT PRIMARY KEY,business_id INT NOT NULL,location_id INT NOT NULL,category_id INT NOT NULL,category_name VARCHAR(150) NOT NULL,expense_account_id INT NOT NULL,cash_account_id INT NOT NULL,treasury_id INT NULL,expense_date DATE NOT NULL,amount DECIMAL(15,2) NOT NULL,payee VARCHAR(150) NULL,reference_no VARCHAR(100) NULL,notes TEXT NULL,method VARCHAR(20) NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'posted',journal_id INT NULL,created_by INT NOT NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,reversal_date DATE NULL,reversal_journal_id INT NULL,reversal_reason VARCHAR(1000) NULL,reversed_by INT NULL,INDEX(business_id,location_id,expense_date))`
+ ];for(const sql of tables)await c.query(sql);
+ await c.query('ALTER TABLE inventory_items MODIFY COLUMN cost DECIMAL(15,4) DEFAULT 0');
+ const [packages]=await c.query("SELECT id,modules_json FROM platform_packages WHERE id IN ('basic','growth','erp')");for(const row of packages){const modules=typeof row.modules_json==='string'?JSON.parse(row.modules_json):row.modules_json;if(!modules.includes('expenses')){modules.push('expenses');await c.query('UPDATE platform_packages SET modules_json=? WHERE id=?',[JSON.stringify(modules),row.id]);}}
+}
+module.exports={migrateOperations};

@@ -15,7 +15,12 @@
     "test:sales-ar": "node --test test/salesDocuments.test.js",
     "migrate:tenants": "node migrate-tenant-onboarding.js",
     "audit:features": "node test/feature-audit.js",
-    "migrate:profit": "node migrate-profit.js"
+    "migrate:profit": "node migrate-profit.js",
+    "test:workflows": "node --test test/purchaseWorkflow.test.js test/salesWorkflow.test.js",
+    "test:inventory": "node --test test/inventoryWorkflow.test.js",
+    "migrate:inventory": "node migrate-inventory.js",
+    "test:operations": "node --test test/operationsWorkflow.test.js",
+    "migrate:operations": "node migrate-operations.js"
   },
   "dependencies": {
     "axios": "^1.6.8",

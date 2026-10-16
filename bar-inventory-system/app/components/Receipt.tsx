@@ -44,9 +44,9 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
         }
       `}</style>
 
-      <div className="bg-white rounded-lg max-w-xs w-full p-4 print:shadow-none print:rounded-none">
+      <div className="bg-white rounded-sm max-w-xs w-full p-4 print: print:rounded-sm-none">
         {offline && (
-          <div className="mb-2 text-center text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 print:hidden">
+          <div className="mb-2 text-center text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-2 py-1 print:hidden">
             OFFLINE — will sync when connection returns
           </div>
         )}
@@ -79,13 +79,13 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
         <div className="flex gap-2 mt-4 print:hidden">
           <button
             onClick={onClose}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-sm text-sm hover:bg-gray-50"
           >
             Close
           </button>
           <button
             onClick={() => window.print()}
-            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
+            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-sm text-sm hover:bg-green-700"
           >
             Print
           </button>

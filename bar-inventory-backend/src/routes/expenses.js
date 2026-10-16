@@ -1,0 +1,1 @@
+const r=require('express').Router(),c=require('../services/operations');r.use(require('../middleware/auth').authenticate);r.get('/categories',c.categories);r.post('/categories',c.saveCategory);r.put('/categories/:id',c.saveCategory);r.get('/',c.expenses);r.get('/:id',c.expenses);r.post('/',c.createExpense);r.post('/:id/reverse',c.reverseExpense);module.exports=r;

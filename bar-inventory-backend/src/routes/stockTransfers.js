@@ -1,0 +1,1 @@
+const r=require('express').Router(),c=require('../services/operations');r.use(require('../middleware/auth').authenticate);r.get('/',c.transfers);r.get('/:id',c.transfers);r.post('/',c.createTransfer);module.exports=r;

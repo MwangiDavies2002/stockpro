@@ -1,0 +1,29 @@
+const assert=require('node:assert/strict');
+async function salesWorkflow(request,fixtures,key){
+ const registration=await request(null,'/auth/business-registration','POST',{plan:'growth',business:{name:key,currency:'KES',country:'Kenya',state:'Nairobi',city:'Nairobi',zipCode:'00100',landmark:'Test',timezone:'Africa/Nairobi'},settings:{},owner:{firstName:'Invoice owner',username:key,email:key+'@example.invalid',password:'InvoiceStrong123!',confirmPassword:'InvoiceStrong123!'}});assert.equal(registration.status,201,JSON.stringify(registration.body));fixtures.push(registration.body);const call=(url,method='GET',data)=>request(registration.body.token,url,method,data);
+ const customer=(await call('/customers','POST',{name:'Agreed buyer',phone:'0700000001',creditLimit:1000})).body;
+ const product=(await call('/inventory','POST',{name:'Agreed product',sku:key+'-sku',stock:10,cost:40,price:100,locationId:registration.body.locationId,threshold:0})).body;
+ const vat=(await call('/accounts','POST',{account_name:'Output tax',account_type:'Liabilities'})).body;assert.ok((await call('/accounting-settings/sales_vat_output','PUT',{account_id:vat.id})).status<300);
+ const input={type:'quotation',customerId:customer.id,locationId:registration.body.locationId,date:'2026-10-16',referenceNo:'Customer PO 55',notes:'Please deliver carefully',staffNotes:'PRIVATE discount discussion',terms:'Payment within seven days',items:[{itemId:product.id,quantity:2,unitPrice:100,discountPercent:10,taxPercent:16}],requestId:key+'-quote'};
+ const quote=await call('/sales-documents','POST',input);assert.equal(quote.status,201,JSON.stringify(quote.body));assert.equal(Number(quote.body.total),208.8);assert.equal(quote.body.customer.name,'Agreed buyer');assert.equal(quote.body.seller.name,key);
+ const replay=await call('/sales-documents','POST',input);assert.equal(replay.body.id,quote.body.id);
+ const updated=await call('/sales-documents/'+quote.body.id,'PUT',{...input,notes:'Updated customer note'});assert.ok(updated.status<300,JSON.stringify(updated.body));
+ const pros=await Promise.all(Array.from({length:3},()=>call('/sales-documents/'+quote.body.id+'/convert','POST',{targetType:'proforma'})));assert.ok(pros.every(r=>r.status===201),JSON.stringify(pros));const pro=pros[0].body;assert.ok(pros.every(r=>r.body.id===pro.id));assert.equal(pro.notes,'Updated customer note');assert.equal(pro.reference_no,'Customer PO 55');
+ const drafts=await Promise.all(Array.from({length:3},()=>call('/sales-documents/'+pro.id+'/convert','POST',{targetType:'invoice',status:'draft'})));assert.ok(drafts.every(r=>r.status===201),JSON.stringify(drafts));const draft=drafts[0].body;assert.ok(drafts.every(r=>r.body.id===draft.id));assert.equal(draft.status,'draft');assert.equal(Number((await call('/inventory/'+product.id)).body.stock),10);
+ assert.equal((await call('/sales-documents/'+draft.id+'/payments','POST',{amount:1})).status,400);
+ await call('/customers/'+customer.id,'PUT',{name:'Renamed buyer',phone:'0700000001',creditLimit:1000});
+ const issued=await Promise.all(Array.from({length:3},()=>call('/sales-documents/'+draft.id+'/issue','POST',{payment:{amount:50,method:'cash'}})));assert.ok(issued.every(r=>r.status<300),JSON.stringify(issued));assert.ok(issued.some(r=>r.body.replayed));
+ const view=(await call('/sales-documents/'+draft.id)).body;assert.equal(view.customer.name,'Agreed buyer');assert.equal(view.customer.phone,'0700000001');assert.equal(view.status,'partial');assert.equal(Number(view.balance_due),158.8);assert.equal(view.payments.length,1);assert.equal(Number((await call('/inventory/'+product.id)).body.stock),8);assert.ok(view.activity.some(e=>e.action==='issued'));assert.ok(view.related.some(d=>d.id===pro.id));
+ const payment={amount:158.8,method:'cash',referenceNo:'Receipt ABC',notes:'Received at counter',requestId:key+'-payment'};
+ const payments=await Promise.all(Array.from({length:3},()=>call('/sales-documents/'+draft.id+'/payments','POST',payment)));assert.ok(payments.every(r=>r.status===201),JSON.stringify(payments));
+ const final=(await call('/sales-documents/'+draft.id)).body;assert.equal(final.status,'paid');assert.equal(Number(final.balance_due),0);assert.equal(final.payments.length,2);assert.ok(final.payments.every(p=>p.added_by));assert.equal(final.payments.filter(p=>p.reference_no==='Receipt ABC').length,1);
+ assert.equal((await call('/sales-documents/'+draft.id+'/payments','POST',{amount:1})).status,400);
+ assert.equal((await call('/sales-documents/'+draft.id,'PUT',{...input,type:'invoice'})).status,400);
+ assert.equal((await call('/sales-documents/'+pro.id+'/convert','POST',{targetType:'quotation'})).status,400);
+ assert.equal((await call('/sales-documents','POST',{...input,requestId:key+'-invalid',payment:{amount:10}})).status,400);
+ assert.equal(Number((await call('/inventory/'+product.id)).body.stock),8);
+ const all=(await call('/sales-documents?type=invoice')).body;assert.equal(all.filter(d=>Number(d.id)===Number(draft.id)).length,1,JSON.stringify({all,draftId:draft.id}));
+ const book=(await call('/accounts/'+vat.id+'/book')).body;assert.equal(book.length,1);assert.equal(Number(book[0].credit),28.8);
+ return{draft,final};
+}
+module.exports={salesWorkflow};

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Download, TrendingUp, BarChart2, FileSpreadsheet } from 'lucide-react';
+import { Download, TrendingUp, BarChart2, FileSpreadsheet } from '../components/TextMark';
 import Navbar from '../components/Navbar';
 import { reportsApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ interface SizeGroup {
 }
 
 const GROUP_COLORS: Record<string, string> = {
-  Micro: '#1D9E75',
+  Micro: 'var(--chart-accent, #354f43)',
   Small: '#378ADD',
   Medium: '#BA7517',
   Large: '#D85A30',
@@ -155,10 +155,10 @@ export default function ReportsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-base font-semibold text-gray-900">Reports & Analytics</h1>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            <div className="flex gap-1 bg-white border border-gray-200 rounded-sm p-1">
               {(['7', '14', '30'] as Period[]).map((p) => (
                 <button type="button" key={p} onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors
+                  className={`px-3 py-1.5 text-xs font-medium rounded-sm
                     ${period === p ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                   {p} Days
                 </button>
@@ -175,7 +175,7 @@ export default function ReportsPage() {
             { label: 'Avg. Transaction',   value: totalTxns ? `KES ${Math.round(totalRevenue / totalTxns).toLocaleString()}` : 'KES 0', sub: 'Per sale' },
             { label: 'Low Stock Items',    value: `${lowStockCount}`,                      sub: 'Need restocking' },
           ].map((m) => (
-            <div key={m.label} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div key={m.label} className="bg-white border border-gray-200 rounded-sm p-4">
               <div className="text-xs text-gray-500 mb-2">{m.label}</div>
               <div className="text-xl font-semibold text-gray-900">{m.value}</div>
               <div className="text-xs text-gray-400 mt-1">{m.sub}</div>
@@ -184,7 +184,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Export section */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="bg-white border border-gray-200 rounded-sm p-5">
           <div className="flex items-center gap-2 mb-1">
             <FileSpreadsheet className="w-4 h-4 text-green-600" />
             <h2 className="text-sm font-medium">Export Sales Data (Excel)</h2>
@@ -195,7 +195,7 @@ export default function ReportsPage() {
           <div className="flex gap-2 flex-wrap">
             {(['7', '14', '30'] as Period[]).map((p) => (
               <button type="button" key={p} onClick={() => exportExcel(p)} disabled={exporting}
-                className={`flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-60
+                className={`flex items-center gap-2 text-sm px-4 py-2 rounded-sm  disabled:opacity-60
                   ${p === '7' ? 'bg-green-600 text-white hover:bg-green-700' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}>
                 <Download className="w-3.5 h-3.5" />
                 Past {p} Days
@@ -210,7 +210,7 @@ export default function ReportsPage() {
           <>
             {/* Charts row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="bg-white border border-gray-200 rounded-sm p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp className="w-4 h-4 text-green-600" />
                   <h2 className="text-sm font-medium">Revenue Trend ({period} Days)</h2>
@@ -223,12 +223,12 @@ export default function ReportsPage() {
                     <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false}
                       tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, 'Revenue']} />
-                    <Line type="monotone" dataKey="revenue" stroke="#16a34a" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="revenue" stroke="var(--chart-accent, #354f43)" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="bg-white border border-gray-200 rounded-sm p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <BarChart2 className="w-4 h-4 text-green-600" />
                   <h2 className="text-sm font-medium">Sale Size Breakdown</h2>
@@ -241,7 +241,7 @@ export default function ReportsPage() {
                     <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, 'Total']} />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                       {groups.map((g) => (
-                        <Cell key={g.price_group} fill={GROUP_COLORS[g.price_group] || '#16a34a'} />
+                        <Cell key={g.price_group} fill={GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -250,7 +250,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Inventory usage table */}
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-200">
                 <h2 className="text-sm font-medium">Stock Usage Report</h2>
               </div>
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-3 font-medium text-green-700">KES {Number(item.revenue).toLocaleString()}</td>
                           <td className="px-4 py-3">{item.stock}</td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium
+                            <span className={`text-xs px-2 py-0.5 rounded-sm font-medium
                               ${critical ? 'bg-red-50 text-red-600' : low ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-700'}`}>
                               {critical ? 'Critical' : low ? 'Low' : 'OK'}
                             </span>
@@ -295,19 +295,19 @@ export default function ReportsPage() {
             </div>
 
             {/* Sale size group detail */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-sm p-5">
               <h2 className="text-sm font-medium mb-4">Sale Size Groups Breakdown</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {groups.map((g) => (
-                  <div key={g.price_group} className="border border-gray-200 rounded-xl p-4">
+                  <div key={g.price_group} className="border border-gray-200 rounded-sm p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-gray-500">{GROUP_RANGES[g.price_group] || ''}</span>
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: GROUP_COLORS[g.price_group] || '#16a34a' }} />
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)' }} />
                     </div>
-                    <div className="text-2xl font-semibold" style={{ color: GROUP_COLORS[g.price_group] || '#16a34a' }}>{g.count}</div>
+                    <div className="text-2xl font-semibold" style={{ color: GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)' }}>{g.count}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{g.price_group} — KES {g.total.toLocaleString()}</div>
-                    <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ background: GROUP_COLORS[g.price_group] || '#16a34a', width: `${totalTxns ? Math.round((g.count / totalTxns) * 100) : 0}%` }} />
+                    <div className="mt-2 h-1 bg-gray-100 rounded-sm overflow-hidden">
+                      <div className="h-full rounded-sm" style={{ background: GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)', width: `${totalTxns ? Math.round((g.count / totalTxns) * 100) : 0}%` }} />
                     </div>
                   </div>
                 ))}
