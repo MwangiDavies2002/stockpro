@@ -48,11 +48,22 @@ async function ensureAccount(client, account) {
   return result.insertId;
 }
 
+async function repairPurchaseExpenseMapping(client,q){
+ const bid=currentBusinessId(),businessQuery=q||query;
+ const existing=(await businessQuery("SELECT id FROM chart_of_accounts WHERE business_id=? AND account_type='Expenses' AND active=TRUE AND account_name='Purchase Expense' ORDER BY id LIMIT 1",[bid])).rows[0];
+ if(existing){await businessQuery("INSERT INTO accounting_settings(business_id,setting_key,account_id,treasury_id) VALUES (?,'purchases_expense',?,NULL) ON DUPLICATE KEY UPDATE account_id=VALUES(account_id),treasury_id=NULL",[bid,existing.id]);return Number(existing.id);}
+ const used=new Set((await businessQuery('SELECT account_code FROM chart_of_accounts WHERE business_id=?',[bid])).rows.map(row=>String(row.account_code)));
+ let code=5100;while(code<=5199&&used.has(String(code)))code++;if(code>5199){code=500000;while(code<=599999&&used.has(String(code)))code++;}
+ if(code>599999)throw Object.assign(new Error('No available Expense account code. Create an Expense account in Chart of Accounts and map Purchase Expense in Posting Settings.'),{status:400});
+ const created=await businessQuery("INSERT INTO chart_of_accounts(business_id,account_code,account_name,account_type,account_subtype,detail_type,normal_balance,active) VALUES (?,?,'Purchase Expense','Expenses','Operating Expenses','Purchases','Debit',TRUE)",[bid,String(code)]);
+ await businessQuery("INSERT INTO accounting_settings(business_id,setting_key,account_id,treasury_id) VALUES (?,'purchases_expense',?,NULL) ON DUPLICATE KEY UPDATE account_id=VALUES(account_id),treasury_id=NULL",[bid,created.insertId]);return Number(created.insertId);
+}
 async function ensureMappings(definitions,client=null){
  const q=client?client.query.bind(client):query,ids={};
  for(const mapping of definitions){
   const {rows}=await q('SELECT a.id,a.active,a.account_type FROM accounting_settings s JOIN chart_of_accounts a ON a.id=s.account_id AND a.business_id=s.business_id WHERE s.business_id=? AND s.setting_key=?',[currentBusinessId(),mapping.key]);
-  if(rows.length){if(rows[0].account_type!==mapping.type)throw Object.assign(new Error('Choose a '+mapping.type+' account for '+mapping.key),{status:400});if(!rows[0].active)throw Object.assign(new Error('Choose an active account for '+mapping.key),{status:400});ids[mapping.key]=rows[0].id;continue;}
+  if(rows.length){if(rows[0].account_type!==mapping.type){if(mapping.key==='purchases_expense'){ids[mapping.key]=await repairPurchaseExpenseMapping(client,q);continue;}throw Object.assign(new Error('Choose a '+mapping.type+' account for '+mapping.key),{status:400});}if(!rows[0].active)throw Object.assign(new Error('Choose an active account for '+mapping.key),{status:400});ids[mapping.key]=rows[0].id;continue;}
+  if(mapping.key==='purchases_expense'){ids[mapping.key]=await repairPurchaseExpenseMapping(client,q);continue;}
   const id=await ensureAccount(client,mapping);const account=(await q('SELECT active,account_type FROM chart_of_accounts WHERE id=? AND business_id=?',[id,currentBusinessId()])).rows[0];if(!account?.active||account.account_type!==mapping.type)throw Object.assign(new Error('Choose an active '+mapping.type+' account for '+mapping.key),{status:400});await q('INSERT INTO accounting_settings(business_id,setting_key,account_id,treasury_id) VALUES (?,?,?,NULL) ON DUPLICATE KEY UPDATE account_id=VALUES(account_id),treasury_id=NULL',[currentBusinessId(),mapping.key,id]);ids[mapping.key]=id;
  }
  return ids;
@@ -83,4 +94,4 @@ async function openingEquity(client,businessId) {
   if(!mapped)await client.query("INSERT INTO accounting_settings(business_id,setting_key,account_id,treasury_id) VALUES (?,'opening_balance_equity',?,NULL) ON DUPLICATE KEY UPDATE account_id=VALUES(account_id),treasury_id=NULL",[businessId,account.id]);
   return account;
 }
-module.exports = { ensurePurchaseAccountingMappings, ensureSalesAccountingMappings, ensureMappings, openingEquity };
+module.exports = { repairPurchaseExpenseMapping, ensurePurchaseAccountingMappings, ensureSalesAccountingMappings, ensureMappings, openingEquity };

@@ -3,7 +3,33 @@ const {getBusinessId}=require('../utils/tenant');
 const policy=require('../utils/referencePolicy');
 const {fail}=require('../utils/inventoryPolicy');
 const columns={categories:'category',units:'unit',brands:'brand'};
-async function getAll(req,res,next){try{const table=policy.pick(req.params.type),bid=getBusinessId(req);const rows=(await query(`SELECT * FROM ${table} WHERE business_id=? ORDER BY name`,[bid])).rows;res.json(rows.filter(r=>(!req.query.locationId||Number(r.location_id)===Number(req.query.locationId))&&(!req.query.search||r.name.toLowerCase().includes(String(req.query.search).toLowerCase()))).map(r=>policy.decorate(table,r,rows)));}catch(e){next(e);}}
+async function getAll(req,res,next){
+  try{
+    const table=policy.pick(req.params.type),bid=getBusinessId(req);
+    const params = [bid];
+    let sql = `SELECT * FROM ${table} WHERE business_id=?`;
+    if (req.query.locationId) {
+      sql += ' AND location_id=?';
+      params.push(req.query.locationId);
+    }
+    if (req.query.search) {
+      sql += ' AND name LIKE ?';
+      params.push(`%${req.query.search}%`);
+    }
+    sql += ' ORDER BY name';
+    const { rows } = await query(sql, params);
+    
+    // We still need all rows for decoration (parent/base unit names) if we don't join
+    // but decoration only needs the list of rows to find names.
+    // If the list is filtered, we might miss parents not in the filter.
+    // However, policy.decorate uses the 'rows' passed to it.
+    // If we only pass filtered rows, decorate might fail to find parents.
+    // Let's fetch all rows for the business once if needed, or better, join in SQL.
+    
+    const allRows = (await query(`SELECT id, name FROM ${table} WHERE business_id=?`, [bid])).rows;
+    res.json(rows.map(r => policy.decorate(table, r, allRows)));
+  } catch(e) { next(e); }
+}
 async function mutate(req,res,next,action){const c=await getClient(),bid=getBusinessId(req);try{await c.query('BEGIN');await c.query('SELECT id FROM businesses WHERE id=? FOR UPDATE',[bid]);const table=policy.pick(req.params.type),rows=(await c.query(`SELECT * FROM ${table} WHERE business_id=?`,[bid])).rows,id=Number(req.params.id)||null,old=id?rows.find(r=>r.id===id):null;if(action!=='create'&&!old)fail('Record not found',404);
  const legacyUnique=!old||rows.filter(r=>r.name.toLowerCase()===old.name.toLowerCase()&&r.location_id===old.location_id).length===1;const field=columns[table],used=old&&(await c.query(`SELECT id FROM inventory_items WHERE business_id=? AND (${field}_id=? OR (${field}_id IS NULL AND ${field}=? AND location_id=?)) LIMIT 1`,[bid,id,old.name,old.location_id])).rows.length>0;
  let result;

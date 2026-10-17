@@ -54,6 +54,10 @@ async function migrate(connection) {
   await step('014-purchase-payables',()=>require('./purchaseWorkflowMigration').migratePurchases(connection));
   await step('015-inventory-catalog-integrity',()=>require('./inventoryMigration').migrateInventory(connection));
   await step('016-stock-transfers-expenses',()=>require('./operationsMigration').migrateOperations(connection));
+  await step('017-discount-customer-restrictions',async()=>{
+    await add('discounts','customer_restriction_id','INT NULL');
+    await add('users','google_sub','VARCHAR(255) NULL');
+  });
 
 }
 module.exports = { migrate };

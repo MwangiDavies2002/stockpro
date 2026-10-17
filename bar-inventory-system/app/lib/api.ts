@@ -71,6 +71,7 @@ export const authApi = {
     api.post('/auth/business-registration', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
+  googleAuth: (credential: string) => api.post('/auth/google', { credential }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
 };
@@ -294,9 +295,10 @@ const referenceDataApi = {
 /* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export interface BusinessRegistrationPayload {
   plan: string;
+  googleCredential?: string;
   business: { name: string; startDate?: string; currency: string; logoUrl?: string; website?: string; contactNumber?: string; alternateContactNumber?: string; country: string; state: string; city: string; zipCode: string; landmark: string; timezone: string; locale?: string };
   settings: { businessType: string; businessTypeOther?: string; defaultTaxRate?: number; taxNumber?: string; sellingPriceTaxType: string; stockAccountingMethod: string; defaultBusinessLocation: string; defaultLowStockThreshold?: number; featurePosOffline?: boolean; featureMultiCurrencySales?: boolean; featureBarcodeScanning?: boolean; featureServiceRepair?: boolean; financialYearStartMonth: number };
-  owner: { prefix?: string; firstName: string; lastName?: string; username: string; email: string; password: string; confirmPassword: string };
+  owner: { prefix?: string; firstName: string; lastName?: string; username: string; email: string; password?: string; confirmPassword?: string };
 }
 
 export interface InventoryItemPayload {
@@ -389,6 +391,8 @@ export interface DiscountPayload {
   productId?: number | null;
   categoryId?: number | null;
   customerId?: number | null;
+  /** Optional customer restriction for product/category rules. */
+  customerRestrictionId?: number | null;
   active?: boolean;
 }
 

@@ -1,0 +1,3065 @@
+    <!doctype html>
+    <html lang="en-GB">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <link rel='stylesheet' href='https://www.zapsplat.com/wp-content/plugins/breakdance/plugin/themeless/normalize.min.css'>
+                
+        <script type="text/javascript" data-pressidium-cc-no-block>
+            window.pressidiumCCBlockedScripts = [{"src":"^(?:https?:)?\\\/\\\/.*\\\/woocommerce\\\/assets\\\/js\\\/sourcebuster\\\/sourcebuster\\.min\\.js","category":"analytics","is_regex":true},{"src":"^(?:https?:)?\\\/\\\/(?:www\\.|c\\.)?clarity\\.ms\\\/.*","category":"analytics","is_regex":true}];
+            window.pressidiumCCCookieName = 'pressidium_cookie_consent';
+        </script>
+
+        <script src="https://www.zapsplat.com/wp-content/plugins/pressidium-cookie-consent/public/block-scripts.js" type="text/javascript" data-pressidium-cc-no-block></script>
+
+        
+        <script type="text/javascript" data-pressidium-cc-no-block>
+            function onPressidiumCookieConsentUpdated(event) {
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({
+                    event: event.type,
+                    consent: event.detail,
+                });
+            }
+
+            window.addEventListener('pressidium-cookie-consent-accepted', onPressidiumCookieConsentUpdated);
+            window.addEventListener('pressidium-cookie-consent-changed', onPressidiumCookieConsentUpdated);
+        </script>
+
+        
+        <style id="pressidium-cc-styles">
+            .pressidium-cc-theme {
+                --cc-bg: #1d1a16;
+--cc-text: #eae2d7;
+--cc-btn-primary-bg: #fe6262;
+--cc-btn-primary-text: #000000;
+--cc-btn-primary-hover-bg: #d44e4e;
+--cc-btn-primary-hover-text: #000000;
+--cc-btn-secondary-bg: #322e25;
+--cc-btn-secondary-text: #eae2d7;
+--cc-btn-secondary-hover-bg: #3c362a;
+--cc-btn-secondary-hover-text: #eae2d7;
+--cc-toggle-bg-off: #817a65;
+--cc-toggle-bg-on: #fe6262;
+--cc-toggle-bg-readonly: #464135;
+--cc-toggle-knob-bg: #29261f;
+--cc-toggle-knob-icon-color: #1d1a16;
+--cc-cookie-category-block-bg: #29261f;
+--cc-cookie-category-block-bg-hover: #322e25;
+--cc-section-border: #302c22;
+--cc-block-text: #cfc6ba;
+--cc-cookie-table-border: #35332c;
+--cc-overlay-bg: #000000;
+--cc-webkit-scrollbar-bg: #3a362c;
+--cc-webkit-scrollbar-bg-hover: #484337;
+--cc-btn-floating-bg: #fe6262;
+--cc-btn-floating-icon: #000000;
+--cc-btn-floating-hover-bg: #d44e4e;
+--cc-btn-floating-hover-icon: #000000;
+            }
+        </style>
+
+        <meta name='robots' content='noindex, follow' />
+
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<script data-cfasync="false" data-pagespeed-no-defer type="text/javascript">
+	var gtm4wp_datalayer_name = "dataLayer";
+	var dataLayer = dataLayer || [];
+	(function(){dataLayer.push(arguments);})('set', 'developer_id.dNGJiYT', true);
+	const gtm4wp_use_sku_instead = 0;
+	const gtm4wp_currency = "GBP";
+	const gtm4wp_product_per_impression = 10;
+	const gtm4wp_clear_ecommerce = false;
+	const gtm4wp_datalayer_max_timeout = 2000;
+	const gtm4wp_console_log = true;
+	const gtm4wp_remarketing_prod_id_prefix = "";
+	const gtm4wp_list_attribution = 0;
+	const gtm4wp_checkoutwc = 0;
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com -->        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            window.dataLayer.push({"author":"","user_properties":{"membership_level":"no_level"}});
+        </script>
+        
+	<!-- This site is optimized with the Yoast SEO Premium plugin v28.7 (Yoast SEO v28.7) - https://yoast.com/product/yoast-seo-premium-wordpress/ -->
+	<title>Page not found | ZapSplat - Download free sound effects</title><link rel="preload" href="https://www.zapsplat.com/wp-content/uploads/2025/01/Zapsplat-logo.webp" as="image" imagesizes="(max-width: 138px) 100vw, 138px" fetchpriority="high"><link rel="preload" href="https://www.zapsplat.com/wp-content/uploads/2022/04/trust-pilot-logo-white-small.png" as="image" imagesizes="(max-width: 200px) 100vw, 200px" fetchpriority="high">
+	<meta property="og:locale" content="en_GB" />
+	<meta property="og:title" content="Page not found | ZapSplat - Download free sound effects" />
+	<meta property="og:site_name" content="ZapSplat - Download free sound effects" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https:\/\/schema.org","@graph":[{"@type":"WebSite","@id":"https:\/\/www.zapsplat.com\/#website","url":"https:\/\/www.zapsplat.com\/","name":"Zapsplat","description":"Free sound effects and royalty free music library","publisher":{"@id":"https:\/\/www.zapsplat.com\/#organization"},"alternateName":"Zapsplat","potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https:\/\/www.zapsplat.com\/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"en-GB"},{"@type":"Organization","@id":"https:\/\/www.zapsplat.com\/#organization","name":"Zapsplat","url":"https:\/\/www.zapsplat.com\/","logo":{"@type":"ImageObject","inLanguage":"en-GB","@id":"https:\/\/www.zapsplat.com\/#\/schema\/logo\/image\/","url":"https:\/\/www.zapsplat.com\/wp-content\/uploads\/2018\/04\/zapsplat_logo_display.png","contentUrl":"https:\/\/www.zapsplat.com\/wp-content\/uploads\/2018\/04\/zapsplat_logo_display.png","width":500,"height":175,"caption":"Zapsplat"},"image":{"@id":"https:\/\/www.zapsplat.com\/#\/schema\/logo\/image\/"},"sameAs":["https:\/\/x.com\/zap_splat","https:\/\/www.instagram.com\/zap_splat\/","https:\/\/www.linkedin.com\/company\/zapsplat","https:\/\/www.youtube.com\/@zapsplat"],"taxID":"62 662 583 306","duns":"750782491"}]}</script>
+	<!-- / Yoast SEO Premium plugin. -->
+
+
+
+<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+
+<link rel='stylesheet' id='cookie-consent-client-style-css' href='https://www.zapsplat.com/wp-content/plugins/pressidium-cookie-consent/public/bundle.client.css?ver=a42c7610e2f07a53bd90' media='all' />
+<link rel='stylesheet' id='zs-ads-frontend-css' href='https://www.zapsplat.com/wp-content/plugins/zs-ads/frontend/css/zs-ads-frontend.css?ver=1.0.0.1704929165' media='all' />
+<link rel='stylesheet' id='nouislider-css' href='https://www.zapsplat.com/wp-content/plugins/zs/frontend/css/nouislider.min.css?ver=1.0.0.1704929165' media='all' />
+<link rel='stylesheet' id='zs-frontend-css' href='https://www.zapsplat.com/wp-content/plugins/zs/frontend/css/zs-frontend.css?ver=1.0.0.1704929165' media='all' />
+<script id="consent-mode-script-js-extra">
+var pressidiumCCGCM = {"gcm":{"enabled":true,"implementation":"gtm","ads_data_redaction":false,"url_passthrough":false,"regions":[]}};
+//# sourceURL=consent-mode-script-js-extra
+</script>
+<script id="consent-mode-script-js" src="https://www.zapsplat.com/wp-content/plugins/pressidium-cookie-consent/public/consent-mode.js?ver=e12e26152e9ebe6a26ba"></script>
+<script id="jquery-core-js" src="https://www.zapsplat.com/wp-includes/js/jquery/jquery.min.js?ver=3.7.1"></script>
+<script data-wp-strategy="defer" id="wc-jquery-blockui-js" src="https://www.zapsplat.com/wp-content/plugins/woocommerce/assets/js/jquery-blockui/jquery.blockUI.min.js?ver=2.7.0-wc.11.2.1"></script>
+<script data-wp-strategy="defer" defer id="wc-js-cookie-js" src="https://www.zapsplat.com/wp-content/plugins/woocommerce/assets/js/js-cookie/js.cookie.min.js?ver=2.1.4-wc.11.2.1"></script>
+<script id="woocommerce-js-extra">
+var woocommerce_params = {"ajax_url":"/wp-admin/admin-ajax.php","wc_ajax_url":"/?wc-ajax=%%endpoint%%","i18n_password_show":"Show password","i18n_password_hide":"Hide password"};
+//# sourceURL=woocommerce-js-extra
+</script>
+<script data-wp-strategy="defer" defer id="woocommerce-js" src="https://www.zapsplat.com/wp-content/plugins/woocommerce/assets/js/frontend/woocommerce.min.js?ver=11.2.1"></script>
+<script id="slicewp-script-tracking-js-before">
+var slicewp_ajaxurl = "https:\/\/www.zapsplat.com\/wp-admin\/admin-ajax.php";
+var slicewp = {"ajaxurl":"https:\/\/www.zapsplat.com\/wp-admin\/admin-ajax.php","cookie_duration":90,"affiliate_credit":"last","affiliate_keyword":"aff","predefined_date_ranges":{"past_7_days":"Past 7 days","past_30_days":"Past 30 days","week_to_date":"Week to date","month_to_date":"Month to date","year_to_date":"Year to date","last_week":"Last week","last_month":"Last month","last_year":"Last year"},"settings":{"active_currency":"GBP","currency_symbol_position":"before","currency_thousands_separator":",","currency_decimal_separator":"."}};
+//# sourceURL=slicewp-script-tracking-js-before
+</script>
+<script id="slicewp-script-tracking-js" src="https://www.zapsplat.com/wp-content/plugins/slicewp/assets/js/script-trk.js?ver=1.2.13"></script>
+<script id="wc-cart-fragments-js-extra">
+var wc_cart_fragments_params = {"ajax_url":"/wp-admin/admin-ajax.php","wc_ajax_url":"/?wc-ajax=%%endpoint%%","cart_hash_key":"wc_cart_hash_5857379e6fbedc438b0c43b2f60b0f31","fragment_name":"wc_fragments_5857379e6fbedc438b0c43b2f60b0f31","request_timeout":"5000"};
+//# sourceURL=wc-cart-fragments-js-extra
+</script>
+<style id="pmpro_colors">:root {
+	--pmpro--color--base: #1b1b1b;
+	--pmpro--color--contrast: #ffffff;
+	--pmpro--color--accent: #ef5c72;
+	--pmpro--color--accent--variation: hsl( 351,82%,97.5% );
+	--pmpro--color--border--variation: hsl( 0,0%,30% );
+}</style>
+<!-- Google Tag Manager for WordPress by gtm4wp.com -->
+<!-- GTM Container placement set to footer -->
+<script data-cfasync="false" data-pagespeed-no-defer type="text/javascript">
+	var dataLayer_content = {"pagePostType":"404-error"};
+	dataLayer.push( dataLayer_content );
+</script>
+<script data-cfasync="false" data-pagespeed-no-defer type="text/javascript">
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5HNGFLHB');
+</script>
+<!-- End Google Tag Manager for WordPress by gtm4wp.com --><link rel="preload" fetchpriority="high" href="https://www.zapsplat.com/wp-content/uploads/2025/01/Zapsplat-logo.webp" as="image">
+	<noscript><style>.woocommerce-product-gallery{ opacity: 1 !important; }</style></noscript>
+	<script>function perfmatters_check_cart_fragments(){if(null!==document.getElementById("perfmatters-cart-fragments"))return!1;if(document.cookie.match("(^|;) ?woocommerce_cart_hash=([^;]*)(;|$)")){var e=document.createElement("script");e.id="perfmatters-cart-fragments",e.src="https://www.zapsplat.com/wp-content/plugins/woocommerce/assets/js/frontend/cart-fragments.min.js",e.async=!0,document.head.appendChild(e)}}perfmatters_check_cart_fragments(),document.addEventListener("click",function(){setTimeout(perfmatters_check_cart_fragments,1e3)});</script><!-- [HEADER ASSETS] -->
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/awesome-menu@1/awesome-menu.css?bd_ver=2.8.3" />
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/popups@1/popups.css?bd_ver=2.8.3" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158524-defaults.css?v=e9edde393417ac3f348b830f770d6fd5" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158471-defaults.css?v=13c8a996a137276d38a7f46793f20398" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158527-defaults.css?v=b4a6ad3902793dc690148389a11fc3e6" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-164176-defaults.css?v=43238757f2b4e65b7f77707baca18bb6" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-164159-defaults.css?v=a18d9077805352cd38f4c0440054658f" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-163007-defaults.css?v=307b07fd3a7f4377bab78ba5e4576a41" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158488-defaults.css?v=ee67a9cb64841f5dab4f6b0acc390eb7" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/global-settings.css?v=adedb02cc0ea1c379cf5621c6a0a8bb2" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/selectors.css?v=6a956db43cbdd88b23fecdd2b53a0814" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158524.css?v=ac16498f0bfb70bb23bc1e9685d5a257" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158471.css?v=10e27d1faea34a6b01d46587a0c2d5ab" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158527.css?v=37e4bc3e549325ac5012efb9223bde81" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-164176.css?v=960511f54a21137fe80549b3bf69a49e" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-164159.css?v=f20d5ae7278af6ccbc38aa9013bcd32d" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-163007.css?v=81359bef619ee8c2fceed9a40ebdb71a" />
+
+<link rel="stylesheet" href="https://www.zapsplat.com/wp-content/uploads/breakdance/css/post-158488.css?v=36497fdd1a38f211c34a5586c0aad6e9" />
+<!-- [/EOF HEADER ASSETS] -->
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "q3skuqawh7");
+</script><noscript><style id="rocket-lazyload-nojs-css">.rll-youtube-player, [data-lazy-src]{display:none !important;}</style></noscript>    </head>
+    
+    <body class="pmpro-variation_1 error404 wp-theme-breakdance-zero wp-child-theme-zs breakdance theme-breakdance-zero woocommerce-no-js pressidium-cc-theme">
+        <svg class="breakdance-global-gradients-sprite" aria-hidden="true"><radialGradient id="bde-palette-blule-radial-gradient-3e21386b-fb4f-4f8d-9f65-8a72630b13ac-gradient-8"><stop stop-opacity="1" stop-color="#031c4f" offset="0"></stop><stop stop-opacity="0" stop-color="#ff0000" offset="0.7128205128205128"></stop></radialGradient></svg>            <header class="bde-header-builder-158524-100 bde-header-builder bde-header-builder--sticky bde-header-builder--sticky-scroll-slide">
+
+<div class="bde-header-builder__container"><div class="bde-image-158524-101 bde-image">
+<figure class="breakdance-image breakdance-image--158753">
+	<div class="breakdance-image-container">
+		<div class="breakdance-image-clip"><a class="breakdance-image-link breakdance-image-link--url" href="/" target="_self" rel="noopener" data-sub-html="" data-lg-size="-"><img data-perfmatters-preload class="breakdance-image-object" src="https://www.zapsplat.com/wp-content/uploads/2025/01/Zapsplat-logo.webp" width="138" height="47" sizes="(max-width: 138px) 100vw, 138px" alt="Zapsplat Logo" fetchpriority="high"></a></div>
+	</div></figure>
+
+</div><div class="bde-menu-158524-102 bde-menu">
+
+
+      
+        
+    <nav class="breakdance-menu breakdance-menu--collapse  breakdance-menu--active-styles breakdance-menu--active-underline  " aria-label="main navigation menu">
+    <button class="breakdance-menu-toggle breakdance-menu-toggle--squeeze" type="button" aria-label="Open Menu" aria-expanded="false" aria-controls="menu-102">
+                  <span class="breakdance-menu-toggle-icon">
+            <span class="breakdance-menu-toggle-lines"></span>
+          </span>
+            </button>
+    
+  <ul class="breakdance-menu-list" id="menu-102">
+              
+      <li class="breakdance-menu-topbar">
+              <span class="breakdance-menu-topbar-logo">
+                            <img src="https://www.zapsplat.com/wp-content/uploads/2025/01/Zapsplat-logo.webp" alt="Zapsplat logo" width="" />
+                          </span>
+      
+              <button class="breakdance-menu-close-button" type="button">Close</button>
+          </li>
+  
+    <li class="breakdance-menu-item-158524-103 breakdance-menu-item" aria-label="Home">
+        
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link breakdance-menu-link" href="/" target="_self" data-type="url"  >
+  Home
+    </a>
+
+</li><li class="bde-menu-custom-dropdown-158524-104 bde-menu-custom-dropdown breakdance-menu-item">
+<div class="breakdance-dropdown breakdance-dropdown--custom breakdance-dropdown--with-link">
+    <div class="breakdance-dropdown-toggle">
+      
+                      
+            
+            
+
+    
+    
+    
+    
+                            
+    <a class="breakdance-link breakdance-menu-link" href="/sound-effect-categories/" target="_self" data-type="url" aria-expanded="false" aria-controls="dropdown-104" aria-label="View all sound effects categories" >
+
+          Sound Effects
+            </a>
+
+      
+      <button class="breakdance-menu-link-arrow" type="button" aria-expanded="false" aria-controls="dropdown-104" aria-label="Sound Effects Submenu"></button>
+    </div>
+
+    <div class="breakdance-dropdown-floater" aria-hidden="true" id="dropdown-104">
+        <div class="breakdance-dropdown-body">
+            <div class="breakdance-dropdown-custom-content">
+                <div class="bde-text-158524-105 bde-text">
+Browse Sound Effects Categories
+</div><div class="bde-shortcode-158524-106 bde-shortcode"><ul class="menu-sound-effect-categories"><li><a href="https://www.zapsplat.com/sound-effect-category/animals/" class="sound-effect-category-link">Animal</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/bells/" class="sound-effect-category-link">Bell</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/cartoon/" class="sound-effect-category-link">Cartoon</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/emergency/" class="sound-effect-category-link">Emergency</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/explosions-and-fireworks/" class="sound-effect-category-link">Explosions</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/fantasy/" class="sound-effect-category-link">Fantasy</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/foley/" class="sound-effect-category-link">Foley</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/food-and-drink/" class="sound-effect-category-link">Food and Drink</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/horror/" class="sound-effect-category-link">Horror</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/hospital/" class="sound-effect-category-link">Hospital</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/household/" class="sound-effect-category-link">Household</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/human/" class="sound-effect-category-link">Human</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/impacts/" class="sound-effect-category-link">Impacts</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/industrial/" class="sound-effect-category-link">Industrial</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/lab/" class="sound-effect-category-link">Lab</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/leisure/" class="sound-effect-category-link">Leisure</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/multimedia/" class="sound-effect-category-link">Multimedia and UI</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/musical/" class="sound-effect-category-link">Musical</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/nature/" class="sound-effect-category-link">Nature</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/office/" class="sound-effect-category-link">Office</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/public-places/" class="sound-effect-category-link">Public Places</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/science-fiction/" class="sound-effect-category-link">Science Fiction</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/sound-design/" class="sound-effect-category-link">Sound Design</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/sport/" class="sound-effect-category-link">Sport</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/technology/" class="sound-effect-category-link">Technology</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/vehicles-and-transport/" class="sound-effect-category-link">Vehicles</a></li><li><a href="https://www.zapsplat.com/sound-effect-category/war-and-weapons/" class="sound-effect-category-link">Warfare</a></li></ul></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</li><li class="breakdance-menu-item-158524-107 breakdance-menu-item" aria-label="Sound Effects Packs">
+        
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link breakdance-menu-link" href="/sound-effect-packs/" target="_self" data-type="url"  >
+  SFX Packs
+    </a>
+
+</li><li class="bde-menu-dropdown-158524-131 bde-menu-dropdown breakdance-menu-item">
+<div class="breakdance-dropdown breakdance-dropdown--custom ">
+    <div class="breakdance-dropdown-toggle">
+      
+              <button class="breakdance-menu-link" type="button" aria-expanded="false" aria-controls="dropdown-131" >
+          Music
+        </button>
+      
+      <button class="breakdance-menu-link-arrow" type="button" aria-expanded="false" aria-controls="dropdown-131" aria-label="Music Submenu"></button>
+    </div>
+
+    <div class="breakdance-dropdown-floater" aria-hidden="true" id="dropdown-131">
+        <div class="breakdance-dropdown-body">
+              <div class="breakdance-dropdown-section breakdance-dropdown-section--">
+    <div class="breakdance-dropdown-columns">
+              <div class="breakdance-dropdown-column ">
+          
+          <ul class="breakdance-dropdown-links">
+                                <li class="breakdance-dropdown-item">
+            
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link breakdance-dropdown-link" href="https://www.zapsplat.com/sound-effect-category/royalty-free-music/" target="_self" data-type="url"  >
+
+              <span class="breakdance-dropdown-link__icon">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" id="icon-music" viewBox="0 0 32 32">
+<path d="M30 0h2v23c0 2.761-3.134 5-7 5s-7-2.239-7-5c0-2.761 3.134-5 7-5 1.959 0 3.729 0.575 5 1.501v-11.501l-16 3.556v15.444c0 2.761-3.134 5-7 5s-7-2.239-7-5c0-2.761 3.134-5 7-5 1.959 0 3.729 0.575 5 1.501v-19.501l18-4z"/>
+</svg>
+                  </span>
+      
+      <span class="breakdance-dropdown-link__label">
+                  <span class="breakdance-dropdown-link__text">Royalty free Music Tracks</span>
+        
+                  <span class="breakdance-dropdown-link__description">Get access to thousands of royalty free music tracks for use in your projects.</span>
+              </span>
+        </a>
+
+  </li>
+
+                      </ul>
+        </div>
+              <div class="breakdance-dropdown-column ">
+          
+          <ul class="breakdance-dropdown-links">
+                                <li class="breakdance-dropdown-item">
+            
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link breakdance-dropdown-link" href="https://www.zapsplat.com/sound-effect-packs-category/packs-royalty-free-music/" target="_self" data-type="url"  >
+
+              <span class="breakdance-dropdown-link__icon">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" id="icon-file-zip" viewBox="0 0 32 32">
+<path d="M28.681 7.159c-0.694-0.947-1.662-2.053-2.724-3.116s-2.169-2.030-3.116-2.724c-1.612-1.182-2.393-1.319-2.841-1.319h-15.5c-1.378 0-2.5 1.121-2.5 2.5v27c0 1.378 1.121 2.5 2.5 2.5h23c1.378 0 2.5-1.122 2.5-2.5v-19.5c0-0.448-0.137-1.23-1.319-2.841v0 0zM24.543 5.457c0.959 0.959 1.712 1.825 2.268 2.543h-4.811v-4.811c0.718 0.556 1.584 1.309 2.543 2.268v0 0zM28 29.5c0 0.271-0.229 0.5-0.5 0.5h-23c-0.271 0-0.5-0.229-0.5-0.5v-27c0-0.271 0.229-0.5 0.5-0.5 0 0 15.499-0 15.5 0v7c0 0.552 0.448 1 1 1h7v19.5z"/>
+<path d="M8 2h4v2h-4v-2z"/>
+<path d="M12 4h4v2h-4v-2z"/>
+<path d="M8 6h4v2h-4v-2z"/>
+<path d="M12 8h4v2h-4v-2z"/>
+<path d="M8 10h4v2h-4v-2z"/>
+<path d="M12 12h4v2h-4v-2z"/>
+<path d="M8 14h4v2h-4v-2z"/>
+<path d="M12 16h4v2h-4v-2z"/>
+<path d="M8 26.5c0 0.825 0.675 1.5 1.5 1.5h5c0.825 0 1.5-0.675 1.5-1.5v-5c0-0.825-0.675-1.5-1.5-1.5h-2.5v-2h-4v8.5zM14 24v2h-4v-2h4z"/>
+</svg>
+                  </span>
+      
+      <span class="breakdance-dropdown-link__label">
+                  <span class="breakdance-dropdown-link__text">Music Packs</span>
+        
+                  <span class="breakdance-dropdown-link__description">Unique packs of royalty free music that you won't find on any other platform.</span>
+              </span>
+        </a>
+
+  </li>
+
+                      </ul>
+        </div>
+          </div>
+  </div>
+
+
+                    </div>
+    </div>
+</div>
+
+</li><li class="bde-button-158524-109 bde-button breakdance-menu-item">
+        
+    
+    
+    
+                            
+            
+                    
+            
+            
+
+    
+    
+    
+    
+                            
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/login/" target="_self" data-type="url"  aria-label="Login" >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</li><li class="bde-button-158524-110 bde-button breakdance-menu-item">
+        
+    
+    
+    
+                            
+            
+                    
+            
+            
+
+    
+    
+    
+    
+                            
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/registration/" target="_self" data-type="url"  aria-label="Login" >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</li>
+  </ul>
+  </nav>
+
+
+</div><div class="bde-div-158524-113 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-search-form-158524-122 bde-search-form header-search">
+
+
+
+
+
+
+  
+
+<form id="search-form-122" role="search" method="get" data-type="classic" aria-hidden="false" class="js-search-form search-form search-form--classic" action="https://www.zapsplat.com">
+  <div class="search-form__container">
+      <button type="submit" aria-label="Search" class="search-form__button">
+      		  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg>
+          </button>
+  
+
+
+  	<label class="screen-reader-text" for="search-form-field-122">Search for:</label>
+
+        <input id="search-form-field-122" type="text" class="js-search-form-field search-form__field" placeholder="Search library" value="" name="s" />
+  	
+    
+    
+       </div>
+</form>
+
+
+</div><div class="bde-icon-158524-125 bde-icon open-advanced-search" title="Open Advanced Search">
+
+    
+                    
+            
+                           
+                       
+                 
+
+    
+    
+    
+                    
+    
+    <a class="breakdance-link bde-icon-icon breakdance-icon-atom" href="#" target="_self" data-type="action"  data-action='{"type":"popup","popupOptions":{"popupId":"163007","popupAction":"open"}}' >
+
+    
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M496 384H160v-16c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v16H16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h80v16c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-16h336c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm0-160h-80v-16c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v16H16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h336v16c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-16h80c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm0-160H288V48c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v16H16C7.2 64 0 71.2 0 80v32c0 8.8 7.2 16 16 16h208v16c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-16h208c8.8 0 16-7.2 16-16V80c0-8.8-7.2-16-16-16z"/></svg>
+        
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-search-form-158524-123 bde-search-form">
+
+
+
+
+
+
+      <button aria-label="Toggle search" aria-haspopup="dialog" aria-expanded="false" aria-controls="search-form-123" class="search-form__button search-form__button--full-screen js-search-form-expand-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg>
+            </button>
+  
+
+<form id="search-form-123" role="search" method="get" data-type="full-screen" aria-hidden="true" class="js-search-form search-form search-form--full-screen" action="https://www.zapsplat.com">
+  <div class="search-form__container">
+  
+
+
+  	<label class="screen-reader-text" for="search-form-field-123">Search for:</label>
+
+    
+    
+    
+           <div class="search-form__lightbox js-search-form-lightbox">
+        <button class="search-form__lightbox-close js-search-form-close" aria-label="Close search" type="button">
+            <svg width="100%" aria-hidden="true" class="search-form__icon--close" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Pro 6.0.0-beta2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M312.1 375c9.369 9.369 9.369 24.57 0 33.94s-24.57 9.369-33.94 0L160 289.9l-119 119c-9.369 9.369-24.57 9.369-33.94 0s-9.369-24.57 0-33.94L126.1 256L7.027 136.1c-9.369-9.369-9.369-24.57 0-33.94s24.57-9.369 33.94 0L160 222.1l119-119c9.369-9.369 24.57-9.369 33.94 0s9.369 24.57 0 33.94L193.9 256L312.1 375z"/></svg>
+
+        </button>
+
+        <div class="search-form__lightbox-bg js-search-form-lightbox-bg"></div>
+
+
+     <div class="search-form__lightbox-container">
+        <button type="submit" class="search-form__lightbox-button">
+          		  	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M505 442.7L405.3 343c-4.5-4.5-10.6-7-17-7H372c27.6-35.3 44-79.7 44-128C416 93.1 322.9 0 208 0S0 93.1 0 208s93.1 208 208 208c48.3 0 92.7-16.4 128-44v16.3c0 6.4 2.5 12.5 7 17l99.7 99.7c9.4 9.4 24.6 9.4 33.9 0l28.3-28.3c9.4-9.4 9.4-24.6.1-34zM208 336c-70.7 0-128-57.2-128-128 0-70.7 57.2-128 128-128 70.7 0 128 57.2 128 128 0 70.7-57.2 128-128 128z"/></svg>
+      	          </button>
+        <input type="text" id="search-form-field-123" class="js-search-form-field search-form__field" placeholder="Search for sounds and music" value="" name="s" />
+      </div>
+
+    </div>
+
+      </div>
+</form>
+
+
+</div><div class="bde-button-158524-117 bde-button">
+        
+    
+    
+    
+                            
+            
+                    
+            
+            
+
+    
+    
+    
+    
+                            
+    <a class="breakdance-link button-atom button-atom--custom bde-button__button" href="/login/" target="_self" data-type="url"  aria-label="Login" >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-button-158524-118 bde-button">
+        
+    
+    
+    
+                            
+            
+                    
+            
+            
+
+    
+    
+    
+    
+                            
+    <a class="breakdance-link button-atom button-atom--custom bde-button__button" href="/registration/" target="_self" data-type="url"  aria-label="Register" >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-mini-cart-158524-119 bde-mini-cart breakdance-woocommerce">
+    <a class="bde-mini-cart-toggle" href="https://www.zapsplat.com/cart/" aria-label="View basket" >
+        <span class="bde-mini-cart-toggle__subtotal" data-count='0'><span class="woocommerce-Price-amount amount"><bdi><span class="woocommerce-Price-currencySymbol" translate="no" dir="auto">&pound;</span>0.00</bdi></span></span>
+        <span class="bde-mini-cart-toggle__icon"></span>
+        <span class="bde-mini-cart-toggle__counter" data-count='0'>0</span>
+    </a>
+
+    <div class="bde-mini-cart-offcanvas bde-mini-cart-offcanvas--sidebar bde-mini-cart-offcanvas--primary-checkout bde-mini-cart-offcanvas--right">
+        <div class="bde-mini-cart-offcanvas-body">
+            <div class="bde-mini-cart-offcanvas-topbar">
+                <p class="bde-mini-cart-offcanvas-title bde-h6">Basket</p>
+                <button class="bde-mini-cart-offcanvas__close-button">×</button>
+            </div>
+
+            
+            <div class="widget_shopping_cart_content">
+                
+
+    <p class="woocommerce-mini-cart__empty-message">No products in the basket.</p>
+
+
+            </div>
+
+            
+                    </div>
+
+        <span class="bde-mini-cart-offcanvas-overlay"></span>
+    </div>
+
+</div>
+</div></div>
+
+
+</header><section class="bde-section-158471-100 bde-section">
+  
+  
+	
+
+
+
+<div class="section-container"><h1 class="bde-heading-158471-103 bde-heading">
+404
+</h1><div class="bde-text-158471-104 bde-text">
+not found
+</div><div class="bde-icon-158471-105 bde-icon">
+
+    
+            <div class="bde-icon-icon breakdance-icon-atom" >
+    
+                    <svg xmlns="http://www.w3.org/2000/svg" id="icon-sad" viewBox="0 0 32 32">
+<path d="M16 32c8.837 0 16-7.163 16-16s-7.163-16-16-16-16 7.163-16 16 7.163 16 16 16zM16 3c7.18 0 13 5.82 13 13s-5.82 13-13 13-13-5.82-13-13 5.82-13 13-13zM8 10c0-1.105 0.895-2 2-2s2 0.895 2 2c0 1.105-0.895 2-2 2s-2-0.895-2-2zM20 10c0-1.105 0.895-2 2-2s2 0.895 2 2c0 1.105-0.895 2-2 2s-2-0.895-2-2zM9.997 24.398l-2.573-1.544c1.749-2.908 4.935-4.855 8.576-4.855s6.827 1.946 8.576 4.855l-2.573 1.544c-1.224-2.036-3.454-3.398-6.003-3.398s-4.779 1.362-6.003 3.398z"/>
+</svg>
+        
+        
+        
+            </div>
+    
+
+
+</div></div>
+</section><footer class="bde-section-158527-100 bde-section">
+  
+  
+	
+
+
+
+<div class="section-container"><div class="bde-columns-158527-101 bde-columns"><div class="bde-column-158527-102 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-image-158527-103 bde-image">
+<figure class="breakdance-image breakdance-image--158753">
+	<div class="breakdance-image-container">
+		<div class="breakdance-image-clip"><img class="breakdance-image-object" src="https://www.zapsplat.com/wp-content/uploads/2025/01/Zapsplat-logo.webp" width="138" height="47" sizes="(max-width: 138px) 100vw, 138px" alt="Zapsplat logo" loading="lazy"></div>
+	</div></figure>
+
+</div><div class="bde-text-158527-104 bde-text">
+With a growing library of over 160,000 free sound effects downloads, 750+ SFX packs and more than 1000 royalty free music tracks too, ZapSplat is one of the largest free SFX libraries online. We're trusted by more than 3 million creatives who use our sound fx and music to bring their projects to life.
+</div><a class="bde-text-link-158527-105 bde-text-link breakdance-link" href="mailto:support@zapsplat.com" target="_self" data-type="url">
+  Email: support@zapsplat.com
+
+</a><div class="bde-image-158527-106 bde-image" aria-label="View Trustpilot reviews">
+<figure class="breakdance-image breakdance-image--121665">
+	<div class="breakdance-image-container">
+		<div class="breakdance-image-clip"><a class="breakdance-image-link breakdance-image-link--url" href="https://www.trustpilot.com/review/zapsplat.com" target="_blank" rel="noopener" data-sub-html="" data-lg-size="-"><img data-perfmatters-preload class="breakdance-image-object" src="https://www.zapsplat.com/wp-content/uploads/2022/04/trust-pilot-logo-white-small.png" width="200" height="99" sizes="(max-width: 200px) 100vw, 200px" alt="Trustpilot reviews" loading="lazy" fetchpriority="high"></a></div>
+	</div></figure>
+
+</div>
+</div><div class="bde-column-158527-107 bde-column">
+  
+  
+	
+
+
+
+<h3 class="bde-heading-158527-108 bde-heading">
+The Important Stuff
+</h3><div class="bde-wp-menu-158527-109 bde-wp-menu">
+
+
+      
+        
+    <nav class="breakdance-menu breakdance-menu--collapse breakdance-menu--vertical   ">
+    <button class="breakdance-menu-toggle breakdance-menu-toggle--squeeze" type="button" aria-label="Open Menu" aria-expanded="false" aria-controls="menu-109">
+                  <span class="breakdance-menu-toggle-icon">
+            <span class="breakdance-menu-toggle-lines"></span>
+          </span>
+            </button>
+    
+  <ul class="breakdance-menu-list" id="menu-109">
+              
+  
+    <li id="menu-item-68573" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-68573 breakdance-menu-item"><a title="Licensing" href="https://www.zapsplat.com/license-type/standard-license/" class="breakdance-menu-link">Licensing</a></li>
+<li id="menu-item-158825" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158825 breakdance-menu-item"><a title="Premium Account Upgrade Terms" href="https://www.zapsplat.com/premium-account-upgrade-terms-and-conditions/" class="breakdance-menu-link">Premium Account Upgrade Terms</a></li>
+<li id="menu-item-158826" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158826 breakdance-menu-item"><a href="https://www.zapsplat.com/refund-policy/" class="breakdance-menu-link">Refund Policy</a></li>
+<li id="menu-item-158827" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158827 breakdance-menu-item"><a href="https://www.zapsplat.com/website-terms-of-use/" class="breakdance-menu-link">Website Terms of Use</a></li>
+<li id="menu-item-158828" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158828 breakdance-menu-item"><a href="https://www.zapsplat.com/privacy-policy/" class="breakdance-menu-link">Privacy Policy</a></li>
+<li id="menu-item-165951" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-165951 breakdance-menu-item"><a href="https://www.zapsplat.com/cookie-policy/" class="breakdance-menu-link">Cookie Policy</a></li>
+<li id="menu-item-165952" class="cookie-preferences-trigger menu-item menu-item-type-custom menu-item-object-custom menu-item-165952 breakdance-menu-item"><a href="#" class="breakdance-menu-link">Cookie Preferences</a></li>
+<li id="menu-item-169431" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-169431 breakdance-menu-item"><a href="https://www.zapsplat.com/how-to-credit-us/" class="breakdance-menu-link">How to credit us</a></li>
+
+  </ul>
+  </nav>
+
+
+</div>
+</div><div class="bde-column-158527-110 bde-column">
+  
+  
+	
+
+
+
+<h3 class="bde-heading-158527-111 bde-heading">
+More Information
+</h3><div class="bde-wp-menu-158527-112 bde-wp-menu">
+
+
+      
+        
+    <nav class="breakdance-menu breakdance-menu--collapse breakdance-menu--vertical   ">
+    <button class="breakdance-menu-toggle breakdance-menu-toggle--squeeze" type="button" aria-label="Open Menu" aria-expanded="false" aria-controls="menu-112">
+                  <span class="breakdance-menu-toggle-icon">
+            <span class="breakdance-menu-toggle-lines"></span>
+          </span>
+            </button>
+    
+  <ul class="breakdance-menu-list" id="menu-112">
+              
+  
+    <li id="menu-item-158818" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158818 breakdance-menu-item"><a title="About Zapsplat" href="https://www.zapsplat.com/about/" class="breakdance-menu-link">About Us</a></li>
+<li id="menu-item-158819" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158819 breakdance-menu-item"><a title="Contact Zapsplat" href="https://www.zapsplat.com/contact/" class="breakdance-menu-link">Contact Us</a></li>
+<li id="menu-item-158820" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158820 breakdance-menu-item"><a href="https://www.zapsplat.com/faq/" class="breakdance-menu-link">FAQ</a></li>
+<li id="menu-item-158821" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158821 breakdance-menu-item"><a href="https://www.zapsplat.com/zapsplat-for-teams/" class="breakdance-menu-link">ZapSplat for Teams</a></li>
+<li id="menu-item-158822" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158822 breakdance-menu-item"><a title="Premium Sound Effects" href="https://www.zapsplat.com/gold-sounds/" class="breakdance-menu-link">Latest Premium SFX</a></li>
+<li id="menu-item-158823" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158823 breakdance-menu-item"><a title="Our Contributors" href="https://www.zapsplat.com/contributor-directory/" class="breakdance-menu-link">Our Contributors</a></li>
+<li id="menu-item-154665" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-154665 breakdance-menu-item"><a title="ZapSplat Discord Community" href="https://discord.com/invite/hFRW7rhhwD" class="breakdance-menu-link">ZapSplat Discord Community</a></li>
+<li id="menu-item-68571" class="menu-item menu-item-type-post_type menu-item-object-page current_page_parent menu-item-68571 breakdance-menu-item"><a title="Read Our Blog" href="https://www.zapsplat.com/blog/" class="breakdance-menu-link">Read Our Blog</a></li>
+<li id="menu-item-158824" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158824 breakdance-menu-item"><a href="https://www.zapsplat.com/zapsplat-affiliate-program/" class="breakdance-menu-link">Zapsplat Affiliate Program</a></li>
+
+  </ul>
+  </nav>
+
+
+</div>
+</div><div class="bde-column-158527-113 bde-column">
+  
+  
+	
+
+
+
+<h3 class="bde-heading-158527-114 bde-heading">
+Popular Sound Effects
+</h3><div class="bde-wp-menu-158527-115 bde-wp-menu">
+
+
+      
+        
+    <nav class="breakdance-menu breakdance-menu--collapse breakdance-menu--vertical   ">
+    <button class="breakdance-menu-toggle breakdance-menu-toggle--squeeze" type="button" aria-label="Open Menu" aria-expanded="false" aria-controls="menu-115">
+                  <span class="breakdance-menu-toggle-icon">
+            <span class="breakdance-menu-toggle-lines"></span>
+          </span>
+            </button>
+    
+  <ul class="breakdance-menu-list" id="menu-115">
+              
+  
+    <li id="menu-item-158829" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158829 breakdance-menu-item"><a title="Our Latest Sound Effects" href="https://www.zapsplat.com/new-sounds/" class="breakdance-menu-link">Our Latest Sound Effects</a></li>
+<li id="menu-item-147626" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-147626 breakdance-menu-item"><a href="/funny-sound-effects/" class="breakdance-menu-link">Funny Sounds</a></li>
+<li id="menu-item-132584" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132584 breakdance-menu-item"><a title="Gun Sounds" href="https://www.zapsplat.com/sound-effect-category/guns/" class="breakdance-menu-link">Gun Sounds</a></li>
+<li id="menu-item-132582" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132582 breakdance-menu-item"><a title="Doorbell Sounds" href="https://www.zapsplat.com/sound-effect-category/doorbell/" class="breakdance-menu-link">Doorbell Sounds</a></li>
+<li id="menu-item-132583" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132583 breakdance-menu-item"><a title="Explosion Sounds" href="https://www.zapsplat.com/sound-effect-category/explosions/" class="breakdance-menu-link">Explosion Sounds</a></li>
+<li id="menu-item-132585" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132585 breakdance-menu-item"><a title="Fart Sounds" href="https://www.zapsplat.com/sound-effect-category/fart/" class="breakdance-menu-link">Fart Sounds</a></li>
+<li id="menu-item-132586" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132586 breakdance-menu-item"><a title="Dog Sounds" href="https://www.zapsplat.com/sound-effect-category/dogs/" class="breakdance-menu-link">Dog Sounds</a></li>
+<li id="menu-item-132587" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132587 breakdance-menu-item"><a title="Horror Sounds" href="https://www.zapsplat.com/sound-effect-category/horror/" class="breakdance-menu-link">Horror Sounds</a></li>
+<li id="menu-item-132588" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132588 breakdance-menu-item"><a title="Alarm Sounds" href="https://www.zapsplat.com/sound-effect-category/sirens-and-alarms/" class="breakdance-menu-link">Alarm Sounds</a></li>
+<li id="menu-item-132589" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132589 breakdance-menu-item"><a title="Glitch Sounds" href="https://www.zapsplat.com/sound-effect-category/glitches/" class="breakdance-menu-link">Glitch Sounds</a></li>
+<li id="menu-item-132590" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132590 breakdance-menu-item"><a title="Cartoon Sounds" href="https://www.zapsplat.com/sound-effect-category/cartoon/" class="breakdance-menu-link">Cartoon Sounds</a></li>
+<li id="menu-item-132591" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-132591 breakdance-menu-item"><a title="Wind Sounds" href="https://www.zapsplat.com/sound-effect-category/wind/" class="breakdance-menu-link">Wind Sounds</a></li>
+
+  </ul>
+  </nav>
+
+
+</div>
+</div></div></div>
+</footer>        <script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":["/wp-*.php","/wp-admin/*","/wp-content/uploads/*","/wp-content/*","/wp-content/plugins/*","/wp-content/themes/zs/*","/wp-content/themes/breakdance-zero/*","/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<div class="breakdance"><div class="bde-popup-164176-100 bde-popup">
+<div
+    class="breakdance-popup
+    "
+    data-breakdance-popup-id="164176"
+        >
+  <div class='breakdance-popup-content'>
+    <div class="bde-columns-164176-101 bde-columns"><div class="bde-column-164176-102 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-164176-103 bde-div non-logged-in-free-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164176-104 bde-text">
+- Free Download -
+</div><div class="bde-text-164176-105 bde-text">
+Download <strong>FREE</strong> with a basic user account.
+</div><div class="bde-div-164176-106 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164176-107 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/login/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-text-164176-108 bde-text">
+or 
+</div><div class="bde-button-164176-109 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/registration/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-text-164176-110 bde-text">
+Attribution required for non-premium members.
+</div>
+</div><div class="bde-div-164176-111 bde-div non-logged-in-premium-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164176-112 bde-text">
+- Premium Content -<br><span style='text-decoration:underline;'>Get Unlimited Downloads</span>
+</div><div class="bde-text-164176-113 bde-text">
+Access <strong style='text-decoration:underline;'>unlimited downloads</strong> of our premium content with a membership.
+</div><div class="bde-div-164176-114 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164176-115 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/upgrade/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Premium Membership</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-text-164176-116 bde-text">
+OR
+</div><div class="bde-text-164176-117 bde-text">
+Download over <span style='text-decoration:underline;'>150,000+ FREE items</span>  with our <span style='text-decoration:underline;'>Basic User account</span>.
+</div><div class="bde-button-164176-118 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/registration/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Register Free Account</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-div-164176-119 bde-div non-logged-in-free-wav-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164176-120 bde-text">
+Free Download
+</div><div class="bde-text-164176-121 bde-text">
+Download the <strong style='text-decoration:underline;'>FREE MP3 version</strong> of this item with a basic user account.
+</div><div class="bde-div-164176-122 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164176-123 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/login/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-text-164176-124 bde-text">
+or 
+</div><div class="bde-button-164176-125 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/registration/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-text-164176-126 bde-text">
+WAV files are available to our premium members. <a href='/upgrade/'>Upgrade here</a> .
+</div>
+</div>
+</div></div>
+  </div>
+    	<div class="breakdance-popup-close-button breakdance-popup-position-top-right" data-breakdance-popup-reference="164176" data-breakdance-popup-action="close">
+      <div class="breakdance-popup-close-icon">
+                  <svg viewBox="0 0 24 24">
+            <path d="M20 6.91L17.09 4L12 9.09L6.91 4L4 6.91L9.09 12L4 17.09L6.91 20L12 14.91L17.09 20L20 17.09L14.91 12L20 6.91Z" />
+          </svg>
+              </div>
+    </div>
+  </div>
+
+</div></div><div class="breakdance"><div class="bde-popup-164159-100 bde-popup">
+<div
+    class="breakdance-popup
+    "
+    data-breakdance-popup-id="164159"
+        >
+  <div class='breakdance-popup-content'>
+    <div class="bde-columns-164159-101 bde-columns"><div class="bde-column-164159-102 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-164159-103 bde-div non-logged-in-free-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164159-104 bde-text">
+- Free Download -
+</div><div class="bde-text-164159-105 bde-text">
+Download <strong>FREE</strong> with a basic user account.
+</div><div class="bde-div-164159-106 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164159-107 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/login/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-text-164159-108 bde-text">
+or 
+</div><div class="bde-button-164159-109 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/registration/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-text-164159-110 bde-text">
+Attribution required for non-premium members.
+</div>
+</div><div class="bde-div-164159-111 bde-div non-logged-in-premium-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164159-112 bde-text">
+- Premium Content -<br><span style='text-decoration:underline;'>Get Unlimited Downloads</span>
+</div><div class="bde-text-164159-113 bde-text">
+Access <strong style='text-decoration:underline;'>unlimited downloads</strong> of our premium content with a membership.
+</div><div class="bde-div-164159-114 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164159-115 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/upgrade/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Premium Membership</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div><div class="bde-div-164159-116 bde-div non-logged-in-free-wav-content-popup-info">
+  
+  
+	
+
+
+
+<div class="bde-text-164159-117 bde-text">
+Free Download
+</div><div class="bde-text-164159-118 bde-text">
+Download the <strong style='text-decoration:underline;'>FREE MP3 version</strong> of this item with a basic user account.
+</div><div class="bde-div-164159-119 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164159-120 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/login/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Login</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div><div class="bde-text-164159-121 bde-text">
+or 
+</div><div class="bde-button-164159-122 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/registration/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Register</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div><div class="bde-text-164159-123 bde-text">
+WAV files are available to our premium members. <a href='/upgrade/'>Upgrade here</a> .
+</div>
+</div>
+</div><div class="bde-column-164159-124 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-164159-125 bde-div hide">
+  
+  
+	
+
+
+
+<div class="bde-text-164159-126 bde-text">
+- Get Unlimited Downloads -
+</div><div class="bde-text-164159-127 bde-text">
+<strong style='text-decoration:underline;'>Unlimited downloads</strong> of WAV Files are available to our premium members.<br><br>WAV files<strong> can also be purchased as a single item</strong> without a membership.
+</div><div class="bde-div-164159-128 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-164159-129 bde-button">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--secondary bde-button__button" href="/upgrade/" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Premium Membership</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div><div class="bde-div-164159-130 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-164159-131 bde-text">
+<span style='text-decoration:underline;'>OR</span>
+</div><div class="bde-text-164159-132 bde-text">
+Purchase & Download Instantly
+</div><div class="bde-shortcode-164159-133 bde-shortcode">
+        <div class="zs-purchase-container download-actions-container" data-post-id="">
+            
+            <input type="hidden" class="item_id" value="">
+            
+                        <input type="hidden" class="item_type" value="">
+
+            <div class="standard-download-options">
+                <a href="javascript:void(0);" 
+                class="buy-item-button" 
+                data-license="standard"
+                data-product-id="">
+                                    </a>
+            </div>
+
+            
+                <div class="download-merchandise-licencing-container hide">
+                    <button type="button" class="merchandise-licencing-ui-trigger">
+                        Merchandising license available&nbsp;<span>i</span>
+                    </button>
+                    
+                    <div class="merchandise-licencing-add-to-cart-container hide">
+                        <p>Merchandising license covers usage in physical products (Toys, books, greeting cards, etc.).</p>
+                        
+                        <a href="javascript:void(0);" 
+                        class="buy-item-button" 
+                        data-license="merch"
+                        data-product-id="">
+                                                    </a>
+
+                        <a href="/license-type/merchandising-license/" target="_blank" class="mechandise-licence-info">Merchandise License Details.</a>
+                        <a href="/contact/" target="_blank" class="mechandise-licence-contact-for-info">Contact us for more information.</a>
+                    </div>
+                </div>
+
+                    </div>
+        </div>
+</div>
+</div></div>
+  </div>
+    	<div class="breakdance-popup-close-button breakdance-popup-position-top-right" data-breakdance-popup-reference="164159" data-breakdance-popup-action="close">
+      <div class="breakdance-popup-close-icon">
+                  <svg viewBox="0 0 24 24">
+            <path d="M20 6.91L17.09 4L12 9.09L6.91 4L4 6.91L9.09 12L4 17.09L6.91 20L12 14.91L17.09 20L20 17.09L14.91 12L20 6.91Z" />
+          </svg>
+              </div>
+    </div>
+  </div>
+
+</div></div><div class="breakdance"><div class="bde-popup-163007-100 bde-popup">
+<div
+    class="breakdance-popup
+    "
+    data-breakdance-popup-id="163007"
+        >
+  <div class='breakdance-popup-content'>
+    <section class="bde-section-163007-101 bde-section">
+  
+  
+	
+
+
+
+<div class="section-container"><h2 class="bde-heading-163007-102 bde-heading">
+Search our library
+</h2><div class="bde-shortcode-163007-103 bde-shortcode">        <form role="search" method="get" class="search-form custom-search" action="https://www.zapsplat.com/">
+
+            <input type="search" name="s" value="" placeholder="Search…" />
+
+            <input type="search" name="exclude_s" value="" placeholder="Exclude words separated by a space" class="exclude-input">
+
+            <div class="search-sorting-filter">
+                <p class="search-filter-heading" style="margin-bottom:8px;">Sort by</p>
+                <div class="sort-options-container">
+                    <input type="radio" name="sort_by" value="date_desc" id="sort-date-desc" checked>
+                    <label for="sort-date-desc">Newest</label>
+
+                    <input type="radio" name="sort_by" value="downloads_desc" id="sort-downloads-desc">
+                    <label for="sort-downloads-desc">Most Popular</label>
+
+                    <input type="radio" name="sort_by" value="title_asc" id="sort-title-asc">
+                    <label for="sort-title-asc">Title A-Z</label>
+                </div>
+            </div>
+
+            <div class="search-content-type-filter">
+                <p class="search-filter-heading" style="margin-bottom:8px;">Content Type</p>
+                <div class="content-type-options-container">
+                    <input type="checkbox" name="post_type_filter[]" value="music" id="content-type-music">
+                    <label for="content-type-music">Sound Effects</label>
+
+                    <input type="checkbox" name="post_type_filter[]" value="music-pack" id="content-type-packs">
+                    <label for="content-type-packs">Sound Effects Packs</label>                    
+                </div>
+            </div>
+    
+            <div class="search-categories">
+                <div class="search-filter-heading-container">
+                    <p class="search-filter-heading">Filter by Category</p>
+                    <div class="filter-actions-container">
+                        <button type="button" class="show-filters">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
+                        </button>
+                        <button type="button" class="hide-filters hide">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="sound-effect-category-container" class="filter-options-container category-container hide"></div>
+            </div>
+    
+            <div class="search-contributor">
+                <div class="search-filter-heading-container">
+                    <p class="search-filter-heading">Filter by Contributor</p>
+                    <div class="filter-actions-container">
+                        <button type="button" class="show-filters">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
+                        </button>
+                        <button type="button" class="hide-filters hide">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="contributor-list-container" class="filter-options-container contributor-container hide"></div>
+            </div>
+
+            <div class="search-duration-filter">
+                <div class="search-filter-heading-container">
+                    <div class="search-duration-heading-container">
+                        <p class="search-filter-heading">Filter by Duration</p>
+                        <div class="search-duration-selections-container">                            
+                        </div>
+                    </div>                    
+                    <div class="filter-actions-container">
+                        <button type="button" class="show-filters">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>
+                        </button>
+                        <button type="button" class="hide-filters hide">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-options-container duration-container hide">
+                    <div id="duration-slider"></div>
+                    <input type="hidden" name="min_duration" id="min-duration" value="0">
+                    <input type="hidden" name="max_duration" id="max-duration" value="1800">
+                </div>
+            
+            </div>
+
+            <div class="form-actions">
+
+                <button type="submit" class="">Search</button>
+                <button type="button" id="reset-search-form-btn">Reset</button>
+
+            </div>    
+            
+        </form>
+        </div></div>
+</section>
+  </div>
+    	<div class="breakdance-popup-close-button breakdance-popup-position-top-right" data-breakdance-popup-reference="163007" data-breakdance-popup-action="close">
+      <div class="breakdance-popup-close-icon">
+                  <svg viewBox="0 0 24 24">
+            <path d="M20 6.91L17.09 4L12 9.09L6.91 4L4 6.91L9.09 12L4 17.09L6.91 20L12 14.91L17.09 20L20 17.09L14.91 12L20 6.91Z" />
+          </svg>
+              </div>
+    </div>
+  </div>
+
+</div></div><div class="breakdance"><div class="bde-popup-158488-100 bde-popup">
+<div
+    class="breakdance-popup
+    "
+    data-breakdance-popup-id="158488"
+        >
+  <div class='breakdance-popup-content'>
+    <div class="bde-content-toggle-158488-134 bde-content-toggle">
+<div class="bde-content-toggle__switcher">
+  <span class="bde-content-toggle__text js-content-toggle-label">Yearly <span style="color:#ef5c72; font-size: 0.8em;">(SAVE 27%)</span></span>
+ <label class="bde-content-toggle__switch">
+  <input type="checkbox" class="js-content-toggle-checkbox bde-content-toggle__checkbox" />
+  <span class="bde-content-toggle__slider"></span>
+ </label>
+  <span class="bde-content-toggle__text js-content-toggle-label">Monthly</span>
+</div>
+<div class="bde-content-toggle-content-158488-135 bde-content-toggle-content"><div class="bde-columns-158488-136 bde-columns"><div class="bde-column-158488-137 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-158488-138 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-139 bde-text" tabindex="0">
+Yearly Premium Access<br><span style="font-size:0.7em; font-weight: 500;text-transform:uppercase; color: #000000;">For Individuals</span>
+</div>
+</div><div class="bde-div-158488-140 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-shortcode-158488-141 bde-shortcode">&pound;69.99 / Year</div><div class="bde-content-reveal-158488-189 bde-content-reveal">
+<div class="bde-content-reveal__container is-hidden">
+  <div class="bde-content-reveal__content">
+    <div class="bde-icon-list-158488-191 bde-icon-list" tabindex="0">
+<ul>
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Unlimited downloads
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      160,000+ free sound effects
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      750+ sound effects packs
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      1000+ royalty free music tracks
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Attribution free use
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Simple licensing
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Access 100% of our catalog
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Thousands of extra sounds
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      High quality MP3 and WAV files
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Ad free and more!
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Cancel anytime
+      </span>
+              </div>
+      
+    </li>
+
+  </ul>
+
+</div>
+  </div>
+
+      
+      
+    
+    
+    
+                                                    
+            
+            <button type="button" class="button-atom button-atom--custom bde-content-reveal__button"   data-i18n-more="&#43;" data-i18n-less="&#8722;">
+    
+        <span class="button-atom__text">&#43;</span>
+
+        
+        
+            </button>
+    
+</div>
+
+</div>
+</div><div class="bde-div-158488-143 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-144 bde-text" tabindex="0">
+Our best deal, save big with unlimited downloads and access to everything
+</div>
+</div><div class="bde-div-158488-145 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-146 bde-text" tabindex="0">
+Best value unlimited premium access
+</div>
+</div><div class="bde-div-158488-147 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-158488-148 bde-button bde-preset-0fea42ce-5577-4a43-a7ba-d5491f847d1a">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/membership-account/membership-checkout/?level=2" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Subscribe Yearly</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div><div class="bde-column-158488-149 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-158488-150 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-151 bde-text" tabindex="0">
+Yearly Multi-User Access<br><span style="font-size:0.7em; font-weight: 500;text-transform:uppercase;color: #000000;">For Teams</span>
+</div>
+</div><div class="bde-div-158488-152 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-shortcode-158488-153 bde-shortcode">&pound;41.99 / Year <br><span style="font-size: 0.65em;font-weight: normal;opacity: 0.7">+ &pound;41.99 per seat</span></div><div class="bde-icon-list-158488-154 bde-icon-list" tabindex="0">
+<ul>
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Delegate team access
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Centralized billing
+      </span>
+              </div>
+      
+    </li>
+
+  </ul>
+
+</div><div class="bde-shortcode-158488-155 bde-shortcode">        
+        <div class="pmpro-seat-calc-wrapper" 
+            data-base-price="41.99" 
+            data-seat-price="41.99"
+            data-included-seats="0"
+            data-currency="&pound;"
+            data-target-id="multi-user-yearly-checkout-popup"
+            data-checkout-url="https://www.zapsplat.com/membership-account/membership-checkout/?level=22">
+            
+            <div class="pmpro-seat-calc-display">
+                <span class="seat-count-display">5</span> Seats
+            </div>
+            
+            <input type="range" class="pmpro-seat-slider" 
+                min="1" 
+                max="50" 
+                value="5">
+            
+            <div class="pmpro-seat-calc-total">
+                Total: <span class="price-display">
+                    &pound;251.94                </span>
+            </div>
+
+            <style>
+                .pmpro-seat-calc-wrapper { width: 100%; }
+                .pmpro-seat-slider { -webkit-appearance: none; width: 100%; background: transparent; margin: 15px 0; }
+                .pmpro-seat-slider:focus { outline: none; }
+                .pmpro-seat-slider::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #ED455D; border-radius: 4px; }
+                .pmpro-seat-slider::-moz-range-track { width: 100%; height: 8px; cursor: pointer; background: #ED455D; border-radius: 4px; }
+                .pmpro-seat-slider::-webkit-slider-thumb { height: 22px; width: 22px; border-radius: 50%; background: #f0647a; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
+                .pmpro-seat-slider::-webkit-slider-thumb:active { transform: scale(1.1); }
+                .pmpro-seat-slider::-moz-range-thumb { height: 22px; width: 22px; border-radius: 50%; background: #f0647a; cursor: pointer; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+            </style>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const wrappers = document.querySelectorAll('.pmpro-seat-calc-wrapper');
+                    
+                    wrappers.forEach(wrapper => {
+                        const slider = wrapper.querySelector('.pmpro-seat-slider');
+                        const seatDisplay = wrapper.querySelector('.seat-count-display');
+                        const priceDisplay = wrapper.querySelector('.price-display');
+                        
+                        const basePrice = parseFloat(wrapper.getAttribute('data-base-price')) || 0;
+                        const seatPrice = parseFloat(wrapper.getAttribute('data-seat-price')) || 0;
+                        const includedSeats = parseInt(wrapper.getAttribute('data-included-seats')) || 0;
+                        const currency = wrapper.getAttribute('data-currency');
+                        const targetId = wrapper.getAttribute('data-target-id');
+                        const checkoutBaseUrl = wrapper.getAttribute('data-checkout-url');
+                        
+                        // Target the wrapper ID, then find the Breakdance link inside it
+                        const targetWrapper = document.getElementById(targetId);
+                        let targetBtn = null;
+                        
+                        if (targetWrapper) {
+                            targetBtn = targetWrapper.querySelector('.breakdance-link');
+                            // Fallback in case the ID was applied directly to the anchor link instead of a wrapper
+                            if (!targetBtn && targetWrapper.tagName.toLowerCase() === 'a') {
+                                targetBtn = targetWrapper;
+                            }
+                        }
+
+                        function updateCalculator() {
+                            const totalSeats = parseInt(slider.value) || 0;
+                            const extraSeats = Math.max(0, totalSeats - includedSeats);
+                            const total = (basePrice + (extraSeats * seatPrice)).toFixed(2);
+                            
+                            seatDisplay.textContent = totalSeats;
+                            priceDisplay.textContent = currency + total;
+                            
+                            if (targetBtn) {
+                                const separator = checkoutBaseUrl.includes('?') ? '&' : '?';
+                                targetBtn.href = checkoutBaseUrl + separator + 'pmpro_group_seats=' + totalSeats; 
+                            }
+                        }
+
+                        slider.addEventListener('input', updateCalculator);
+                        updateCalculator();
+                    });
+                });
+            </script>
+        </div>
+        
+        </div>
+</div><div class="bde-div-158488-156 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-157 bde-text" tabindex="0">
+Perfect for teams where you need to assign account access on demand.
+</div>
+</div><div class="bde-div-158488-158 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-159 bde-text" tabindex="0">
+Best value business team access
+</div>
+</div><div class="bde-div-158488-160 bde-div">
+  
+  
+	
+
+
+
+<div id="multi-user-yearly-checkout-popup" class="bde-button-158488-161 bde-button bde-preset-0fea42ce-5577-4a43-a7ba-d5491f847d1a">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/membership-account/membership-checkout/?level=22" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Get Team Access</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div></div></div><div class="bde-content-toggle-content-158488-162 bde-content-toggle-content"><div class="bde-columns-158488-163 bde-columns"><div class="bde-column-158488-164 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-158488-165 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-166 bde-text" tabindex="0">
+Monthly Premium Access<br><span style="font-size:0.7em; font-weight: 500;text-transform:uppercase; color: #000000;">For Individuals</span>
+</div>
+</div><div class="bde-div-158488-167 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-shortcode-158488-168 bde-shortcode">&pound;7.99 / Month</div><div class="bde-content-reveal-158488-192 bde-content-reveal">
+<div class="bde-content-reveal__container is-hidden">
+  <div class="bde-content-reveal__content">
+    <div class="bde-icon-list-158488-193 bde-icon-list" tabindex="0">
+<ul>
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Unlimited downloads
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      160,000+ free sound effects
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      750+ sound effects packs
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      1000+ royalty free music tracks
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Attribution free use
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Simple licensing
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Access 100% of our catalog
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Thousands of extra sounds
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      High quality MP3 and WAV files
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Ad free and more!
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 8C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 48c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m140.204 130.267l-22.536-22.718c-4.667-4.705-12.265-4.736-16.97-.068L215.346 303.697l-59.792-60.277c-4.667-4.705-12.265-4.736-16.97-.069l-22.719 22.536c-4.705 4.667-4.736 12.265-.068 16.971l90.781 91.516c4.667 4.705 12.265 4.736 16.97.068l172.589-171.204c4.704-4.668 4.734-12.266.067-16.971z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Cancel anytime
+      </span>
+              </div>
+      
+    </li>
+
+  </ul>
+
+</div>
+  </div>
+
+      
+      
+    
+    
+    
+                                                    
+            
+            <button type="button" class="button-atom button-atom--custom bde-content-reveal__button"   data-i18n-more="&#43;" data-i18n-less="&#8722;">
+    
+        <span class="button-atom__text">&#43;</span>
+
+        
+        
+            </button>
+    
+</div>
+
+</div>
+</div><div class="bde-div-158488-170 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-171 bde-text" tabindex="0">
+The ideal plan to unleash your creativity without restrictions
+</div>
+</div><div class="bde-div-158488-172 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-173 bde-text" tabindex="0">
+Unlimited access to all premium content
+</div>
+</div><div class="bde-div-158488-174 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-button-158488-175 bde-button bde-preset-0fea42ce-5577-4a43-a7ba-d5491f847d1a">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/membership-account/membership-checkout/?level=1" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Subscribe Monthly</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div><div class="bde-column-158488-176 bde-column">
+  
+  
+	
+
+
+
+<div class="bde-div-158488-177 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-178 bde-text" tabindex="0">
+Monthly Multi-User Access<br><span style="font-size:0.7em; font-weight: 500;text-transform:uppercase;color: #000000;">For Teams</span>
+</div>
+</div><div class="bde-div-158488-179 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-shortcode-158488-180 bde-shortcode">&pound;4.79 / Month <br><span style="font-size: 0.65em;font-weight: normal;opacity: 0.7">+ &pound;4.79 per seat</span></div><div class="bde-icon-list-158488-181 bde-icon-list" tabindex="0">
+<ul>
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Delegate team access
+      </span>
+              </div>
+      
+    </li>
+
+  
+              
+    <li>
+              <div class='bde-icon-list__item-wrapper'>
+      
+      <span class='bde-icon-list__icon' aria-hidden='true'>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Free 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) --><path d="M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-48C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z"/></svg>
+      </span>
+      <span class='bde-icon-list__text' >
+      Centralized billing
+      </span>
+              </div>
+      
+    </li>
+
+  </ul>
+
+</div><div class="bde-shortcode-158488-182 bde-shortcode">        
+        <div class="pmpro-seat-calc-wrapper" 
+            data-base-price="4.79" 
+            data-seat-price="4.79"
+            data-included-seats="0"
+            data-currency="&pound;"
+            data-target-id="multi-user-monthly-checkout-popup"
+            data-checkout-url="https://www.zapsplat.com/membership-account/membership-checkout/?level=21">
+            
+            <div class="pmpro-seat-calc-display">
+                <span class="seat-count-display">5</span> Seats
+            </div>
+            
+            <input type="range" class="pmpro-seat-slider" 
+                min="1" 
+                max="50" 
+                value="5">
+            
+            <div class="pmpro-seat-calc-total">
+                Total: <span class="price-display">
+                    &pound;28.74                </span>
+            </div>
+
+            <style>
+                .pmpro-seat-calc-wrapper { width: 100%; }
+                .pmpro-seat-slider { -webkit-appearance: none; width: 100%; background: transparent; margin: 15px 0; }
+                .pmpro-seat-slider:focus { outline: none; }
+                .pmpro-seat-slider::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #ED455D; border-radius: 4px; }
+                .pmpro-seat-slider::-moz-range-track { width: 100%; height: 8px; cursor: pointer; background: #ED455D; border-radius: 4px; }
+                .pmpro-seat-slider::-webkit-slider-thumb { height: 22px; width: 22px; border-radius: 50%; background: #f0647a; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
+                .pmpro-seat-slider::-webkit-slider-thumb:active { transform: scale(1.1); }
+                .pmpro-seat-slider::-moz-range-thumb { height: 22px; width: 22px; border-radius: 50%; background: #f0647a; cursor: pointer; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+            </style>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const wrappers = document.querySelectorAll('.pmpro-seat-calc-wrapper');
+                    
+                    wrappers.forEach(wrapper => {
+                        const slider = wrapper.querySelector('.pmpro-seat-slider');
+                        const seatDisplay = wrapper.querySelector('.seat-count-display');
+                        const priceDisplay = wrapper.querySelector('.price-display');
+                        
+                        const basePrice = parseFloat(wrapper.getAttribute('data-base-price')) || 0;
+                        const seatPrice = parseFloat(wrapper.getAttribute('data-seat-price')) || 0;
+                        const includedSeats = parseInt(wrapper.getAttribute('data-included-seats')) || 0;
+                        const currency = wrapper.getAttribute('data-currency');
+                        const targetId = wrapper.getAttribute('data-target-id');
+                        const checkoutBaseUrl = wrapper.getAttribute('data-checkout-url');
+                        
+                        // Target the wrapper ID, then find the Breakdance link inside it
+                        const targetWrapper = document.getElementById(targetId);
+                        let targetBtn = null;
+                        
+                        if (targetWrapper) {
+                            targetBtn = targetWrapper.querySelector('.breakdance-link');
+                            // Fallback in case the ID was applied directly to the anchor link instead of a wrapper
+                            if (!targetBtn && targetWrapper.tagName.toLowerCase() === 'a') {
+                                targetBtn = targetWrapper;
+                            }
+                        }
+
+                        function updateCalculator() {
+                            const totalSeats = parseInt(slider.value) || 0;
+                            const extraSeats = Math.max(0, totalSeats - includedSeats);
+                            const total = (basePrice + (extraSeats * seatPrice)).toFixed(2);
+                            
+                            seatDisplay.textContent = totalSeats;
+                            priceDisplay.textContent = currency + total;
+                            
+                            if (targetBtn) {
+                                const separator = checkoutBaseUrl.includes('?') ? '&' : '?';
+                                targetBtn.href = checkoutBaseUrl + separator + 'pmpro_group_seats=' + totalSeats; 
+                            }
+                        }
+
+                        slider.addEventListener('input', updateCalculator);
+                        updateCalculator();
+                    });
+                });
+            </script>
+        </div>
+        
+        </div>
+</div><div class="bde-div-158488-183 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-184 bde-text" tabindex="0">
+Perfect for teams where you need to assign account access on demand.
+</div>
+</div><div class="bde-div-158488-185 bde-div">
+  
+  
+	
+
+
+
+<div class="bde-text-158488-186 bde-text" tabindex="0">
+Dependable team access
+</div>
+</div><div class="bde-div-158488-187 bde-div">
+  
+  
+	
+
+
+
+<div id="multi-user-monthly-checkout-popup" class="bde-button-158488-188 bde-button bde-preset-0fea42ce-5577-4a43-a7ba-d5491f847d1a">
+        
+    
+    
+    
+    
+            
+                    
+            
+            
+
+    
+    
+    
+    
+    
+    <a class="breakdance-link button-atom button-atom--primary bde-button__button" href="/membership-account/membership-checkout/?level=21" target="_self" data-type="url"  >
+
+    
+        <span class="button-atom__text">Get Team Access</span>
+
+        
+        
+                </a>
+
+    
+
+
+</div>
+</div>
+</div></div></div>
+</div><div class="bde-icon-158488-123 bde-icon" title="close upgrade popup">
+
+    
+                    
+            
+                           
+                       
+                 
+
+    
+    
+    
+                    
+                            
+    <a class="breakdance-link bde-icon-icon breakdance-icon-atom" href="#" target="_self" data-type="action"  data-action='{"type":"popup","popupOptions":{"popupId":"152984","popupAction":"close"}}' aria-label="close upgrade popup" >
+
+    
+                    <svg xmlns="http://www.w3.org/2000/svg" id="icon-cross" viewBox="0 0 32 32">
+<path d="M31.708 25.708c-0-0-0-0-0-0l-9.708-9.708 9.708-9.708c0-0 0-0 0-0 0.105-0.105 0.18-0.227 0.229-0.357 0.133-0.356 0.057-0.771-0.229-1.057l-4.586-4.586c-0.286-0.286-0.702-0.361-1.057-0.229-0.13 0.048-0.252 0.124-0.357 0.228 0 0-0 0-0 0l-9.708 9.708-9.708-9.708c-0-0-0-0-0-0-0.105-0.104-0.227-0.18-0.357-0.228-0.356-0.133-0.771-0.057-1.057 0.229l-4.586 4.586c-0.286 0.286-0.361 0.702-0.229 1.057 0.049 0.13 0.124 0.252 0.229 0.357 0 0 0 0 0 0l9.708 9.708-9.708 9.708c-0 0-0 0-0 0-0.104 0.105-0.18 0.227-0.229 0.357-0.133 0.355-0.057 0.771 0.229 1.057l4.586 4.586c0.286 0.286 0.702 0.361 1.057 0.229 0.13-0.049 0.252-0.124 0.357-0.229 0-0 0-0 0-0l9.708-9.708 9.708 9.708c0 0 0 0 0 0 0.105 0.105 0.227 0.18 0.357 0.229 0.356 0.133 0.771 0.057 1.057-0.229l4.586-4.586c0.286-0.286 0.362-0.702 0.229-1.057-0.049-0.13-0.124-0.252-0.229-0.357z"/>
+</svg>
+        
+        
+        
+                </a>
+
+    
+
+
+</div>
+  </div>
+  </div>
+
+</div></div>
+<!-- GTM Container placement set to footer -->
+<!-- Google Tag Manager (noscript) -->
+				<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5HNGFLHB" height="0" width="0" style="display:none;visibility:hidden" aria-hidden="true"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) --><div id="notification-container"></div>
+        <div class="dialogue-container download-dialogue-container">
+
+            <div class="dialogue-content-container download-dialogue-content-container">
+
+                <div class="dialogue-header">
+                    <div class="download-details-container">
+
+                        <div class="download-title" tabindex="0">
+                            This is a really long track or sound title that we need to account for and maybe it gets even longer so we need to ensure we have space for it
+                        </div>
+
+                        <div class="download-meta-container">
+
+                            <div class="download-contributor">
+                                
+                            </div>
+
+                            <div class="download-licence">
+                                
+                            </div>
+
+                        </div>
+
+                        <!--
+                        <div class="download-related-items-container">
+                            
+                        </div>
+                        -->
+                        
+                    </div>
+                    <!--
+                    <p aria-label="Download dialogue popup opened">Download SFX</p>
+                    -->
+                </div>
+
+                <button type="button" class="dialogue-close" title="Close download popup" data-triggering-item="">
+                    <img class="img-close-icon" src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/close-dialogue.svg" alt="Close Dialogue" height="24px" width="24px">
+                </button>
+
+                <div class="dialogue-details-container">
+
+                    <div class="download-actions-container">
+
+                        <input type="hidden" class="item_id" name="item_id" value="">
+                        <input type="hidden" class="item_type" name="item_type" value="">
+                        <input type="hidden" class="download_nonce" name="download_nonce" value="">
+
+                        <div class="standard-download-options">
+
+                            <p tabindex="0" class="check-download-limits-info hide">Checking your download limits</p>
+
+                            <button type="button" class="download-mp3-file hide" title="Download MP3 file" data-key="" data-filetype="">Download FREE MP3</button>
+
+                            <div class="upgrade-message-container attribution-upgrade-message hide">
+
+                                <p class="premium-download-message-header" tabindex="0">
+                                    <img src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/attribution-required-icon-red-24x24.svg" alt="Attribution is required icon">
+                                    Attribution&nbsp;<span class="red-text-accent">Required!</span>
+                                </p>
+
+                                <p tabindex="0">Would you like to remove the attribution requirement?</p>
+
+                                <a href="https://www.zapsplat.com/upgrade/" class="upgrade-button">Upgrade Now</a>
+
+                                
+                            </div>
+
+                            <div class="upgrade-message-container download-limits-upgrade-message hide" data-id="" data-filetype="">
+
+                                <p class="premium-download-message-header" tabindex="0">
+                                    <img src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/download-timer-icon-red-24x24.svg" alt="Remove download timer limits icon">
+                                    Remove&nbsp;<span class="red-text-accent">Download Limits</span>
+                                </p>
+
+                                <p class="download-limits-text" tabindex="0"></p>
+
+                                <div class="countdown-container">
+
+                                    <div class="countdown-box hide">
+
+                                        <p class="countdown-text"><span class="time-display" tabindex="0"></span></p>
+
+                                    </div>
+
+                                    <div class="progress-bar">
+
+                                        <div class="progress"></div>
+
+                                    </div>
+
+                                </div>
+
+                                <div class="defaultDownloadlimitsMessageContainer">
+
+                                    <p tabindex="0">Would you like to remove the download limits?</p>
+                                    <p tabindex="0">Our premium members get unlimited downloads.</p>
+                                    <a href="https://www.zapsplat.com/upgrade/" class="upgrade-button">Remove Limits</a>
+
+                                </div>
+
+                                <div id="downloadLimitsOfferContainer">
+
+                                </div>
+
+                                
+                            </div>
+
+                            <div class="upgrade-message-container premium-download-upgrade-message hide">
+
+                                <p class="premium-download-message-header" tabindex="0">
+                                    <img src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/premium-icon-gold-24x24.svg" alt="Premium content icon">
+                                    Access&nbsp;<span class="gold-text-accent">Premium</span>&nbsp;Content
+                                </p>
+
+                                <p tabindex="0">Get unlimited access to this download and over 150,000 others.</p>
+
+                                <a href="https://www.zapsplat.com/upgrade/" class="upgrade-button">Upgrade Now</a>
+
+                                
+                            </div>
+
+                            <div class="upgrade-message-container wav-download-upgrade-message hide">
+
+                                <p class="premium-download-message-header" tabindex="0">
+                                    <img src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/premium-icon-gold-24x24.svg" alt="Premium content icon">
+                                    WAV files are&nbsp;<span class="gold-text-accent">Premium Content</span>
+                                </p>
+
+                                <p tabindex="0">Our premium members can access this high quality WAV file and over 150,000 others.</p>
+
+                                <a href="https://www.zapsplat.com/upgrade/" class="upgrade-button">Upgrade Now</a>
+
+                                
+                            </div>
+
+                        </div>
+
+                        <div class="download-merchandise-licencing-container hide">
+                            <button type="button" class="merchandise-licencing-ui-trigger">
+                                Merchandising license available&nbsp;<span>i</span>
+                            </button>
+                            
+                            <div class="merchandise-licencing-add-to-cart-container hide">
+
+                                <p>
+                                    Merchandising license covers usage of this sound in physical products not covered by our standard license agreement inlcuding but not limited to:
+                                </p>
+
+                                <ul>
+                                    <li>Toys and physical games (including any sound-mdule or electronic toy)</li>
+                                    <li>Books and greeting cards with audio</li>
+                                    <li>Any physical product or device that plays or stores a sound</li>
+                                    <li>Promotional or branded merchandise with embedded auddio</li>
+                                    <li>Eductaional or learning devices with sound buttons</li>
+                                </ul>
+
+                                <button class="mechandise-licence-add-to-cart buy-item-button" data-license="merch">$200 - Add to cart</button>
+
+                                <a href="/license-type/merchandising-license/" target="_blank" class="mechandise-licence-info">Merchandise License Details.</a>
+                                
+                                <a href="/contact/" target="_blank" class="mechandise-licence-contact-for-info">Or contact us for more information.</a>
+
+                            </div>
+
+                        </div>
+
+                    </div>                    
+                
+                </div>
+
+                <div class="download-information-container">
+
+                    <div class="timer">
+
+                    </div>
+
+                    <div class="download-actions">
+
+                    </div>
+
+                    <div class="customer-information">
+
+                    </div>
+
+                </div>                
+
+            </div>
+
+        </div>
+
+        
+        <div class="dialogue-container list-dialogue-container">
+
+            <div class="dialogue-content-container list-dialogue-content-container">
+
+                <div class="dialogue-header">
+                    <p tabindex="0" aria-label="Add to list popup opened">Add to list</p>
+                </div>
+
+                <div class="dialogue-details-container user-list-content">
+
+                    <div class="user-list-choice-container show">
+
+                        <p tabindex="0">Please select the list to add to.</p>
+
+                        <input type="hidden" class="add-media-id" value="">
+
+                        <p>
+                            <select id="user-list-selector" name="user-list-selector"></select>
+                        </p>
+
+                        <button type="button" class="add-media-to-list main-action-button" aria-label="Add to list">Add To List</button>
+
+                        <button type="button" class="show-new-list secondary-action-button" aria-label="Create new list">Create New List</button>
+                        
+                    </div>
+
+                    <div class="user-list-details-container">
+
+                        <p class="heading-text" tabindex="0">List Details</p>
+
+                        <div class="add-user-list-field">
+                            <label for="user-list-name">List Name</label><br>
+                            <input type="text" id="user-list-name" tabindex="0" aria-label="New list name">
+                        </div>
+                        
+                        <div class="add-user-list-field">
+                            <label for="user-list-description">List Description</label><br>
+                            <input type="text" id="user-list-description" tabindex="0" aria-label="New list description">
+                        </div>                        
+
+                        <button type="button" class="add-user-list main-action-button" aria-label="Save list and add media">Save List & Add Media</button>
+                        <button type="button" class="cancel-add-list cancel-action-button" aria-label="Cancel new list creation">Cancel</button>
+
+                    </div>
+
+                    <div class="user-list-messages-container">
+
+                    </div>
+                
+                </div>
+
+                <button type="button" class="dialogue-close" title="Close list dialogue" aria-label="Close list dialogue" data-triggering-item="">
+                    <img class="img-close-icon" src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/assets/close-dialogue.svg" alt="Close Dialogue" height="24px" width="24px">
+                </button>
+
+            </div>
+
+        </div>
+
+        	<script type='text/javascript'>
+		(function () {
+			var c = document.body.className;
+			c = c.replace(/woocommerce-no-js/, 'woocommerce-js');
+			document.body.className = c;
+		})();
+	</script>
+	<script id="wc-add-to-cart-js-extra">
+var wc_add_to_cart_params = {"ajax_url":"/wp-admin/admin-ajax.php","wc_ajax_url":"/?wc-ajax=%%endpoint%%","i18n_view_cart":"View basket","cart_url":"https://www.zapsplat.com/cart/","is_cart":"","cart_redirect_after_add":"no"};
+//# sourceURL=wc-add-to-cart-js-extra
+</script>
+<script data-wp-strategy="defer" id="wc-add-to-cart-js" src="https://www.zapsplat.com/wp-content/plugins/woocommerce/assets/js/frontend/add-to-cart.min.js?ver=11.2.1"></script>
+<script id="breakdance-woo-qty-js" src="https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-woocommerce/js/quantity.js?ver=2.8.3"></script>
+<script data-wp-strategy="defer" defer id="gtm4wp-ecommerce-generic-js" src="https://www.zapsplat.com/wp-content/plugins/duracelltomi-google-tag-manager/build/gtm4wp-ecommerce-generic.js?ver=2.0.6"></script>
+<script id="gtm4wp-woocommerce-js-before">
+window.gtm4wp_store_api_cart_url = "https:\/\/www.zapsplat.com\/wp-json\/wc\/store\/v1\/cart";
+//# sourceURL=gtm4wp-woocommerce-js-before
+</script>
+<script id="gtm4wp-woocommerce-js" src="https://www.zapsplat.com/wp-content/plugins/duracelltomi-google-tag-manager/build/gtm4wp-woocommerce.js?ver=2.0.6"></script>
+<script id="cookie-consent-client-script-js-extra">
+var pressidiumCCClientDetails = {"settings":{"autorun":true,"force_consent":false,"autoclear_cookies":true,"page_scripts":true,"hide_from_bots":true,"delay":0,"cookie_expiration":182,"cookie_path":"/","cookie_domain":"www.zapsplat.com","auto_language":"browser","cookie_name":"pressidium_cookie_consent","languages":{"en":{"consent_modal":{"title":"Cookie Consent","description":"We use cookies to keep the site working and running smoothly, track how things are performing, and power those handy features you love.  \u003Cbutton type=\"button\" data-cc=\"c-settings\" class=\"cc-link\"\u003ECookie Settings\u003C/button\u003E","primary_btn":{"text":"Accept all","role":"accept_all"},"secondary_btn":{"text":"Accept necessary","role":"accept_necessary"}},"settings_modal":{"title":"Cookie preferences","save_settings_btn":"Save settings","accept_all_btn":"Accept all","reject_all_btn":"Reject all","close_btn_label":"Close","cookie_table_headers":[{"name":"Name"},{"domain":"Domain"},{"expiration":"Expiration"},{"path":"Path"},{"description":"Description"}],"blocks":[{"title":"Cookie usage &#x1f4e2;","description":"We use cookies to ensure the website's proper operation, to analyze traffic and performance, and to provide social media features. Click on the different category headings to find out more and change our default settings. However, blocking some types of cookies may impact your experience of the site and the services we are able to offer."},{"title":"Strictly necessary cookies","description":"These cookies are necessary for the website to function and cannot be switched off in our systems. You can set your browser to block or alert you about these cookies, but some parts of the site may not then work.","toggle":{"value":"necessary","enabled":true,"readonly":true},"cookie_table":[{"name":"breakdance_*","domain":"www.zapsplat.com","expiration":"Session","path":"","description":"These cookies provide basic site functionality that allows your session to function properly.","is_regex":true},{"name":"PHPSESSID","domain":"www.zapsplat.com","expiration":"Session","path":"","description":"This cookie provide basic site functionality across pages.","is_regex":false},{"name":"pmpro_visit","domain":"www.zapsplat.com","expiration":"Session","path":"","description":"This cookie provide basic site functionality across pages and is used to prevent bots from abusing the website.","is_regex":false},{"name":"pressidium_cookie_consent","domain":"www.zapsplat.com","expiration":"182 days","path":"","description":"This cookie records your consent options.","is_regex":false},{"name":"woocommerce*","domain":"www.zapsplat.com","expiration":"Session","path":"","description":"This cookie enables ecommerce functionality on the site.","is_regex":true},{"name":"wp_woocommerce*","domain":"www.zapsplat.com","expiration":"7 Days","path":"","description":"This cookie enables ecommerce functionality on the site.","is_regex":true}]},{"title":"Performance and Analytics cookies","description":"These cookies allow us to analyze visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site.","toggle":{"value":"analytics","enabled":false,"readonly":false},"cookie_table":[{"name":"_ga*","domain":"www.zapsplat.com","expiration":"30 Days","path":"","description":"This cookie is used for Google Analytics and gives us insight into our user's behaviour on our website.","is_regex":true},{"name":"_clck","domain":"www.zapsplat.com","expiration":"180 Days","path":"","description":"This cookie is used for Microsoft Clarity and gives us insight into our user's behaviour on our website.","is_regex":false},{"name":"_clsk","domain":"www.zapsplat.com","expiration":"180 Days","path":"","description":"This cookie is used for Microsoft Clarity and gives us insight into our user's behaviour on our website.","is_regex":false},{"name":"CLID","domain":"www.clarity.ms","expiration":"1 Year","path":"","description":"This cookie is used for Microsoft Clarity and gives us insight into our user's behaviour on our website.","is_regex":false},{"name":"MUID","domain":".clarity.ms","expiration":"1 Year","path":"","description":"This cookie is used for Microsoft Clarity and gives us insight into our user's behaviour on our website.","is_regex":false}]},{"title":"Advertisement and Targeting cookies","description":"These cookies may be set through our site by our social media providers and/or our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device.","toggle":{"value":"targeting","enabled":false,"readonly":false},"cookie_table":[{"name":"1PAPISID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used for targeting purposes to build a profile of the website visitor's interests in order to show relevant & personalised Google advertising.","is_regex":false},{"name":"__Secure-1PSID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used for targeting purposes to build a profile of the website visitor's interests in order to show relevant and personalised Google advertising.","is_regex":false},{"name":"__Secure-3PAPISID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used for targeting purposes to build a profile of the website visitor's interests in order to show relevant and personalised Google advertising.","is_regex":false},{"name":"__Secure-3PSID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used for targeting purposes to build a profile of the website visitor's interests in order to show relevant and personalised Google advertising.","is_regex":false},{"name":"APISID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used by Google to display personalised advertisements on Google sites, based on recent searches and previous interactions.","is_regex":false},{"name":"SAPISID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie is used by Google to display personalised advertisements on Google sites, based on recent searches and previous interactions.","is_regex":false},{"name":"SID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie contains digitally signed and encrypted records of a user\u2019s Google Account ID and most recent sign-in time.","is_regex":false},{"name":"SSID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie contains digitally signed and encrypted records of a user\u2019s Google Account ID and most recent sign-in time.","is_regex":false},{"name":"NID","domain":".google.com","expiration":"6 Months","path":"","description":"This cookie is used to show Google ads in Google services for signed-out users.","is_regex":false},{"name":"IDE","domain":".doubleclick.net","expiration":"1 Year","path":"","description":"This cookie is used for advertising tracking.","is_regex":false},{"name":"HSID","domain":".google.com","expiration":"1 Year","path":"","description":"This cookie contains digitally signed and encrypted records of a user\u2019s Google Account ID and most recent sign-in time","is_regex":false}]},{"title":"Functionality and Preferences cookies","description":"These cookies allow us to provide enhanced functionality and personalization by storing user preferences.","toggle":{"value":"preferences","enabled":false,"readonly":false}},{"title":"More information","description":"For any queries in relation to our policy on cookies and your choices, please contact us."}]}}},"gui_options":{"consent_modal":{"layout":"cloud","position":"bottom center","transition":"slide","swap_buttons":false},"settings_modal":{"layout":"box","position":"left","transition":"slide"}},"revision":3,"version":"1.9.1"},"api":{"rest_url":"https://www.zapsplat.com/wp-json/","route":"pressidium-cookie-consent/v1/settings","consent_route":"pressidium-cookie-consent/v1/consent","consents_route":"pressidium-cookie-consent/v1/consents"},"additional_options":{"record_consents":true,"hide_empty_categories":false,"floating_button":{"enabled":false,"size":"sm","position":"left","icon":"pressidium","transition":"fade-in-up"},"gcm":{"enabled":true,"implementation":"gtm","ads_data_redaction":false,"url_passthrough":false,"regions":[]}}};
+//# sourceURL=cookie-consent-client-script-js-extra
+</script>
+<script id="cookie-consent-client-script-js" src="https://www.zapsplat.com/wp-content/plugins/pressidium-cookie-consent/public/bundle.client.js?ver=a42c7610e2f07a53bd90"></script>
+<script id="rocket_lazyload_css-js-extra">
+var rocket_lazyload_css_data = {"threshold":"300"};
+//# sourceURL=rocket_lazyload_css-js-extra
+</script>
+<script id="rocket_lazyload_css-js-after">
+!function o(n,a,c){function l(t,e){if(!a[t]){if(!n[t]){var r="function"==typeof require&&require;if(!e&&r)return r(t,!0);if(u)return u(t,!0);throw(e=new Error("Cannot find module '"+t+"'")).code="MODULE_NOT_FOUND",e}r=a[t]={exports:{}},n[t][0].call(r.exports,function(e){return l(n[t][1][e]||e)},r,r.exports,o,n,a,c)}return a[t].exports}for(var u="function"==typeof require&&require,e=0;e<c.length;e++)l(c[e]);return l}({1:[function(e,t,r){{let r="undefined"==typeof rocket_pairs?[]:rocket_pairs,o=(("undefined"==typeof rocket_excluded_pairs?[]:rocket_excluded_pairs).map(t=>{var e=t.selector;document.querySelectorAll(e).forEach(e=>{e.setAttribute("data-rocket-lazy-bg-"+t.hash,"excluded")})}),document.querySelector("#wpr-lazyload-bg-container"));var a=rocket_lazyload_css_data.threshold||300;let n=new IntersectionObserver(e=>{e.forEach(t=>{t.isIntersecting&&r.filter(e=>t.target.matches(e.selector)).map(t=>{var e;t&&((e=document.createElement("style")).textContent=t.style,o.insertAdjacentElement("afterend",e),t.elements.forEach(e=>{n.unobserve(e),e.setAttribute("data-rocket-lazy-bg-"+t.hash,"loaded")}))})})},{rootMargin:a+"px"});function c(){0<(0<arguments.length&&void 0!==arguments[0]?arguments[0]:[]).length&&r.forEach(t=>{try{document.querySelectorAll(t.selector).forEach(e=>{"loaded"!==e.getAttribute("data-rocket-lazy-bg-"+t.hash)&&"excluded"!==e.getAttribute("data-rocket-lazy-bg-"+t.hash)&&(n.observe(e),(t.elements||=[]).push(e))})}catch(e){console.error(e)}})}c(),(()=>{let r=window.MutationObserver;return function(e,t){if(e&&1===e.nodeType)return(t=new r(t)).observe(e,{attributes:!0,childList:!0,subtree:!0}),t}})()(document.querySelector("body"),c)}},{}]},{},[1]);
+//# sourceURL=rocket_lazyload_css-js-after
+</script>
+<script id="zs-ads-frontend-js-extra">
+var zs_ads_frontend = {"ajax_url":"https://www.zapsplat.com/wp-admin/admin-ajax.php","nonce":"30046ab1c8"};
+//# sourceURL=zs-ads-frontend-js-extra
+</script>
+<script data-wp-strategy="defer" defer id="zs-ads-frontend-js" src="https://www.zapsplat.com/wp-content/plugins/zs-ads/frontend/js/zs-ads-frontend.js?ver=1.0.3"></script>
+<script id="wooaa-frontend-js-extra">
+var wooaa_vars = {"wc_ajax_url":"/?wc-ajax=%%endpoint%%","nonce":"f1816e871e","product_types":"all","ignore_btn_class":".disabled,.wpc-disabled,.wooaa-disabled,.wooco-disabled,.woosb-disabled,.woobt-disabled,.woosg-disabled,.woofs-disabled,.woopq-disabled,.wpcpo-disabled,.wpcbn-btn,.wpcme-btn,.wpcev-btn,.wpcuv-update","ignore_form_data":"","cart_url":"https://www.zapsplat.com/cart/","cart_redirect_after_add":"no"};
+//# sourceURL=wooaa-frontend-js-extra
+</script>
+<script id="wooaa-frontend-js" src="https://www.zapsplat.com/wp-content/plugins/wpc-ajax-add-to-cart/assets/js/frontend.js?ver=2.2.6"></script>
+<script data-wp-strategy="defer" defer id="wavesurfer-js" src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/js/wavesurfer-7.12.7.min.js?ver=7.12.7"></script>
+<script data-wp-strategy="defer" defer id="nouislider-js" src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/js/nouislider.min.js?ver=15.8.1"></script>
+<script id="zs-frontend-js-extra">
+var zs_frontend = {"ajax_url":"https://www.zapsplat.com/wp-admin/admin-ajax.php","nonce":"5848c71d8f","upgrade_page":"https://www.zapsplat.com/upgrade/","registration_options_page":"https://www.zapsplat.com/registration-plans/","registration_page":"https://www.zapsplat.com/registration/","login_page":"https://www.zapsplat.com/login/","recaptcha_site_key":"6LfyQDMrAAAAADFw5rvHbsc-aNTlsfZK5xZ3tsow","individual_sale_contributor_ids":[1348,764200,771461,2681874,341589,338190,1985265,2225334,2267560,2679193,74304,188275,651196,347057,966923,1319826,388363,353975,520183,4431,2799913,2194069,2875412,260919,2733496,2329368],"merch_sale_contributor_ids":[1348,338190,2329368],"refine_search_interface":"163007","non_logged_in_options_interface":"164159","non_logged_in_non_single_sale_options_interface":"164176","upgrade_popup":"158488","offer_popup":"164709"};
+//# sourceURL=zs-frontend-js-extra
+</script>
+<script data-wp-strategy="defer" defer id="zs-frontend-js" src="https://www.zapsplat.com/wp-content/plugins/zs/frontend/js/zs-frontend.js?ver=1.1.28"></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/plugin/global-scripts/breakdance-utils.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/elements-reusable-code/breakdance-link-actions.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/breakdance-header-builder@1/header-builder.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/awesome-menu@1/awesome-menu.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/breakdance-search-form@1/search-form.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/breakdance-mini-cart@1/mini-cart.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/popups@1/popups.js?bd_ver=2.8.3' defer></script>
+<script src='https://unpkg.com/gsap@3.12.2/dist/gsap.min.js' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/popups@1/popup-animations.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/breakdance-content-toggle@1/breakdance-content-toggle.js?bd_ver=2.8.3' defer></script>
+<script src='https://www.zapsplat.com/wp-content/plugins/breakdance/subplugins/breakdance-elements/dependencies-files/breakdance-content-reveal@1/breakdance-content-reveal.js?bd_ver=2.8.3' defer></script>
+<script>document.addEventListener('DOMContentLoaded', function(){     if (!window.BreakdanceFrontend) {
+        window.BreakdanceFrontend = {}
+    }
+
+    window.BreakdanceFrontend.data = {"homeUrl":"https:\/\/www.zapsplat.com","ajaxUrl":"https:\/\/www.zapsplat.com\/wp-admin\/admin-ajax.php","elementsPluginUrl":"https:\/\/www.zapsplat.com\/wp-content\/plugins\/breakdance\/subplugins\/breakdance-elements\/","BASE_BREAKPOINT_ID":"breakpoint_base","breakpoints":[{"id":"breakpoint_base","label":"Desktop","defaultPreviewWidth":"100%"},{"id":"breakpoint_tablet_landscape","label":"Tablet Landscape","defaultPreviewWidth":1024,"maxWidth":1119},{"id":"breakpoint_tablet_portrait","label":"Tablet Portrait","defaultPreviewWidth":768,"maxWidth":1023},{"id":"breakpoint_phone_landscape","label":"Phone Landscape","defaultPreviewWidth":480,"maxWidth":767},{"id":"breakpoint_phone_portrait","label":"Phone Portrait","defaultPreviewWidth":400,"maxWidth":479}],"subscriptionMode":"pro"} }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdanceHeaderBuilder(".breakdance .bde-header-builder-158524-100", "100", false); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new AwesomeMenu(".breakdance .bde-menu-158524-102 .breakdance-menu", {
+  dropdown: {
+    openOnClick: false,
+    mode: {
+      desktop: 'dropdown'
+    },
+    placement: 'full-width',
+    width: null,
+    animation: 'fade'
+  },
+  link: {
+    effect: 'underline',
+    effectDirection: 'center',
+  },
+  mobile: {
+    breakpoint: '',
+    mode: 'offcanvas',
+    offcanvasPosition: 'left',
+    offset: null,
+    followLinks: true
+  }
+});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdanceSearchForm('.breakdance .bde-search-form-158524-122', {});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdanceSearchForm('.breakdance .bde-search-form-158524-123', {});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new BreakdanceMiniCart('.breakdance .bde-mini-cart-158524-119', 
+    {
+      ...{"cart":{"top_bar":"enable","primary_button":"checkout","open_cart_on_add":true,"hide_quantity_input":true},"link":{"hide_count_when_empty":true,"hide_subtotal_when_empty":true,"hide_subtotal":true}},
+      style: 'sidebar',
+      full_screen_at: 'breakpoint_phone_landscape'
+    }
+);
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new AwesomeMenu(".breakdance .bde-wp-menu-158527-109 .breakdance-menu", {
+  dropdown: {
+    openOnClick: false,
+    mode: {
+      desktop: 'dropdown'
+    },
+    placement: 'left',
+    width: null,
+    animation: 'fade'
+  },
+  link: {
+    effect: '',
+    effectDirection: '',
+  },
+  mobile: {
+    breakpoint: 'never',
+    mode: 'default',
+    offcanvasPosition: 'left',
+    offset: null,
+    followLinks: true
+  }
+});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new AwesomeMenu(".breakdance .bde-wp-menu-158527-112 .breakdance-menu", {
+  dropdown: {
+    openOnClick: false,
+    mode: {
+      desktop: 'dropdown'
+    },
+    placement: 'left',
+    width: null,
+    animation: 'fade'
+  },
+  link: {
+    effect: '',
+    effectDirection: '',
+  },
+  mobile: {
+    breakpoint: 'never',
+    mode: 'default',
+    offcanvasPosition: 'left',
+    offset: null,
+    followLinks: true
+  }
+});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new AwesomeMenu(".breakdance .bde-wp-menu-158527-115 .breakdance-menu", {
+  dropdown: {
+    openOnClick: false,
+    mode: {
+      desktop: 'dropdown'
+    },
+    placement: 'left',
+    width: null,
+    animation: 'fade'
+  },
+  link: {
+    effect: '',
+    effectDirection: '',
+  },
+  mobile: {
+    breakpoint: 'never',
+    mode: 'default',
+    offcanvasPosition: 'left',
+    offset: null,
+    followLinks: true
+  }
+});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdancePopup(164176, {"onlyShowOnce":false,"avoidMultiple":false,"limitSession":null,"limitPageLoad":null,"limitForever":null,"triggers":[],"breakpointConditions":[]}); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+if (window.breakdancePopupInstances) {
+  const popupInstance = window.breakdancePopupInstances[164176] ?? null;
+  if (popupInstance) {
+    popupInstance.setOptions({
+      keepOpenOnHashlinkClicks: false,
+      closeOnClickOutside: true,
+      closeOnEscapeKey: true,
+      closeAfterMilliseconds: null,
+      showCloseButtonAfterMilliseconds: null,
+      disableScrollWhenOpen: true,
+                });
+  }
+}
+
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdancePopup(164159, {"onlyShowOnce":false,"avoidMultiple":false,"limitSession":null,"limitPageLoad":null,"limitForever":null,"triggers":[],"breakpointConditions":[]}); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+if (window.breakdancePopupInstances) {
+  const popupInstance = window.breakdancePopupInstances[164159] ?? null;
+  if (popupInstance) {
+    popupInstance.setOptions({
+      keepOpenOnHashlinkClicks: false,
+      closeOnClickOutside: true,
+      closeOnEscapeKey: true,
+      closeAfterMilliseconds: null,
+      showCloseButtonAfterMilliseconds: null,
+      disableScrollWhenOpen: true,
+                });
+  }
+}
+
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdancePopup(163007, {"onlyShowOnce":false,"avoidMultiple":false,"limitSession":null,"limitPageLoad":null,"limitForever":null,"triggers":[],"breakpointConditions":[]}); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+if (window.breakdancePopupInstances) {
+  const popupInstance = window.breakdancePopupInstances[163007] ?? null;
+  if (popupInstance) {
+    popupInstance.setOptions({
+      keepOpenOnHashlinkClicks: false,
+      closeOnClickOutside: true,
+      closeOnEscapeKey: true,
+      closeAfterMilliseconds: null,
+      showCloseButtonAfterMilliseconds: null,
+      disableScrollWhenOpen: true,
+              entranceAnimation: {"animation_type":"slideRight","ease":"power1.in","duration":null,"delay":null},
+                    exitAnimation: {"animation_type":"slideLeft","duration":null,"ease":"linear","delay":null},
+          });
+  }
+}
+
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdancePopup(158488, {"onlyShowOnce":false,"avoidMultiple":false,"limitSession":null,"limitPageLoad":null,"limitForever":null,"triggers":[{"slug":"click","options":{"clickType":"selector","selector":".open-upgrade-popup"}}],"breakpointConditions":[]}); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+if (window.breakdancePopupInstances) {
+  const popupInstance = window.breakdancePopupInstances[158488] ?? null;
+  if (popupInstance) {
+    popupInstance.setOptions({
+      keepOpenOnHashlinkClicks: false,
+      closeOnClickOutside: true,
+      closeOnEscapeKey: true,
+      closeAfterMilliseconds: null,
+      showCloseButtonAfterMilliseconds: null,
+      disableScrollWhenOpen: true,
+              entranceAnimation: {"animation_type":"fade"},
+                });
+  }
+}
+
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ new BreakdanceContentToggle('.breakdance .bde-content-toggle-158488-134'); }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new BreakdanceContentReveal('.breakdance .bde-content-reveal-158488-189', {
+  hideBy: null,
+  maxHeight: {"number":140,"unit":"px","style":"140px"},
+  maxLines: null,
+  scrollToTop: null
+});
+ }) </script>
+<script>document.addEventListener('DOMContentLoaded', function(){ 
+new BreakdanceContentReveal('.breakdance .bde-content-reveal-158488-192', {
+  hideBy: null,
+  maxHeight: {"number":140,"unit":"px","style":"140px"},
+  maxLines: null,
+  scrollToTop: null
+});
+ }) </script>
+<script>window.lazyLoadOptions=[{elements_selector:"img[data-lazy-src],.rocket-lazyload,iframe[data-lazy-src]",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,callback_loaded:function(element){if(element.tagName==="IFRAME"&&element.dataset.rocketLazyload=="fitvidscompatible"){if(element.classList.contains("lazyloaded")){if(typeof window.jQuery!="undefined"){if(jQuery.fn.fitVids){jQuery(element).parent().fitVids()}}}}}},{elements_selector:".rocket-lazyload",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,}];window.addEventListener('LazyLoad::Initialized',function(e){var lazyLoadInstance=e.detail.instance;if(window.MutationObserver){var observer=new MutationObserver(function(mutations){var image_count=0;var iframe_count=0;var rocketlazy_count=0;mutations.forEach(function(mutation){for(var i=0;i<mutation.addedNodes.length;i++){if(typeof mutation.addedNodes[i].getElementsByTagName!=='function'){continue}
+if(typeof mutation.addedNodes[i].getElementsByClassName!=='function'){continue}
+images=mutation.addedNodes[i].getElementsByTagName('img');is_image=mutation.addedNodes[i].tagName=="IMG";iframes=mutation.addedNodes[i].getElementsByTagName('iframe');is_iframe=mutation.addedNodes[i].tagName=="IFRAME";rocket_lazy=mutation.addedNodes[i].getElementsByClassName('rocket-lazyload');image_count+=images.length;iframe_count+=iframes.length;rocketlazy_count+=rocket_lazy.length;if(is_image){image_count+=1}
+if(is_iframe){iframe_count+=1}}});if(image_count>0||iframe_count>0||rocketlazy_count>0){lazyLoadInstance.update()}});var b=document.getElementsByTagName("body")[0];var config={childList:!0,subtree:!0};observer.observe(b,config)}},!1)</script><script data-no-minify="1" async src="https://www.zapsplat.com/wp-content/plugins/wp-rocket/assets/js/lazyload/17.8.3/lazyload.min.js"></script>    </body>
+
+    </html>
+
+<!-- Performance optimized by Redis Object Cache. Learn more: https://wprediscache.com -->

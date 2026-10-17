@@ -64,7 +64,13 @@ async function create(req, res, next) {
     const saleLocation=Number(locationId||stockChecks[0].item.location_id);
     if(stockChecks.some(({item})=>Number(item.location_id)!==saleLocation))throw Object.assign(new Error('All sale products must belong to the selected location'),{status:400});
     const total = stockChecks.reduce(
-      (sum, { item, line }) => sum + (line.unitPrice ?? item.price) * line.quantity,
+      (sum, { item, line }) => {
+        const unitPrice = line.unitPrice ?? item.price;
+        const discountPercent = Number(line.discountPercent || 0);
+        const gross = unitPrice * line.quantity;
+        const discount = gross * (discountPercent / 100);
+        return sum + (gross - discount);
+      },
       0
     );
 
@@ -110,10 +116,13 @@ async function create(req, res, next) {
     const updatedItems = [];
     for (const { item, line } of stockChecks) {
       const unitPrice = line.unitPrice ?? item.price;
+      const discountPercent = Number(line.discountPercent || 0);
+      const gross = unitPrice * line.quantity;
+      const netRevenue = Number((gross - (gross * (discountPercent / 100))).toFixed(2));
 
       await client.query(
-        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price, unit_cost, net_revenue) VALUES (?,?,?,?,?,?,?)',
-        [saleId, item.id, item.name, line.quantity, unitPrice, item.cost, Number((line.quantity * unitPrice).toFixed(2))]
+        'INSERT INTO sale_items (sale_id, item_id, item_name, quantity, unit_price, unit_cost, net_revenue, discount_percent) VALUES (?,?,?,?,?,?,?,?)',
+        [saleId, item.id, item.name, line.quantity, unitPrice, item.cost, netRevenue, discountPercent]
       );
 
       await client.query(

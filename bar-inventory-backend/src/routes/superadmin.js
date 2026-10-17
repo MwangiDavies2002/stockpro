@@ -1,3 +1,4 @@
+const rateLimit=require('express-rate-limit');
 const router=require('express').Router();
 const jwt=require('jsonwebtoken');
 const database=require('../config/db');

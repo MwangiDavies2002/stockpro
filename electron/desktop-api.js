@@ -131,7 +131,21 @@ function apiRequest(db,request){
   }
   if(url.startsWith('/reference-data/'))return require('./reference-data').dispatch({db,url,method,body,params,bid,own,all,one,run,insert});
   const toggle=url.match(/^\/users\/(\d+)\/toggle-active$/);if(toggle&&method==='patch'){const target=own('users',toggle[1]);if(target.is_owner||target.id===user.id)fail('Cannot deactivate your current user');run('UPDATE users SET active=? WHERE id=?',target.active?0:1,target.id);return safe(own('users',target.id));}
-  if(url==='/business-settings'){if(method==='get')return JSON.parse(own('businesses',bid).settings_json||'{}');run('UPDATE businesses SET settings_json=? WHERE id=?',JSON.stringify(body),bid);return{settings:body};}
+  if(url==='/business-settings'){
+    const business=own('businesses',bid),stored=JSON.parse(business.settings_json||'{}');
+    if(method==='get')return{...stored,businessName:business.name||stored.businessName||'',startDate:stored.startDate||'',currency:business.currency||stored.currency||'KES',logoUrl:stored.logoUrl||'',timezone:business.timezone||stored.timezone||'Africa/Nairobi',stockAccountingMethod:stored.stockAccountingMethod||'weighted_average',financialYearStartMonth:Number(stored.financialYearStartMonth||1)};
+    const next={...stored,...body};
+    const name=String(body.businessName??business.name).trim(),currency=String(body.currency??business.currency).trim().toUpperCase(),timezone=String(body.timezone??business.timezone).trim(),month=Number(body.financialYearStartMonth??stored.financialYearStartMonth??1),method=String(body.stockAccountingMethod??stored.stockAccountingMethod??'weighted_average');
+    if(!name||name.length>180)fail('Business name is required and must be 180 characters or fewer');
+    if(!/^[A-Z]{3}$/.test(currency))fail('Choose a valid three-letter currency code');
+    if(!timezone||timezone.length>80)fail('Enter a valid time zone');
+    if(!Number.isInteger(month)||month<1||month>12)fail('Financial year start month must be between 1 and 12');
+    if(!['fifo','lifo','weighted_average'].includes(method))fail('Choose a valid stock accounting method');
+    if(!Number.isInteger(Number(next.transactionEditDays??30))||Number(next.transactionEditDays??30)<0||Number(next.transactionEditDays??30)>3650)fail('Transaction edit days must be from 0 to 3650');
+    if(!Number.isFinite(Number(next.defaultProfitPercent??0))||Number(next.defaultProfitPercent??0)<0||Number(next.defaultProfitPercent??0)>1000)fail('Default profit percent must be from 0 to 1000');
+    run('UPDATE businesses SET name=?,currency=?,timezone=?,settings_json=? WHERE id=?',name,currency,timezone,JSON.stringify(next),bid);
+    return{message:'Business settings saved',settings:{...next,businessName:name,currency,timezone,stockAccountingMethod:method,financialYearStartMonth:month}};
+  }
   // Remaining transactional modules are implemented in a separate dispatch module.
   return require('./desktop-transactions').dispatch({db,request,method,url,body,params,user,bid,own,all,one,run,insert,numeric,journal,mapping,log,once,admin});
 }

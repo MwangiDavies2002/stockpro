@@ -4,19 +4,9 @@ Date: 14 October 2026 (Africa/Nairobi)
 
 ## Current implementation and verification
 
-16 October 2026 inventory review: Product creation/editing now validates names, amounts, identifiers, active locations, supplier ownership and reference ownership. SKU and barcode are editable and unique per business location. Brand labels persist on web and desktop. Stock quantity cannot be overwritten through product edits; on-hand weighted cost is protected. Receipts go through Purchases, corrections post an auditable journal/movement and use retry identifiers, and initial/imported quantities get stock history while their opening journal stays separate. Products and setup records in use cannot be deleted; category/unit graphs reject cycles and linked product labels follow renaming. The brand update is business-scoped. Product images support the stated 2MB raster formats through the larger inventory request/schema limits. Search includes SKU/barcode/brand, lists paginate, and imports preserve brand/barcode with a template limited to supported fields. Inventory uses whole stock units; unit conversion values are reference metadata, not automatic pack conversion. Live browser layout remains unverified. Verify with root and backend `npm run test:inventory` and root `npm run test:import`.
-
-
-16 October 2026: Supplier purchases now support draft editing, received-only inventory updates, Asset versus Expense lines, proportional inbound shipping, separate recoverable input tax, supplier snapshots, notes, due dates, partial/full Treasury payments and supplier statements. Receipts debit Inventory/Expenses/Input VAT and credit the selected A/P account; payments clear that original account even after mapping changes. Expense lines never increase stock. Request identifiers and serialized transactions protect retries and concurrent receipts/payments. The purchase list exposes outstanding balances, filters, CSV, and a detailed payment/activity view. Added local schema migration 014 and the matching desktop upgrade.
-
-Sales quotations and proformas convert forward into draft invoices. Issuing posts stock, revenue, tax and receivables once; supplier/customer snapshots, actual payment history, detailed View and customer-only print templates are implemented. Preliminary documents and draft invoices do not post stock or accounts. Internal notes are excluded from customer print output. Run `npm run test:documents`, `npm run test:purchases`, and backend `npm run test:workflows`. Browser appearance and physical printing remain unverified; these are local working-tree changes, not a production deployment.
-
-
 Deployment preference: the web app is now the default (`npm run dev`, `npm run build`, `npm start`). Electron is retained as an explicit optional edition (`npm run start:desktop`, `npm run dist:desktop`) for offline/local installation customers. See `DEPLOYMENT.md` for setup and data boundaries.
 
 This section supersedes the historical findings below. Changes are in the working tree; live browser appearance and external-provider acceptance have not been certified.
-
-The remaining local updates have now been applied: serialized shift opening/closing, precise shift sale boundaries, concurrent-sale and conversion protection, verified-payment recovery, reusable STK request identifiers, subscription retry protection, persisted pending M-Pesa checkout, durable offline queues, corrected receipt totals/payment labels, real notification read state and removal of the hardcoded sales-page identity. Web delivery remains the priority; desktop installation and hardware rollout are deferred until a customer selects that edition.
 
 The reported Excel error came from the client's ten-second request limit. Imports now allow 120 seconds and insert rows in batches, validate the longer category values in the supplied workbook, accept blank categories, and use the selected business location. A file fingerprint identifies retries; saved requests replay their result and existing SKUs are skipped. Failed or partially failed imports retain explicit error feedback.
 
@@ -30,38 +20,32 @@ Successful imports and completed sales now show a green **DONE!** toast at the t
 | Branch selection and location maintenance | Shop-owned locations in POS/import; repaired update/delete routes | HTTP location CRUD and second-shop POS passed |
 | Accounting setup, journals, treasury and customer balances | Per-shop mappings, balanced journals, positive amount validation, treasury GL postings, customer-overpayment rejection | HTTP workflow checks passed |
 | Ledger, migrations and settings | Scoped ledger SQL, versioned baseline/additive migrations, JSON setting values | HTTP ledger/settings checks passed; empty-database migration available through `npm --prefix bar-inventory-backend run migrate` |
-| Stock concurrency and duplicate submissions | Sale stock/user locks, serialized shifts, explicit shift sale boundary, duplicate-line checks, request replay and safe document conversion | Eight competing sales consumed one last unit; eight repeated requests posted one sale; six concurrent shift opens/closes and conversions each succeeded once without duplicate posting |
+| Stock concurrency and duplicate submissions | Sale stock row locks, duplicate-line checks and saved request results | Duplicate-line overselling rejected; full stress/concurrency tests remain |
 | Discounts and POS totals | Real target selection, matching-rule calculation and discounted checkout totals | Backend discount CRUD and sales-math tests passed; actual cashier UI remains untested |
-| Offline sync | Queues scoped by shop/cashier/branch; synchronous persistence before local sale feedback; retain additions made during sync and preserve failed/corrupt storage | Queue regression tests passed; actual browser disconnect/reconnect flow remains untested |
-| Desktop feature support | Added authenticated transaction/report/settings/reference handlers, safe conversion retries and static renderer delivery | 44 checks passed, including invoice/payment/return/cost, automatic discount and session-revocation flows plus endpoint probes; these are not 44 complete UI workflows |
+| Offline sync | Queues scoped by shop/cashier/branch; common POS document posting and request identifiers | Desktop transaction tests passed; browser disconnect/reconnect flow remains untested |
+| Desktop feature support | Added authenticated transaction/report/settings/reference handlers and static renderer delivery | 41 checks passed, including endpoint-reachability probes; these are not 41 complete UI workflows |
 | Desktop native runtime | Electron-compatible SQLite built separately from the Node test dependency | Development and packaged Windows app launches reported `DESKTOP_RENDERER_READY` and exited successfully; installer deployment remains untested |
 | Backup and restore | SQLite online backup, integrity validation, staged restore and recovery copy | Temporary-database export/restore/recovery/invalid-file tests passed |
 | Owner network | Saved consent, real backend invitations and redemption; no fabricated membership or invite codes | HTTP consent/invitation eligibility passed; online verification still administered separately |
-| Notifications | Stored shop-scoped stock/order notifications, mark-read action, partial-load feedback | Read/update/isolation HTTP tests passed. Email/SMS intentionally skipped at the user's request |
-| Safaricom M-Pesa | Reusable STK request identifiers, provider-verified success/cancellation, verified subscription/sale posting, persisted POS checkout and admin recovery through M-Pesa Payments | Mocked-provider tests passed for duplicate STK/callbacks, mismatched receipts, cancellation validation, interrupted posting recovery and subscription retries. Real credentials/callbacks remain unconfigured; direct provider refunds are not implemented |
-| KRA eTIMS | Device initialization, encrypted key, item mapping, ordered invoice jobs, stable numbering and uncertain-acceptance protection including persistence failures | Mocked initialization/invoice/receipt/replay/uncertain-response tests and payload/encryption tests passed; registered device and live acceptance remain unconfigured |
+| Notifications | Stored shop-scoped stock/order notifications and notification reads | Email/SMS intentionally skipped at the user's request |
+| Safaricom M-Pesa | STK initiation, provider query verification, scoped status, verified subscription/sale posting and pending-payment POS feedback | No credentials found; only local validation tested. Real callbacks, interrupted posting/recovery and refunds still require dedicated verification |
+| KRA eTIMS | Device initialization, encrypted key, item-code mapping, queued invoices, ordered submission, stable numbering and uncertain-acceptance protection | Payload/encryption tests passed; registered KRA device configuration and live acceptance are still missing |
 
 Latest evidence:
 
-- **76 HTTP checks passed, 0 failed**, using a disposable MySQL schema. The actual workbook import and retry checks, concurrent transactions, mocked payment/KRA workflows and scoped notifications passed. This audit includes module reads as well as transaction workflows; mocked-provider tests do not prove live provider acceptance.
+- **69 HTTP checks passed, 0 failed**, using a disposable MySQL schema. The actual workbook import and its retry checks passed. This audit includes module reads as well as transaction workflows.
 - **18 backend regression tests passed**, covering purchases, sales documents, historical profit, KRA payload math and encrypted credentials; frontend TypeScript passed.
-- **44 desktop checks passed, 0 failed**, plus workbook import and backup/restore tests in temporary SQLite databases. The offline queue regression tests also passed.
-- The latest web production build produced **46 pages**, and all **44 application routes** returned HTTP 200 in a temporary production-server check. Page shells are not interactive UI tests. The earlier optional desktop build and packaged Windows app launch passed; neither desktop hardware nor installation through the Windows installer has been certified.
+- **41 desktop checks passed, 0 failed**, plus the full workbook import and backup/restore tests in temporary SQLite databases.
+- The desktop static renderer build produced **45 pages**. Both the development Electron app and packaged `dist/win-unpacked/StockPro.exe` loaded the renderer in hidden audit mode and exited successfully. This does not certify printed receipts, scanners, UI interaction or installation through the Windows installer.
 - The browser-automation inventory still returned no apps or browsers. No claim is made that the popup placement/timing, dialog scrolling, receipt printing or offline synchronization was observed live.
 
-Remaining configuration, live verification and explicitly deferred work:
+Remaining work requiring configuration or live verification:
 
 1. Connect the running StockPro browser for actual cashier, import, modal, chart/export, discount, network and offline/reconnect workflows.
-2. Configure Safaricom backend environment credentials and callback URL, then run the already-tested payment/recovery workflows against Safaricom. No real payments were requested during this audit. Provider refunds require a separate configured refund/reconciliation implementation; the current recovery action only posts the existing verified sale.
+2. Configure Safaricom backend environment credentials and callback URL, then verify success/cancellation, duplicate callbacks, posting recovery, reconciliation and refunds. Credentials were not present in the inspected environment.
 3. Configure the registered KRA PIN/device/branch/API URL and product codes, initialize the device, reconcile invoice numbering and verify original invoices/credit notes against KRA. Both inspected businesses had eTIMS disabled and their configuration fields empty.
-4. When a customer selects the optional desktop edition, complete installer deployment and receipt printer/barcode scanner testing. The simultaneous sale, shift, retry and conversion regressions are complete; sustained production-load testing and actual cashier interaction remain unverified.
+4. Complete full concurrent-sale/shift-close stress tests, desktop rule-parity flows, installer deployment and receipt printer/barcode scanner tests. Passing endpoint probes do not replace these tests.
 5. Add email/SMS later, as instructed by the user.
-
-## Accounting and Treasury completion
-
-Both `/treasury` and `/account/account` use the same Treasury page. Account creation/editing, receipt mapping display, status filters, closing/reopening, deposits, withdrawals, transfers, CSV export and account-book links are connected. The account book has working date/type/search filters, pagination, CSV export and printing of the current page. Unavailable payment-method and staff information is no longer invented.
-
-Treasury custom details persist as JSON in web and desktop storage. Migration `012-treasury-details` adds the web column; desktop storage upgrades on opening. Financial requests carry stable identifiers and reuse their recorded results after retries. Web/desktop scenarios verify concurrent duplicate creation/deposit/withdrawal/transfer requests, competing withdrawals, preserved notes/detail rows, two-decimal amount validation and user references in the account book. These checks use isolated test businesses/databases. Live browser appearance remains unverified.
 
 ## Historical audit snapshots
 
@@ -181,14 +165,3 @@ npm run audit:pages -- http://localhost:3000
 ```
 
 Raw evidence is saved in `audit-results.json`, `desktop-audit-results.json` and `page-audit-results.json`. They contain test records and observed responses, not production exports. The HTTP “pass” count includes an observation recording Excel import counts; pass counts alone do not certify a feature.
-
-
-## Stock movement, expenses and report sharing (2026-10-16)
-
-- Stock transfers move whole stock units between two active, assigned locations in the same business. Source and destination stock, weighted destination cost and paired stock histories commit together. Products match by SKU and unit; a missing destination product is created with its identifiers and catalog labels. Completed transfers are immutable; send stock back with a reverse-direction transfer. Internal transfers do not book a sale or change the business-wide inventory control ledger.
-- Stock adjustments default to removal for damage/wastage. They require a reason, reject negative remaining stock and post the mapped inventory adjustment ledger entry. A separate history shows both stock balances and the actual actor. Transfers and corrections protect retries and reject unavailable stock.
-- Expense kinds map to active Expense GL accounts, with an automatic account option. Paid expenses debit that expense account and credit a selected Treasury/method cash asset, using actual available ledger funds. Posted records retain their original kind/account and cannot be overwritten or deleted; reversals preserve history and restore the original payment account once. Unpaid supplier expense bills use Purchases. The new expense report explicitly covers paid expenses from the Expenses screen.
-- Reports show shop-filtered best sellers by net quantity after returns, stock remaining, and separate low/out-of-stock alerts. Current stock snapshots are distinguished from sales-period activity. Sales totals, hourly/daily buckets and profit use the business timezone and validated calendar periods; transaction-size groups honor the selected period. Historical unit costs remain the basis of profit.
-- Reports offer full CSV downloads and a reviewed WhatsApp summary (up to ten products/categories with an indication of further rows). The web composer uses WhatsApp click-to-chat. Desktop uses a narrow, authenticated, permission-checked IPC handler for that fixed destination; general external navigation stays blocked. The user chooses the recipient and sends. No messages were sent during validation.
-- Migration 016 creates transfer/expense records, enables the Expenses module in default packages, and retains inventory weighted cost to four decimals. Run backend `npm run migrate:operations` for existing databases; desktop upgrades on open. The local MySQL migration was applied.
-- Automated validation: `npm run test:operations` exists in the root (desktop and report helpers) and backend (authenticated MySQL workflow). Scenarios cover atomic multi-line rollback, weighted cost, concurrent requests/retries, expense funding/remapping/reversal, tenant/location permissions, report quantities/thresholds, calendar/DST boundaries and WhatsApp encoding. TypeScript, backend baseline tests and related inventory, purchase, sales, access, Treasury and accounting checks passed. Live browser layout, operating-system WhatsApp launch and delivery remain unverified.

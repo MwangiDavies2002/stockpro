@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const {PACKAGES}=require('../utils/accessPolicy');
 const {loadAccess}=require('../utils/accessService');
 const { query, getClient } = require('../config/db');
+const { verifyGoogleCredential } = require('../utils/googleIdentity');
 
 function publicBusiness(row = {}) {
   if (!row.business_id && !row.id) return null;
@@ -89,6 +90,7 @@ function requiredString(body, key, label = key) {
 async function onboardBusiness(req, res, next) {
   const client = await getClient();
   try {
+    const googleProfile = req.body.googleCredential ? await verifyGoogleCredential(req.body.googleCredential) : null;
     const plan=req.body.plan;
     const catalog=require('../utils/platformCatalog');
     if((await catalog.settings()).registrationEnabled===false)return res.status(403).json({message:'New business registration is currently closed'});
@@ -104,12 +106,19 @@ async function onboardBusiness(req, res, next) {
     const zipCode = requiredString(b, 'zipCode', 'Zip code');
     const landmark = requiredString(b, 'landmark', 'Landmark');
     const timezone = requiredString(b, 'timezone', 'Time zone');
-    const firstName = requiredString(o, 'firstName', 'First name');
-    const username = requiredString(o, 'username', 'Username');
-    const email = requiredString(o, 'email', 'Email');
-    const password = requiredString(o, 'password', 'Password');
-    const passwordError=validatePassword(password);if(passwordError)return res.status(400).json({message:passwordError});
-    if (password !== String(o.confirmPassword || '')) return res.status(400).json({ message: 'Passwords do not match' });
+    const googleName = String(googleProfile?.name || '').trim().split(/\s+/);
+    const firstName = String(o.firstName || googleName.shift() || '').trim();
+    if (!firstName) return res.status(400).json({ message: 'First name is required' });
+    const email = String(googleProfile?.email || o.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    if (googleProfile && o.email && String(o.email).trim().toLowerCase() !== googleProfile.email) return res.status(400).json({ message: 'Owner email must match the verified Google account' });
+    let username = String(o.username || email.split('@')[0]).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 40);
+    if (!username) username = `owner${Date.now()}`;
+    const password = googleProfile ? require('crypto').randomBytes(32).toString('base64url') : requiredString(o, 'password', 'Password');
+    if (!googleProfile) {
+      const passwordError=validatePassword(password);if(passwordError)return res.status(400).json({message:passwordError});
+      if (password !== String(o.confirmPassword || '')) return res.status(400).json({ message: 'Passwords do not match' });
+    }
     if (!/^[A-Z]{3}$/.test(currency)) return res.status(400).json({ message: 'Currency must be a 3-letter ISO code' });
     const method = String(s.stockAccountingMethod || 'weighted_average');
     if (!['fifo','lifo','weighted_average'].includes(method)) return res.status(400).json({ message: 'Invalid stock accounting method' });
@@ -120,8 +129,14 @@ async function onboardBusiness(req, res, next) {
 
     const dupEmail = await client.query('SELECT id FROM users WHERE email=?', [email]);
     if (dupEmail.rows.length) return res.status(409).json({ message: 'Email already registered' });
-    const dupUsername = await client.query('SELECT id FROM users WHERE username=?', [username]);
-    if (dupUsername.rows.length) return res.status(409).json({ message: 'Username already registered' });
+    const usernameBase = username.slice(0, 32);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const duplicate = await client.query('SELECT id FROM users WHERE username=?', [username]);
+      if (!duplicate.rows.length) break;
+      if (!googleProfile) return res.status(409).json({ message: 'Username already registered' });
+      username = `${usernameBase}_${require('crypto').randomBytes(3).toString('hex')}`;
+      if (attempt === 4) return res.status(409).json({ message: 'Could not allocate a username for this Google account. Please try again.' });
+    }
 
     await client.query('BEGIN');
     const { insertId: businessId } = await client.query(
@@ -135,12 +150,13 @@ async function onboardBusiness(req, res, next) {
       'INSERT INTO locations (business_id,name,address) VALUES (?,?,?)',
       [businessId, s.defaultBusinessLocation || 'Main Branch', `${city}, ${state}`]
     );
-    const fullName = [firstName, String(o.lastName || '').trim()].filter(Boolean).join(' ');
+    const lastName = String(o.lastName || googleName.join(' ') || '').trim();
+    const fullName = [firstName, lastName].filter(Boolean).join(' ');
     const hash = await bcrypt.hash(password, 12);
     const { insertId: userId } = await client.query(
-      `INSERT INTO users (business_id,prefix,first_name,last_name,username,name,email,password,role,is_owner,phone)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [businessId, o.prefix || null, firstName, o.lastName || null, username, fullName, email, hash, 'admin', 1, b.contactNumber || null]
+      `INSERT INTO users (business_id,prefix,first_name,last_name,username,name,email,password,role,is_owner,phone,google_sub)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [businessId, o.prefix || null, firstName, lastName || null, username, fullName, email, hash, 'admin', 1, b.contactNumber || null, googleProfile?.sub || null]
     );
     await client.query('COMMIT');
     const { rows } = await query(
@@ -194,4 +210,42 @@ async function me(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { register, onboardBusiness, login, logout, me };
+async function googleAuth(req, res, next) {
+  try {
+    const profile = await verifyGoogleCredential(req.body.credential || req.body.token);
+    const { email } = profile;
+
+    const { rows } = await query(
+      `SELECT u.*, b.name AS business_name, b.currency, b.timezone, b.locale, b.business_type, b.default_tax_rate, b.tax_number,
+              b.selling_price_tax_type, b.stock_accounting_method, b.default_low_stock_threshold,
+              b.feature_pos_offline, b.feature_multi_currency_sales, b.feature_barcode_scanning, b.feature_service_repair, b.financial_year_start_month
+       FROM users u LEFT JOIN businesses b ON b.id=u.business_id WHERE u.email=?`,
+      [email]
+    );
+
+    if (rows.length) {
+      const user = rows[0];
+      if (!user.active) return res.status(403).json({ message: 'Account is inactive' });
+      if (user.google_sub && user.google_sub !== profile.sub) return res.status(403).json({ message: 'This Google account is not linked to the selected StockPro user' });
+      if (!user.google_sub) {
+        const linked = await query('UPDATE users SET google_sub=? WHERE id=? AND business_id=? AND google_sub IS NULL', [profile.sub, user.id, user.business_id]);
+        if (!linked.rowCount) {
+          const current = await query('SELECT google_sub FROM users WHERE id=? AND business_id=?', [user.id, user.business_id]);
+          if (current.rows[0]?.google_sub !== profile.sub) return res.status(403).json({ message: 'This Google account is already linked to a different identity' });
+        }
+      }
+      return res.json({ token: signToken(user), user: { ...publicUser(user), access: await loadAccess(user) } });
+    }
+
+    // If user doesn't exist, we can't easily "sign up" in a multi-tenant system without a business_id.
+    // We'll return a 404 and suggest onboarding.
+    return res.status(404).json({
+      message: 'No account is linked to this Google email. Continue business registration to create a workspace.',
+      suggestOnboarding: true,
+      email,
+      name: profile.name
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { register, onboardBusiness, login, logout, me, googleAuth };

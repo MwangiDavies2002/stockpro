@@ -77,7 +77,6 @@ app.use(rateLimit({
   max:      200,
   message:  { error: 'Too many requests, please try again later.' },
 }));
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many login attempts. Try again later.' } }));
 
 /* ── Routes ────────────────────────────────────────── */
 app.use('/api/superadmin', require('./src/routes/superadmin'));

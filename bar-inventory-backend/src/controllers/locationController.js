@@ -20,8 +20,18 @@ async function create(req, res, next) {
     assertCapacity((await loadAccess(req.user,db)).plan,'locations',count.count);
     const { insertId } = await db.query(
       `INSERT INTO locations (business_id,name,address,invoice_scheme_pos,invoice_layout_pos,invoice_scheme_sale,invoice_layout_sale,location_type,payment_options)
-       VALUES (?,?,?,'Default','Default','Default','Default','selling',?)`,
-      [getBusinessId(req), name, address || null, paymentOptions ? JSON.stringify(paymentOptions) : null]
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        getBusinessId(req), 
+        name, 
+        address || null, 
+        req.body.invoiceSchemePos || 'Default',
+        req.body.invoiceLayoutPos || 'Default',
+        req.body.invoiceSchemeSale || 'Default',
+        req.body.invoiceLayoutSale || 'Default',
+        req.body.locationType || 'selling',
+        paymentOptions ? JSON.stringify(paymentOptions) : null
+      ]
     );
     const { rows } = await db.query('SELECT * FROM locations WHERE id=? AND business_id=?', [insertId, getBusinessId(req)]);
     await db.query('COMMIT');

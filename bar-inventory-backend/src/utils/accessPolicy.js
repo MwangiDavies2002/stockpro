@@ -1,3 +1,4 @@
+const mysql = require('mysql2');
 const MODULES = [
   ['pos','Point of sale'],['inventory','Products and stock'],['sales','Sales and sales documents'],
   ['customers','Customers'],['reports','Reports'],['expenses','Expenses'],['purchases','Purchases'],['suppliers','Suppliers'],
@@ -62,15 +63,15 @@ function scopeSelect(sql,user){
  if(!user?.access||user.platformRequest||user.access.owner||!/^\s*SELECT\b/i.test(sql))return sql;
  const access=user.access,bid=Number(user.business_id),uid=Number(user.id);
  if(!Number.isInteger(bid)||!Number.isInteger(uid))fail('Invalid account context');
- const ids=(access.locationIds||[]).filter(id=>Number.isInteger(id)&&id>0).join(',')||'NULL';
+ const ids=(access.locationIds||[]).filter(id=>Number.isInteger(id)&&id>0);
  const condition=table=>{
   const location=table==='locations'?'id':'location_id';
-  const clauses=[`business_id=${bid}`];
-  if(table==='stock_transfers')clauses.push(`from_location_id IN (${ids}) AND to_location_id IN (${ids})`);else if(LOCATION_TABLES.includes(table))clauses.push(`${location} IN (${ids})`);
-  if(table==='shifts')clauses.push(`user_id=${uid}`);
-  if(['mpesa_payments','customer_payments'].includes(table))clauses.push(`created_by=${uid}`);
+  const clauses=[`business_id=${mysql.escape(bid)}`];
+  if(table==='stock_transfers')clauses.push(`from_location_id IN (${ids.map(id=>mysql.escape(id)).join(',')||'NULL'}) AND to_location_id IN (${ids.map(id=>mysql.escape(id)).join(',')||'NULL'})`);else if(LOCATION_TABLES.includes(table))clauses.push(`${mysql.escapeId(location)} IN (${ids.map(id=>mysql.escape(id)).join(',')||'NULL'})`);
+  if(table==='shifts')clauses.push(`user_id=${mysql.escape(uid)}`);
+  if(['mpesa_payments','customer_payments'].includes(table))clauses.push(`created_by=${mysql.escape(uid)}`);
   const module=table==='orders'?'purchases':['sales','sales_documents'].includes(table)?'sales':null;
-  if(module&&access.permissions[module]?.view==='own')clauses.push(`created_by=${uid}`);
+  if(module&&access.permissions[module]?.view==='own')clauses.push(`created_by=${mysql.escape(uid)}`);
   return clauses.join(' AND ');
  };
  const tables=[...LOCATION_TABLES,'shifts','mpesa_payments','customer_payments',...Object.keys(CHILDREN)].join('|');
@@ -78,9 +79,9 @@ function scopeSelect(sql,user){
  return sql.replace(new RegExp(`\\b(FROM|JOIN)\\s+(${tables})\\b(?:\\s+(?:AS\\s+)?([a-zA-Z_][a-zA-Z0-9_]*))?`,'gi'),(whole,keyword,raw,alias)=>{
   const table=raw.toLowerCase();const suffix=alias&&reserved.has(alias.toLowerCase())?` ${alias}`:'';const name=suffix||!alias?table:alias;
   let where;
-  if(CHILDREN[table]){const[parent,key]=CHILDREN[table];where=`${key} IN (SELECT id FROM ${parent} WHERE ${condition(parent)})`;}
+  if(CHILDREN[table]){const[parent,key]=CHILDREN[table];where=`${mysql.escapeId(key)} IN (SELECT id FROM ${mysql.escapeId(parent)} WHERE ${condition(parent)})`;}
   else where=condition(table);
-  return `${keyword} (SELECT * FROM ${table} WHERE ${where}) ${name}${suffix}`;
+  return `${keyword} (SELECT * FROM ${mysql.escapeId(table)} WHERE ${where}) ${name}${suffix}`;
  });
 }
 function assertCapacity(plan,resource,count){const max=resource==='locations'?plan.maxLocations:plan.maxMembers;if(max!==null&&Number(count)>=max)fail(`${plan.name} allows ${max} ${resource==='locations'?'locations':'members, including the owner'}. Choose another package to add more.`);}

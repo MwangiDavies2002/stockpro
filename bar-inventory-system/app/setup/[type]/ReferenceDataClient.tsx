@@ -100,7 +100,7 @@ export default function ReferenceDataPage() {
 
   function openAdd() {
     setEditRow(null);
-    setForm(blank);
+    setForm(type === 'units' ? { ...blank, name: 'Pieces', shortName: 'Pcs' } : blank);
     setModalOpen(true);
   }
 

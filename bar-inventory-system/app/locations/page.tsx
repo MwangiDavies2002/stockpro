@@ -79,7 +79,15 @@ export default function LocationsPage() {
     }
   }
 
-  function openAdd() { setEditLoc(null); setForm(EMPTY); setModalOpen(true); }
+  function openAdd() { 
+    if (!access?.owner) return toast.error('Only the business owner can add locations');
+    if (access.plan.maxLocations !== null && locations.length >= access.plan.maxLocations) {
+      return toast.error(`Your ${access.plan.name} plan is limited to ${access.plan.maxLocations} locations. Please upgrade to add more.`);
+    }
+    setEditLoc(null); 
+    setForm(EMPTY); 
+    setModalOpen(true); 
+  }
   function openEdit(loc: Location) {
     setEditLoc(loc);
     setForm({ ...EMPTY, name: loc.name, address: loc.address || '', paymentOptions: (loc as any).payment_options || EMPTY.paymentOptions });
@@ -129,7 +137,7 @@ export default function LocationsPage() {
             <h1 className="text-base font-semibold text-gray-900">Locations</h1>
             <p className="text-xs text-gray-500 mt-0.5">{locations.length} of {access?.plan.maxLocations??'unlimited'} locations in your package</p>
           </div>
-          <button disabled={!access?.owner||(access.plan.maxLocations!==null&&locations.length>=access.plan.maxLocations)} onClick={openAdd} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-sm">
+          <button onClick={openAdd} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed">
             <Plus className="w-3.5 h-3.5" /> Add Location
           </button>
         </div>

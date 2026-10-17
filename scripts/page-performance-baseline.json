@@ -1,0 +1,222 @@
+[
+  {
+    "path": "/account/account",
+    "status": 200,
+    "elapsedMs": 181
+  },
+  {
+    "path": "/accounting/journal-entry/create",
+    "status": 200,
+    "elapsedMs": 105
+  },
+  {
+    "path": "/accounts/ledger",
+    "status": 200,
+    "elapsedMs": 96
+  },
+  {
+    "path": "/accounts",
+    "status": 200,
+    "elapsedMs": 85
+  },
+  {
+    "path": "/accounts/settings",
+    "status": 200,
+    "elapsedMs": 84
+  },
+  {
+    "path": "/business/settings",
+    "status": 200,
+    "elapsedMs": 82
+  },
+  {
+    "path": "/customers",
+    "status": 200,
+    "elapsedMs": 77
+  },
+  {
+    "path": "/discounts",
+    "status": 200,
+    "elapsedMs": 82
+  },
+  {
+    "path": "/insights/actions",
+    "status": 200,
+    "elapsedMs": 86
+  },
+  {
+    "path": "/insights",
+    "status": 200,
+    "elapsedMs": 70
+  },
+  {
+    "path": "/inventory",
+    "status": 200,
+    "elapsedMs": 78
+  },
+  {
+    "path": "/locations",
+    "status": 200,
+    "elapsedMs": 85
+  },
+  {
+    "path": "/login",
+    "status": 200,
+    "elapsedMs": 114
+  },
+  {
+    "path": "/loyalty/history",
+    "status": 200,
+    "elapsedMs": 107
+  },
+  {
+    "path": "/loyalty",
+    "status": 200,
+    "elapsedMs": 77
+  },
+  {
+    "path": "/loyalty/rewards",
+    "status": 200,
+    "elapsedMs": 102
+  },
+  {
+    "path": "/network/invite",
+    "status": 200,
+    "elapsedMs": 144
+  },
+  {
+    "path": "/network",
+    "status": 200,
+    "elapsedMs": 232
+  },
+  {
+    "path": "/notifications",
+    "status": 200,
+    "elapsedMs": 90
+  },
+  {
+    "path": "/orders",
+    "status": 200,
+    "elapsedMs": 82
+  },
+  {
+    "path": "/",
+    "status": 200,
+    "elapsedMs": 97
+  },
+  {
+    "path": "/payments",
+    "status": 200,
+    "elapsedMs": 96
+  },
+  {
+    "path": "/pos",
+    "status": 200,
+    "elapsedMs": 81
+  },
+  {
+    "path": "/purchases",
+    "status": 200,
+    "elapsedMs": 78
+  },
+  {
+    "path": "/register-business",
+    "status": 200,
+    "elapsedMs": 104
+  },
+  {
+    "path": "/reports",
+    "status": 200,
+    "elapsedMs": 77
+  },
+  {
+    "path": "/sales",
+    "status": 200,
+    "elapsedMs": 88
+  },
+  {
+    "path": "/sales-ar/quotation",
+    "status": 200,
+    "elapsedMs": 99
+  },
+  {
+    "path": "/sales-ar/sales_order",
+    "status": 200,
+    "elapsedMs": 101
+  },
+  {
+    "path": "/sales-ar/proforma",
+    "status": 200,
+    "elapsedMs": 97
+  },
+  {
+    "path": "/sales-ar/invoice",
+    "status": 200,
+    "elapsedMs": 111
+  },
+  {
+    "path": "/sales-ar/credit_note",
+    "status": 200,
+    "elapsedMs": 111
+  },
+  {
+    "path": "/setup/units",
+    "status": 200,
+    "elapsedMs": 144
+  },
+  {
+    "path": "/setup/categories",
+    "status": 200,
+    "elapsedMs": 145
+  },
+  {
+    "path": "/setup/brands",
+    "status": 200,
+    "elapsedMs": 137
+  },
+  {
+    "path": "/staff-performance",
+    "status": 200,
+    "elapsedMs": 114
+  },
+  {
+    "path": "/subscription/manage",
+    "status": 200,
+    "elapsedMs": 127
+  },
+  {
+    "path": "/subscription/overview",
+    "status": 200,
+    "elapsedMs": 115
+  },
+  {
+    "path": "/subscription",
+    "status": 200,
+    "elapsedMs": 126
+  },
+  {
+    "path": "/subscription/status",
+    "status": 200,
+    "elapsedMs": 101
+  },
+  {
+    "path": "/suppliers",
+    "status": 200,
+    "elapsedMs": 123
+  },
+  {
+    "path": "/treasury/book",
+    "status": 200,
+    "elapsedMs": 107
+  },
+  {
+    "path": "/treasury",
+    "status": 200,
+    "elapsedMs": 134
+  },
+  {
+    "path": "/users",
+    "status": 200,
+    "elapsedMs": 113
+  }
+]

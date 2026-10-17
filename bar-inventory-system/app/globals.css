@@ -131,7 +131,8 @@ button:not(:disabled), select { cursor: pointer; }
 input, select, textarea { background-color: #faf8f2; }
 .app-sidebar { background: #e4e1d6; border-color: #c8c5b8; }
 .app-sidebar button, .app-sidebar a { width: 100%; text-align: left; }
-.action-word { display: inline; flex-shrink: 0; font-size: .75rem; font-weight: 500; line-height: 1.25; }
+.action-word { display: inline; flex-shrink: 0; font-size: .75rem; font-weight: 500; line-height: 1.25; color: rgb(var(--brand-ink-rgb, 53 79 67)); }
+.btn-theme-hover:hover { background-color: rgb(var(--theme-600)) !important; color: var(--theme-on-600) !important; }
 .site-footer { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: 1.5rem 2rem; border-top: 1px solid #c8c5b8; font-size: .75rem; color: #5d6359; }
 .site-footer a { text-decoration: underline; text-underline-offset: 3px; }
 .skeleton-line { height: 1rem; background: #deddd3; margin: .75rem 0; }

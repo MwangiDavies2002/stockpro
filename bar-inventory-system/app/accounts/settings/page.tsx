@@ -13,31 +13,31 @@ const SETTING_GROUPS = [
   {
     title: 'Opening Balances',
     items: [
-      { key: 'opening_balance_equity', label: 'Opening Balance Equity', type: 'account' },
+      { key: 'opening_balance_equity', accountType: 'Equity', label: 'Opening Balance Equity', type: 'account' },
     ]
   },
   {
     title: 'Sales Mappings',
     items: [
-      { key: 'sales_revenue', label: 'Revenue Account', type: 'account' },
-      { key: 'sales_receivable', label: 'Accounts Receivable', type: 'account' },
-      { key: 'sales_vat_output', label: 'VAT Output', type: 'account' },
+      { key: 'sales_revenue', accountType: 'Income', label: 'Revenue Account', type: 'account' },
+      { key: 'sales_receivable', accountType: 'Assets', label: 'Accounts Receivable', type: 'account' },
+      { key: 'sales_vat_output', accountType: 'Liabilities', label: 'VAT Output', type: 'account' },
     ]
   },
   {
     title: 'Inventory Mappings',
     items: [
-      { key: 'inventory_asset', label: 'Inventory Asset', type: 'account' },
-      { key: 'inventory_cogs', label: 'Cost of Goods Sold', type: 'account' },
-      { key: 'inventory_adjustment', label: 'Inventory Adjustment', type: 'account' },
+      { key: 'inventory_asset', accountType: 'Assets', label: 'Inventory Asset', type: 'account' },
+      { key: 'inventory_cogs', accountType: 'Expenses', label: 'Cost of Goods Sold', type: 'account' },
+      { key: 'inventory_adjustment', accountType: 'Expenses', label: 'Inventory Adjustment', type: 'account' },
     ]
   },
   {
     title: 'Purchases Mappings',
     items: [
-      { key: 'purchases_expense', label: 'Purchase Expense', type: 'account' },
-      { key: 'purchases_payable', label: 'Accounts Payable', type: 'account' },
-      { key: 'purchases_vat_input', label: 'VAT Input', type: 'account' },
+      { key: 'purchases_expense', accountType: 'Expenses', label: 'Purchase Expense', type: 'account' },
+      { key: 'purchases_payable', accountType: 'Liabilities', label: 'Accounts Payable', type: 'account' },
+      { key: 'purchases_vat_input', accountType: 'Assets', label: 'VAT Input', type: 'account' },
     ]
   },
   {
@@ -151,7 +151,7 @@ export default function AccountingSettingsPage() {
                       >
                         <option value="">-- Not Mapped --</option>
                         {item.type === 'account'
-                          ? accounts.filter(a => a.active).filter(a => item.key !== 'opening_balance_equity' || a.account_type === 'Equity').map(a => <option key={a.id} value={a.id}>{a.account_code} - {a.account_name}</option>)
+                          ? accounts.filter(a => a.active).filter(a => !('accountType' in item) || !item.accountType || a.account_type === item.accountType).map(a => <option key={a.id} value={a.id}>{a.account_code} - {a.account_name}</option>)
                           : treasuries.filter(t => t.status==='active').map(t => <option key={t.id} value={t.id}>{t.name} (KES {t.current_balance})</option>)
                         }
                       </select>

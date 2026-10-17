@@ -9,7 +9,7 @@ import Navbar from '../components/Navbar';
 import {useAccess} from '../components/AccessBoundary';
 import {canAct} from '../lib/access';
 import Receipt from '../components/Receipt';
-import { inventoryApi, salesDocumentsApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi } from '../lib/api';
+import { inventoryApi, salesDocumentsApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi, businessSettingsApi } from '../lib/api';
 import {showDone} from '../lib/feedback';
 import { toast } from 'sonner';
 import {readQueue,appendQueue,removeSynced} from '../lib/offlineQueue';
@@ -42,7 +42,9 @@ const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60
 export default function POSPage() {
   const router = useRouter();
   const {access}=useAccess();
-  const [user, setUser] = useState<{ id: number; business_id: number; name: string; role: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; business_id: number; name: string; role: string; email: string; business?: { businessType?: string } } | null>(null);
+  const businessType = String(user?.business?.businessType || '').trim().toLowerCase();
+  const requiresAgeVerification = businessType === 'bar' || businessType === 'club';
   const [locations, setLocations] = useState<Array<{id:number;name:string;active:boolean|number}>>([]);
   const [locationId,setLocationId] = useState('');
   const queueKey = user && locationId ? `pos_pending_sales:${user.business_id}:${user.id}:${locationId}` : null;
@@ -53,20 +55,29 @@ export default function POSPage() {
   const [mpesaPhone,setMpesaPhone]=useState('');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [posSettings, setPosSettings] = useState<any>({ posShortcuts:{}, disableExpressCheckout:false, hideProductSuggestions:false, disableDiscount:false, enableTransactionDate:true, disableCreditSaleButton:false });
+  const [transactionDate, setTransactionDate] = useState(todayISO());
+  const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const productSearchRef = useRef<HTMLInputElement>(null);
   const [discountRules,setDiscountRules]=useState<any[]>([]);
+  useEffect(()=>{businessSettingsApi.get().then(({data})=>setPosSettings((current:any)=>({...current,...data,posShortcuts:{...(current.posShortcuts||{}),...(data.posShortcuts||{})}}))).catch(()=>{});},[]);
   useEffect(()=>{if(!locationId)return;discountsApi.getAll({locationId:Number(locationId)}).then(({data})=>setDiscountRules(data)).catch(()=>setDiscountRules([]));},[locationId]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [catFilter, setCatFilter] = useState('All');
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
   const [cart, setCart]         = useState<CartLine[]>([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const checkoutLockRef = useRef(false);
 
   const [shift, setShift] = useState<any>(null);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
-  const [openingFloat, setOpeningFloat] = useState(0);
-  const [closingCash, setClosingCash] = useState(0);
+  const [shiftStatusChecked, setShiftStatusChecked] = useState(false);
+  const [shiftStatusError, setShiftStatusError] = useState('');
+  const [openingFloat, setOpeningFloat] = useState<number | ''>(0);
+  const [closingCash, setClosingCash] = useState<number | ''>(0);
   const [receiptData, setReceiptData] = useState<any>(null);
 
   const [creditModalOpen, setCreditModalOpen] = useState(false);
@@ -95,6 +106,33 @@ export default function POSPage() {
       window.removeEventListener('offline', goOffline);
     };
   }, []);
+
+  useEffect(() => {
+    const normalizeKey=(key:string)=>key.toLowerCase().replace('escape','esc').replace(' ','space').replace('arrowup','up').replace('arrowdown','down').replace('arrowleft','left').replace('arrowright','right');
+    const matches=(event:KeyboardEvent,shortcut:string)=>{
+      const parts=String(shortcut||'').toLowerCase().split('+').filter(Boolean);
+      if(!parts.length)return false;
+      const modifiers=new Set(parts.filter(part=>['ctrl','alt','shift','meta'].includes(part)));
+      const key=parts.find(part=>!['ctrl','alt','shift','meta'].includes(part));
+      if(!key)return false;
+      return event.ctrlKey===modifiers.has('ctrl')&&event.altKey===modifiers.has('alt')&&event.shiftKey===modifiers.has('shift')&&event.metaKey===modifiers.has('meta')&&normalizeKey(event.key)===normalizeKey(key);
+    };
+    const onShortcut=(event:KeyboardEvent)=>{
+      const target=event.target;
+      if(!shift||!shiftStatusChecked||shiftModalOpen||ageModalOpen||creditModalOpen||newCustomerModalOpen||paymentPickerOpen||target instanceof HTMLElement&&(target.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(target.tagName)))return;
+      const shortcuts=posSettings.posShortcuts||{};
+      const action=Object.entries(shortcuts).find(([,value])=>matches(event,String(value||'')))?.[0];
+      if(!action)return;
+      event.preventDefault();
+      if(action==='expressCheckout'&&!posSettings.disableExpressCheckout)void checkout('cash');
+      else if(action==='payCheckout')setPaymentPickerOpen(true);
+      else if(action==='cancel')clearCart();
+      else if(action==='quantity')document.querySelector<HTMLInputElement>('[data-pos-quantity]')?.focus();
+      else if(action==='addNewProduct')productSearchRef.current?.focus();
+    };
+    window.addEventListener('keydown',onShortcut);
+    return()=>window.removeEventListener('keydown',onShortcut);
+  },[shift,shiftStatusChecked,shiftModalOpen,ageModalOpen,creditModalOpen,newCustomerModalOpen,paymentPickerOpen,posSettings,cart,products,locationId]);
 
   // Load any queued offline sales from previous sessions
   useEffect(() => {
@@ -164,9 +202,21 @@ export default function POSPage() {
     }
   }, [creditModalOpen]);
 
-  useEffect(() => {
-    shiftsApi.getCurrent().then((res) => setShift(res.data)).catch(() => {});
-  }, []);
+  useEffect(() => { void loadShiftStatus(); }, []);
+
+  async function loadShiftStatus() {
+    setShiftStatusError('');
+    try {
+      const { data } = await shiftsApi.getCurrent();
+      setShift(data);
+      setShiftModalOpen(!data);
+    } catch (err: any) {
+      setShiftStatusError(err?.response?.data?.message || 'Could not verify whether a shift is already open.');
+      setShiftModalOpen(true);
+    } finally {
+      setShiftStatusChecked(true);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -215,7 +265,19 @@ export default function POSPage() {
   );
   const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort()], [products]);
 
+  useEffect(() => {
+    if (!categoriesOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !categoryMenuRef.current?.contains(event.target)) setCategoriesOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setCategoriesOpen(false); };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => { document.removeEventListener('pointerdown', closeOutside); document.removeEventListener('keydown', closeOnEscape); };
+  }, [categoriesOpen]);
+
   function addToCart(product: Product) {
+    if (!shift) { setShiftModalOpen(true); toast.error('Open a shift before starting a sale'); return; }
     if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
     checkoutRequestId.current=null;
     if (product.stock <= 0) {
@@ -253,7 +315,7 @@ export default function POSPage() {
     setCart((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
-        if (qty < 1) return l;
+        if (qty < 0) return l;
         if (qty > l.maxStock) {
           toast.error(`Only ${l.maxStock} in stock`);
           return { ...l, quantity: l.maxStock };
@@ -288,16 +350,18 @@ export default function POSPage() {
 
   const itemCount = cart.reduce((sum, l) => sum + l.quantity, 0);
   function discountFor(line:CartLine, customerId?:number){
+    if(posSettings.disableDiscount)return 0;
     const product=products.find(product=>product.id===line.id);
-    return Math.max(0,...discountRules.filter(rule=>rule.active&&Number(rule.location_id)===Number(locationId)&&((rule.applies_to==='product'&&Number(rule.product_id)===line.id)||(rule.applies_to==='category'&&product?.category_id&&Number(rule.category_id)===Number(product.category_id))||(rule.applies_to==='customer'&&customerId&&Number(rule.customer_id)===customerId))).map(rule=>rule.discount_type==='percent'?Number(rule.value):Math.min(100,Number(rule.value)/line.price*100)));
+    return Math.max(0,...discountRules.filter(rule=>rule.active&&Number(rule.location_id)===Number(locationId)&&(!rule.customer_restriction_id||(customerId&&Number(rule.customer_restriction_id)===customerId))&&((rule.applies_to==='product'&&Number(rule.product_id)===line.id)||(rule.applies_to==='category'&&product?.category_id&&Number(rule.category_id)===Number(product.category_id))||(rule.applies_to==='customer'&&customerId&&Number(rule.customer_id)===customerId))).map(rule=>rule.discount_type==='percent'?Number(rule.value):Math.min(100,Number(rule.value)/line.price*100)));
   }
   const saleTotal=(customerId?:number)=>Number(cart.reduce((sum,line)=>{const gross=Number((line.quantity*line.price).toFixed(2));return sum+gross-Number((gross*discountFor(line,customerId)/100).toFixed(2));},0).toFixed(2));
   const subtotal = saleTotal();
 
   async function openShift() {
     try {
-      const { data } = await shiftsApi.open(openingFloat);
+      const { data } = await shiftsApi.open(Number(openingFloat || 0));
       setShift(data);
+      setShiftStatusError('');
       setShiftModalOpen(false);
       toast.success('Shift opened');
     } catch (err: any) {
@@ -308,7 +372,7 @@ export default function POSPage() {
   async function closeShift() {
     if (!shift) return;
     try {
-      const { data } = await shiftsApi.close(shift.id, closingCash);
+      const { data } = await shiftsApi.close(shift.id, Number(closingCash || 0));
       const variance = Number(data.variance);
       if (variance === 0) {
         toast.success('Shift closed — cash matches exactly!');
@@ -318,20 +382,21 @@ export default function POSPage() {
         toast.warning(`Shift closed — KSh ${Math.abs(variance).toFixed(2)} short`);
       }
       setShift(null);
-      setShiftModalOpen(false);
+      setShiftModalOpen(true);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to close shift');
     }
   }
 
   async function checkout(method: 'cash' | 'mpesa' | 'card' | 'credit', customerId?: number) {
+    if (!shift) { setShiftModalOpen(true); return toast.error('Open a shift before completing a sale'); }
     if(pendingMpesa.current&&method!=='mpesa')return toast.error('Resolve the pending M-Pesa payment before using another payment method');
     if (checkoutLockRef.current) return;
     if (!cart.length) {
       toast.error('Cart is empty');
       return;
     }
-    const invalidLine = cart.find((l) => l.price <= 0 || l.quantity <= 0);
+    const invalidLine = cart.find((l) => l.price <= 0 || l.quantity < 1);
     if (invalidLine) {
       toast.error(`${invalidLine.name}: price and quantity must be greater than 0`);
       return;
@@ -343,14 +408,14 @@ export default function POSPage() {
       type: 'pos' as const,
       requestId: checkoutRequestId.current ||= crypto.randomUUID(),
       locationId: Number(locationId),
-      date: todayISO(),
+      date: transactionDate || todayISO(),
       payment: method === 'credit' ? undefined : { amount: saleTotal(customerId), method },
       items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price, discountPercent:discountFor(l,customerId) })),
       paymentMethod: method,
       customerId: method === 'credit' ? customerId : undefined,
     };
 
-    if (!ageVerified) {
+    if (requiresAgeVerification && !ageVerified) {
       setPendingPayment(method);
       setAgeModalOpen(true);
       setCheckingOut(false);
@@ -473,6 +538,12 @@ export default function POSPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} />
 
+      {!shiftStatusChecked && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4" role="status" aria-live="polite">
+          <div className="rounded-sm bg-white p-6 text-sm text-gray-700 shadow-xl">Checking the current shift before opening the POS…</div>
+        </div>
+      )}
+
       <div className="max-w-[1600px] mx-auto px-4 pt-3 space-y-2">
         <label className="block text-sm font-medium">Business location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>setLocationId(event.target.value)} className="ml-3 rounded-sm border border-gray-300 p-2"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
         {!isOnline && (
@@ -519,6 +590,7 @@ export default function POSPage() {
           <div className="p-4 border-b border-gray-200">
             <h1 className="text-base font-semibold text-gray-900">New Sale</h1>
             <p className="text-xs text-gray-500 mt-0.5">{itemCount} item(s) in cart</p>
+            {posSettings.enableTransactionDate && <label className="mt-3 block text-xs font-medium text-gray-600">Transaction date<input type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="mt-1 block w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm" /></label>}
           </div>
 
           <div className="flex-1 overflow-y-auto max-h-[55vh] divide-y divide-gray-100">
@@ -546,10 +618,11 @@ export default function POSPage() {
                     <label className="text-[10px] uppercase text-gray-400">Qty</label>
                     <input
                       type="number"
+                      data-pos-quantity
                       min={1}
                       max={line.maxStock}
-                      value={line.quantity}
-                      onChange={(e) => updateQuantity(line.id, parseInt(e.target.value) || 1)}
+                      value={line.quantity || ''}
+                      onChange={(e) => updateQuantity(line.id, parseInt(e.target.value) || 0)}
                       className="w-full px-2 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                   </div>
@@ -558,7 +631,7 @@ export default function POSPage() {
                     <input
                       type="number"
                       min={0}
-                      disabled={!canAct(access,'sales','price')} value={line.price}
+                      disabled={!canAct(access,'sales','price')} value={line.price || ''}
                       onChange={(e) => updatePrice(line.id, parseFloat(e.target.value) || 0)}
                       className="w-full px-2 py-1.5 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
@@ -608,13 +681,13 @@ export default function POSPage() {
               </button>
             </div>
             <label className="block text-xs text-gray-600">M-Pesa phone number<input type="tel" placeholder="07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} disabled={checkingOut} className="mt-1 w-full border rounded-sm px-3 py-2 text-sm"/></label>
-            <button
+            {!posSettings.disableCreditSaleButton && <button
               onClick={() => setCreditModalOpen(true)}
               disabled={checkingOut || !cart.length}
               className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-sm"
             >
               Credit / Tab
-            </button>
+            </button>}
             <button
               onClick={clearCart}
               disabled={!cart.length}
@@ -638,6 +711,7 @@ export default function POSPage() {
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               <input
+                ref={productSearchRef}
                 type="text"
                 placeholder="Search products..."
                 value={search}
@@ -645,24 +719,36 @@ export default function POSPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCatFilter(c)}
-                  className={`px-3 py-1.5 rounded-sm text-xs font-medium border ${
-                    catFilter === c
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="relative w-fit" ref={categoryMenuRef}>
+              <button
+                type="button"
+                aria-expanded={categoriesOpen}
+                aria-controls="pos-category-options"
+                onClick={() => setCategoriesOpen(open => !open)}
+                className={`inline-flex items-center gap-2 rounded-sm border px-3 py-2 text-sm font-medium ${categoriesOpen || catFilter !== 'All' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+              >
+                Categories <span aria-hidden="true">{categoriesOpen ? '▲' : '▼'}</span>
+                {catFilter !== 'All' && <span className="max-w-48 truncate rounded-sm bg-white/20 px-2 py-0.5 text-xs">{catFilter}</span>}
+              </button>
+              {categoriesOpen && (
+                <div id="pos-category-options" className="absolute left-0 top-full z-30 mt-2 flex max-h-64 min-w-64 max-w-[min(90vw,48rem)] flex-wrap gap-1.5 overflow-y-auto rounded-sm border border-gray-200 bg-white p-3 shadow-lg">
+                  {categories.map(category => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => { setCatFilter(category); setCategoriesOpen(false); }}
+                      aria-pressed={catFilter === category}
+                      className={`rounded-sm border px-3 py-1.5 text-xs font-medium ${catFilter === category ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {!loading && topSellers.length > 0 && (
+          {!posSettings.hideProductSuggestions && !loading && topSellers.length > 0 && (
             <section className="rounded-sm border border-green-200 bg-green-50 p-3" aria-label="Top selling product suggestions">
               <h2 className="text-sm font-semibold text-green-900">Suggested top sellers</h2>
               <p className="text-xs text-green-700 mt-1">Ranked by total units sold. Tap to add to your cart.</p>
@@ -715,6 +801,7 @@ export default function POSPage() {
       </main>
 
       {/* -- Credit sale: customer picker ------------------- */}
+      {paymentPickerOpen && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-picker-title"><div className="w-full max-w-sm space-y-3 rounded-sm bg-white p-6"><div className="flex items-center justify-between"><h2 id="payment-picker-title" className="text-lg font-semibold">Pay &amp; Checkout</h2><button onClick={()=>setPaymentPickerOpen(false)} aria-label="Close payment methods"><X className="h-4 w-4 text-gray-500"/></button></div><p className="text-sm text-gray-600">Choose how the customer is paying KSh {subtotal.toLocaleString()}.</p><button onClick={()=>{setPaymentPickerOpen(false);void checkout('cash');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Cash</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('card');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-slate-700 py-2.5 text-sm font-medium text-white disabled:opacity-50">Card</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('mpesa');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-800 py-2.5 text-sm font-medium text-white disabled:opacity-50">M-Pesa</button>{!posSettings.disableCreditSaleButton&&<button onClick={()=>{setPaymentPickerOpen(false);setCreditModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-amber-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Credit / Tab</button>}<button onClick={()=>setPaymentPickerOpen(false)} className="w-full rounded-sm border py-2 text-sm">Cancel</button></div></div>}
       {ageModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
           <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
@@ -830,7 +917,7 @@ export default function POSPage() {
                 <label htmlFor="pos-customer-credit" className="text-xs font-medium text-gray-600 mb-1 block">Credit Limit (KSh)</label>
                 <input id="pos-customer-credit"
                   type="number"
-                  value={newCustomer.creditLimit}
+                  value={newCustomer.creditLimit || ''}
                   onChange={(e) => setNewCustomer({ ...newCustomer, creditLimit: parseFloat(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
@@ -856,11 +943,17 @@ export default function POSPage() {
 
       {/* -- Shift open/close modal ----------------------- */}
       {shiftModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[80]" role="dialog" aria-modal="true" aria-labelledby="shift-dialog-title">
           <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
-            {shift ? (
+            {shiftStatusError ? (
               <>
-                <h2 className="text-lg font-semibold">Close Shift</h2>
+                <h2 id="shift-dialog-title" className="text-lg font-semibold">Unable to check shift</h2>
+                <p className="text-sm text-gray-600">{shiftStatusError} Selling stays locked until the shift status is confirmed.</p>
+                <button onClick={loadShiftStatus} className="w-full px-4 py-2 bg-green-600 text-white rounded-sm text-sm">Retry</button>
+              </>
+            ) : shift ? (
+              <>
+                <h2 id="shift-dialog-title" className="text-lg font-semibold">Close Shift</h2>
                 <p className="text-sm text-gray-600">
                   Opening float: KSh {Number(shift.opening_float).toLocaleString()}
                 </p>
@@ -870,7 +963,7 @@ export default function POSPage() {
                     type="number"
                     min={0}
                     value={closingCash}
-                    onChange={(e) => setClosingCash(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setClosingCash(e.target.value === '' ? '' : parseFloat(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
@@ -881,19 +974,20 @@ export default function POSPage() {
               </>
             ) : (
               <>
-                <h2 className="text-lg font-semibold">Open Shift</h2>
+                <h2 id="shift-dialog-title" className="text-lg font-semibold">Open Shift to Start Selling</h2>
+                <p className="text-sm text-gray-600">Start a cashier shift before accessing POS sales. Your opening float will be used for cash reconciliation.</p>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Starting Cash Float</label>
                   <input
                     type="number"
                     min={0}
                     value={openingFloat}
-                    onChange={(e) => setOpeningFloat(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setOpeningFloat(e.target.value === '' ? '' : parseFloat(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>
+                  {shift && <button onClick={() => setShiftModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm text-sm">Cancel</button>}
                   <button onClick={openShift} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm text-sm">Open Shift</button>
                 </div>
               </>

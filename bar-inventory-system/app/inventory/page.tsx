@@ -21,7 +21,7 @@ import {showDone} from '../lib/feedback';
 type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
 type Location = { id: number; name: string; active?: boolean };
 
-const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:0, threshold:5, cost:0, price:0, sold:0, imageUrl:'', sku:'', barcode:'' };
+const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:'' as any, threshold:'' as any, cost:'' as any, price:'' as any, sold:0, imageUrl:'', sku:'', barcode:'' };
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -442,13 +442,13 @@ export default function InventoryPage() {
 
         {/* Add/Edit Modal */}
         {modalOpen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <form role="dialog" aria-modal="true" aria-labelledby="item-dialog-title" onKeyDown={(event) => { if (event.key === 'Escape'&&!saveLock.current) setModalOpen(false); }} onSubmit={(event) => { event.preventDefault(); void handleSave(); }} className="bg-white rounded-sm max-w-md w-full max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden ">
-              <div className="flex items-center justify-between gap-3 p-6 pb-4 shrink-0 border-b">
+          <div className="fixed inset-0 overflow-y-auto overscroll-contain bg-black/50 flex items-start sm:items-center justify-center p-4 z-50">
+            <form role="dialog" aria-modal="true" aria-labelledby="item-dialog-title" onKeyDown={(event) => { if (event.key === 'Escape'&&!saveLock.current) setModalOpen(false); }} onSubmit={(event) => { event.preventDefault(); void handleSave(); }} className="bg-white rounded-sm max-w-md w-full max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 p-6 pb-4 border-b bg-white">
                 <h2 id="item-dialog-title" className="text-lg font-semibold">{editItem ? 'Edit Item' : 'Add Item'}</h2>
                 <button type="button" aria-label="Close item form" disabled={saving} onClick={() => setModalOpen(false)} className="p-2 rounded-sm hover:bg-gray-100">Close</button>
               </div>
-              <fieldset disabled={saving||attempted} className="space-y-3 overflow-y-auto overscroll-contain min-h-0 flex-1 p-6">
+              <fieldset disabled={saving||(attempted&&!editItem)} className="space-y-3 p-6">
                 <div>
                   <label htmlFor="item-location" className="text-xs font-medium text-gray-600 mb-1 block">Business Location</label>
                   <select id="item-location" disabled={!!editItem&&(editItem.stock>0||editItem.sold>0)} value={form.locationId} onChange={(e) => { setForm({...form, locationId: e.target.value, categoryId: '', unitId: '', brandId: '', category: '', unit: '', brand: ''}); void loadReferenceData(e.target.value); }} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -488,19 +488,19 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <label htmlFor="item-stock" className="text-xs font-medium text-gray-600 mb-1 block">{editItem?"Current stock (use a receipt or correction to change)":"Initial stock quantity"}</label>
-                  <input id="item-stock" disabled={!!editItem} min={0} max={2147483647} step="1" type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({...form, stock: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-stock" disabled={!!editItem} min={0} max={2147483647} step="1" type="number" placeholder="0" value={form.stock} onChange={(e) => setForm({...form, stock: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label htmlFor="item-threshold" className="text-xs font-medium text-gray-600 mb-1 block">Low Stock Threshold</label>
-                  <input id="item-threshold" min={0} max={2147483647} step="1" type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-threshold" min={0} max={2147483647} step="1" type="number" placeholder="5" value={form.threshold} onChange={(e) => setForm({...form, threshold: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label htmlFor="item-cost" className="text-xs font-medium text-gray-600 mb-1 block">Purchase Price per Unit (KES)</label>
-                  <input id="item-cost" disabled={!!editItem&&editItem.stock>0} type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.cost} onChange={(e) => setForm({...form, cost: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-cost" disabled={!!editItem&&editItem.stock>0} type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.cost} onChange={(e) => setForm({...form, cost: e.target.value === '' ? '' : Number(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                   <label htmlFor="item-price" className="text-xs font-medium text-gray-600 mb-1 block">Selling Price per Unit (KES)</label>
-                  <input id="item-price" type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.price} onChange={(e) => setForm({...form, price: Number(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="item-price" aria-label="Selling price per unit" type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.price} onChange={(e) => { setAttempted(false); setForm(current=>({...current, price: e.target.value === '' ? '' : Number(e.target.value)})); }} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div className="rounded-sm bg-gray-50 border p-3 text-sm">
                   <p className="font-medium">Expected gross profit per unit: KES {(form.price - form.cost).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -508,7 +508,7 @@ export default function InventoryPage() {
                 </div>
               </fieldset>
               {attempted&&!saving&&<p className="px-6 text-sm text-amber-700">Save could not be confirmed. Retry these details, or check inventory before starting another product.</p>}
-              <div className="flex items-center gap-2 p-6 pt-4 border-t bg-white shrink-0">
+              <div className="sticky bottom-0 flex items-center gap-2 p-6 pt-4 border-t bg-white">
                 <button type="button" disabled={saving} onClick={() => setModalOpen(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-sm hover:bg-gray-50 text-sm font-medium">Cancel</button>
                 <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-sm hover:bg-green-700 text-sm font-medium disabled:opacity-50">{saving ? 'Saving...' : attempted?'Retry save':'Save'}</button>
               </div>

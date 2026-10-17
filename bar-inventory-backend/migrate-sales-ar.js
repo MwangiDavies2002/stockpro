@@ -87,6 +87,7 @@ async function migrate() {
       product_id INT NULL,
       category_id INT NULL,
       customer_id INT NULL,
+      customer_restriction_id INT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -96,6 +97,11 @@ async function migrate() {
       CONSTRAINT fk_discounts_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
     )
   `);
+
+  const { rows: discountColumns } = await query(
+    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='discounts' AND COLUMN_NAME='customer_restriction_id'"
+  );
+  if (!discountColumns.length) await query('ALTER TABLE discounts ADD COLUMN customer_restriction_id INT NULL');
 
   console.log('Sales A/R schema ready.');
 }

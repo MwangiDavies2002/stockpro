@@ -10,7 +10,7 @@ function upgrade(db){
     CREATE TABLE IF NOT EXISTS sales_documents(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,type TEXT NOT NULL,status TEXT NOT NULL,customer_id INTEGER,reference_no TEXT,document_date TEXT,location_id INTEGER,converted_from_id INTEGER,reference_invoice_id INTEGER,sale_id INTEGER,subtotal REAL DEFAULT 0,discount_total REAL DEFAULT 0,tax_total REAL DEFAULT 0,total REAL DEFAULT 0,paid_amount REAL DEFAULT 0,balance_due REAL DEFAULT 0,notes TEXT,created_by INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS sales_document_items(id INTEGER PRIMARY KEY,document_id INTEGER NOT NULL,item_id INTEGER,item_name TEXT,quantity INTEGER,unit_price REAL,unit_cost REAL,discount_percent REAL,discount_amount REAL,tax_percent REAL,tax_amount REAL,subtotal REAL,line_total REAL);
     CREATE TABLE IF NOT EXISTS sales_document_payments(id INTEGER PRIMARY KEY,document_id INTEGER NOT NULL,amount REAL,method TEXT,reference_no TEXT,notes TEXT,created_by INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
-    CREATE TABLE IF NOT EXISTS discounts(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,location_id INTEGER NOT NULL,name TEXT,discount_type TEXT,value REAL,applies_to TEXT,product_id INTEGER,category_id INTEGER,customer_id INTEGER,active INTEGER DEFAULT 1);
+    CREATE TABLE IF NOT EXISTS discounts(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,location_id INTEGER NOT NULL,name TEXT,discount_type TEXT,value REAL,applies_to TEXT,product_id INTEGER,category_id INTEGER,customer_id INTEGER,customer_restriction_id INTEGER,active INTEGER DEFAULT 1);
     CREATE TABLE IF NOT EXISTS treasury_transactions(id INTEGER PRIMARY KEY,treasury_id INTEGER NOT NULL,transaction_type TEXT NOT NULL,amount REAL NOT NULL,reference TEXT,description TEXT,date TEXT DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS subscriptions(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,plan TEXT,amount REAL,payment_method TEXT,phone TEXT,status TEXT DEFAULT 'pending',checkout_request_id TEXT,start_date TEXT,end_date TEXT,approved_at TEXT,created_by INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS loyalty_redemptions(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,customer_id INTEGER,reward TEXT,points INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -26,7 +26,7 @@ function upgrade(db){
   add('subscriptions','recorded_payment_method','TEXT');add('subscriptions','payment_reference','TEXT');
   for(const column of ['country','state','city','zip_code','landmark','locale','logo_url','website','contact_number','alternate_contact_number'])add('businesses',column,'TEXT');
   for(const column of ['prefix','first_name','last_name'])add('users',column,'TEXT');
-  add('users','is_superadmin','INTEGER NOT NULL DEFAULT 0');
+  add('users','is_superadmin','INTEGER NOT NULL DEFAULT 0');add('users','google_sub','TEXT');
   add('businesses','platform_status',"TEXT NOT NULL DEFAULT 'active'");add('businesses','subscription_mode',"TEXT NOT NULL DEFAULT 'registration'");
   add('subscriptions','coupon_code','TEXT');add('subscriptions','original_amount','REAL');add('subscriptions','admin_note','TEXT');
   db.exec(`CREATE TABLE IF NOT EXISTS platform_packages(id TEXT PRIMARY KEY,name TEXT NOT NULL,price REAL NOT NULL,max_locations INTEGER,max_members INTEGER,modules_json TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1);
@@ -52,6 +52,7 @@ function upgrade(db){
     treasury_transactions:{created_by:'INTEGER'},orders:{payable_account_id:'INTEGER',paid_amount:'REAL DEFAULT 0',due_date:'TEXT',tax_treatment:"TEXT NOT NULL DEFAULT 'included'",shipping_cost:'REAL DEFAULT 0',other_cost:'REAL DEFAULT 0',shipping_details:'TEXT',other_cost_note:'TEXT',supplier_snapshot:'TEXT',reference_no:'TEXT',purchase_date:'TEXT',pay_term:'TEXT',created_by:'INTEGER'},inventory_stock_log:{user_id:'INTEGER',created_at:'TEXT'},journal_entries:{notes:'TEXT',entry_type:"TEXT NOT NULL DEFAULT 'system'"},
   };
   for(const[table,columns]of Object.entries(fields))for(const[name,type]of Object.entries(columns))add(table,name,type);
+  add('discounts','customer_restriction_id','INTEGER');
   db.exec('CREATE TABLE IF NOT EXISTS sales_document_events(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,document_id INTEGER NOT NULL,user_id INTEGER,action TEXT NOT NULL,details_json TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
   db.exec('CREATE TABLE IF NOT EXISTS purchase_payments(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,order_id INTEGER NOT NULL,amount REAL NOT NULL,method TEXT NOT NULL,treasury_id INTEGER,cash_account_id INTEGER NOT NULL,reference_no TEXT,notes TEXT,created_by INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS purchase_events(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,order_id INTEGER NOT NULL,user_id INTEGER,action TEXT NOT NULL,details_json TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
   const columns=db.prepare('PRAGMA table_info(chart_of_accounts)').all();

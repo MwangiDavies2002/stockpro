@@ -21,8 +21,12 @@ function errorHandler(err, req, res, next) {
   }
 
   const status = err.status || err.statusCode || 500;
+  const message = status === 500 && process.env.NODE_ENV === 'production' 
+    ? 'An unexpected error occurred. Please contact support.' 
+    : err.message || 'Internal server error';
+
   res.status(status).json({
-    message: err.message || 'Internal server error',
+    message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   });
 }

@@ -1,5 +1,6 @@
 const {query}=require('../config/db');
 const policy=require('./accessPolicy');
+const mysql=require('mysql2');
 async function loadAccess(user,db={query}){
  const {rows:[business]}=await db.query('SELECT * FROM businesses WHERE id=?',[user.business_id]);
  const {rows:[subscription]}=await db.query("SELECT plan FROM subscriptions WHERE business_id=? AND status='approved' AND start_date<=CURRENT_TIMESTAMP AND end_date>=CURRENT_TIMESTAMP ORDER BY approved_at DESC,id DESC LIMIT 1",[user.business_id]);
@@ -25,7 +26,7 @@ async function saveAssignments(id,bid,assignment,db={query}){
 async function member(row,db={query}){const {rows}=await db.query('SELECT location_id FROM user_locations WHERE user_id=? AND business_id=?',[row.id,row.business_id]);const {password,...safe}=row;return {...safe,locationIds:rows.map(r=>r.location_id),accessRoleId:row.access_role_id||null};}
 async function checkReferences(req){
  const {user}=req,access=user.access,bid=user.business_id;
- const check=async(table,id)=>{if(id===undefined||id===null||id==='')return;const value=Number(id);if(!Number.isInteger(value)||value<1)policy.fail('Invalid record reference',400);const {rows:[row]}=await query(`SELECT * FROM ${table} WHERE id=? AND business_id=?`,[value,bid]);if(!row)policy.fail('Record not found in your assigned locations',404);if(table==='locations'&&!policy.allowedLocation(access,row.id))policy.fail('Location access denied');if(row.location_id&&!policy.allowedLocation(access,row.location_id))policy.fail('Location access denied');return row;};
+ const check=async(table,id)=>{if(id===undefined||id===null||id==='')return;const value=Number(id);if(!Number.isInteger(value)||value<1)policy.fail('Invalid record reference',400);const {rows:[row]}=await query(`SELECT * FROM ${mysql.escapeId(table)} WHERE id=? AND business_id=?`,[value,bid]);if(!row)policy.fail('Record not found in your assigned locations',404);if(table==='locations'&&!policy.allowedLocation(access,row.id))policy.fail('Location access denied');if(row.location_id&&!policy.allowedLocation(access,row.location_id))policy.fail('Location access denied');return row;};
  const path=(req.baseUrl.replace(/^\/api/,'')+req.path).replace(/\/$/,'');
  const match=path.match(/^\/(inventory|sales|sales-documents|orders|locations|shifts|discounts)\/(\d+)/);
  const tables={inventory:'inventory_items',sales:'sales','sales-documents':'sales_documents',orders:'orders',locations:'locations',shifts:'shifts',discounts:'discounts'};

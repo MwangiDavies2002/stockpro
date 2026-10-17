@@ -2,6 +2,7 @@ const {getClient}=require('../config/db');
 const {getBusinessId}=require('../utils/tenant');
 const policy=require('../utils/inventoryPolicy');
 const {once}=require('../utils/idempotency');
+const JournalEngine = require('../models/JournalEngine');
 const tables=['inventory_stock_log','sale_items','order_items','sales_document_items'];
 async function used(c,id){for(const table of tables)if((await c.query(`SELECT id FROM ${table} WHERE item_id=? LIMIT 1`,[id])).rows.length)return true;return false;}
 async function resolve(c,data,bid,body){
@@ -19,7 +20,7 @@ async function mutate(req,res,next,action){const c=await getClient(),bid=getBusi
  const defaultLocation=(await c.query('SELECT id FROM locations WHERE business_id=? AND active=TRUE ORDER BY id LIMIT 1',[bid])).rows[0]?.id;
  const data=policy.normalize(req.body,old,defaultLocation);await resolve(c,data,bid,req.body);policy.guardIdentity(data,old,old?await used(c,id):false);
  for(const field of ['sku','barcode'])if(data[field]&&(await c.query(`SELECT id FROM inventory_items WHERE business_id=? AND location_id=? AND LOWER(${field})=LOWER(?) AND id<>? LIMIT 1`,[bid,data.location_id,data[field],id||0])).rows.length)policy.fail(`${field==='sku'?'SKU':'Barcode'} already exists at this location`,409);
- const keys=Object.keys(data);let savedId=id;if(old){await c.query(`UPDATE inventory_items SET ${keys.map(k=>k+'=?').join(',')},updated_at=NOW() WHERE id=? AND business_id=?`,[...keys.map(k=>data[k]),id,bid]);}else{savedId=(await c.query(`INSERT INTO inventory_items(business_id,${keys.join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[bid,...keys.map(k=>data[k])])).insertId;if(data.stock>0)await c.query("INSERT INTO inventory_stock_log(item_id,change_type,qty_change,before_stock,after_stock,user_id,note) VALUES (?,'opening_stock',?,0,?,?,?)",[savedId,data.stock,data.stock,req.user.id,'Initial product quantity; opening journal is recorded separately']);}
+ const keys=Object.keys(data);let savedId=id;if(old){await c.query(`UPDATE inventory_items SET ${keys.map(k=>k+'=?').join(',')},updated_at=NOW() WHERE id=? AND business_id=?`,[...keys.map(k=>data[k]),id,bid]);}else{savedId=(await c.query(`INSERT INTO inventory_items(business_id,${keys.join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[bid,...keys.map(k=>data[k])])).insertId;if(data.stock>0){await c.query("INSERT INTO inventory_stock_log(item_id,change_type,qty_change,before_stock,after_stock,user_id,note) VALUES (?,'opening_stock',?,0,?,?,?)",[savedId,data.stock,data.stock,req.user.id,'Initial product quantity']);const total=Number(data.stock)*Number(data.cost||0);if(total>0)await JournalEngine.generate('OPENING_STOCK',total,`OPENING-${savedId}`,`Opening stock: ${data.name}`,c);}}
  return(await c.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?',[savedId,bid])).rows[0];};
  let result=action==='create'?await once(c,bid,'inventory-create',req.body.requestId,work):await work();if(result.replayed){const latest=(await c.query('SELECT * FROM inventory_items WHERE id=? AND business_id=?',[result.id,bid])).rows[0];if(latest)result={...latest,replayed:true};}await c.query('COMMIT');res.status(action==='create'?201:200).json(result);
  }catch(e){await c.query('ROLLBACK');next(e);}finally{c.release();}}

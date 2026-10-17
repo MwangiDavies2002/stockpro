@@ -7,6 +7,7 @@ import { Package, Eye, EyeOff, Loader2 } from './TextMark';
 import Cookies from 'js-cookie';
 import { authApi } from '../lib/api';
 import { toast } from 'sonner';
+import GoogleSignInButton from './GoogleSignInButton';
 
 type Mode = 'login' | 'register';
 
@@ -52,6 +53,21 @@ export default function AuthForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleGoogleCredential(credential: string) {
+    setLoading(true);
+    try {
+      const { data } = await authApi.googleAuth(credential);
+      Cookies.set('token', data.token, { expires: 7 });
+      toast.success('Welcome back!');
+      router.push(data.user?.access?.superadmin ? '/superadmin' : '/');
+    } catch (err: any) {
+      if (err.response?.data?.suggestOnboarding) {
+        sessionStorage.setItem('stockpro_google_signup', JSON.stringify({ credential, email: err.response.data.email, name: err.response.data.name }));
+        router.push('/register-business?google=1');
+      } else toast.error(err.response?.data?.message || 'Google sign-in failed');
+    } finally { setLoading(false); }
   }
 
   return (
@@ -177,6 +193,16 @@ export default function AuthForm() {
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+
+          {mode === 'login' && (
+            <div className="mt-6">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"></div></div>
+                <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or continue with</span></div>
+              </div>
+              <GoogleSignInButton onCredential={handleGoogleCredential} disabled={loading} />
+            </div>
+          )}
         </div>
       </div>
     </div>

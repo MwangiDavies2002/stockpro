@@ -2,6 +2,7 @@ const {getClient}=require('../config/db');
 const {getBusinessId}=require('../utils/tenant');
 const {once}=require('../utils/idempotency');
 const p=require('../utils/inventoryPolicy');
+const JournalEngine = require('../models/JournalEngine');
 async function bulkImport(req,res,next){
  const {items,requestId}=req.body;if(!Array.isArray(items)||!items.length||items.length>20000)return res.status(400).json({message:'Import between 1 and 20,000 products at a time'});
  const c=await getClient(),bid=getBusinessId(req);try{
@@ -19,7 +20,15 @@ async function bulkImport(req,res,next){
   const fields=['business_id','name','category','unit','brand','stock','threshold','cost','price','supplier_id','sku','barcode','image_url','location_id','category_id','unit_id','brand_id'];const insert='INSERT INTO inventory_items('+fields.join(',')+') VALUES ';
   const values=r=>fields.map(f=>f==='business_id'?bid:r.data[f]);const added=[];
   for(let index=0;index<pending.length;index+=100){const batch=pending.slice(index,index+100);try{await c.query(insert+batch.map(()=>`(${fields.map(()=>'?').join(',')})`).join(','),batch.flatMap(values));added.push(...batch);}catch(e){for(const row of batch){try{await c.query(insert+`(${fields.map(()=>'?').join(',')})`,values(row));added.push(row);}catch(failure){errors.push({row:row.row,name:row.data.name,message:failure.message});}}}}
-  for(let i=0;i<added.length;i+=100){const batch=added.slice(i,i+100),rows=(await c.query(`SELECT id,sku,stock FROM inventory_items WHERE business_id=? AND location_id=? AND sku IN (${batch.map(()=>'?').join(',')})`,[bid,locationId,...batch.map(r=>r.data.sku)])).rows;const stock=rows.filter(r=>Number(r.stock)>0);if(stock.length)await c.query('INSERT INTO inventory_stock_log(item_id,change_type,qty_change,before_stock,after_stock,user_id,note) VALUES '+stock.map(()=>"(?,'opening_stock',?,0,?,?,?)").join(','),stock.flatMap(r=>[r.id,r.stock,r.stock,req.user.id,'Imported initial quantity; opening journal is recorded separately']));for(const row of batch)created.push({row:row.row,id:rows.find(r=>r.sku===row.data.sku)?.id,name:row.data.name,sku:row.data.sku});}
+  for(let i=0;i<added.length;i+=100){const batch=added.slice(i,i+100),rows=(await c.query(`SELECT id,sku,stock,cost FROM inventory_items WHERE business_id=? AND location_id=? AND sku IN (${batch.map(()=>'?').join(',')})`,[bid,locationId,...batch.map(r=>r.data.sku)])).rows;
+   const stock=rows.filter(r=>Number(r.stock)>0);
+   if(stock.length){
+    await c.query('INSERT INTO inventory_stock_log(item_id,change_type,qty_change,before_stock,after_stock,user_id,note) VALUES '+stock.map(()=>"(?,'opening_stock',?,0,?,?,?)").join(','),stock.flatMap(r=>[r.id,r.stock,r.stock,req.user.id,'Imported initial quantity']));
+    const total=stock.reduce((sum,r)=>sum+Number(r.stock)*Number(r.cost||0),0);
+    if(total>0) { const reference=String(requestId||'import').slice(0,8); await JournalEngine.generate('OPENING_STOCK',total,`IMPORT-${reference}`,`Opening stock from import #${reference}`,c); }
+   }
+   for(const row of batch)created.push({row:row.row,id:rows.find(r=>r.sku===row.data.sku)?.id,name:row.data.name,sku:row.data.sku});
+  }
   return{createdCount:created.length,errorCount:errors.length,skippedCount,locationId,created,errors};
  });await c.query('COMMIT');res.status(!result.createdCount&&result.errorCount>0?400:201).json(result);
  }catch(e){await c.query('ROLLBACK');next(e);}finally{c.release();}

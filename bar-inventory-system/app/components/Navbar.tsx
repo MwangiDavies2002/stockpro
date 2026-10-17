@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -25,6 +25,16 @@ import ThemePicker from './ThemePicker';
 import {canVisit} from '../lib/access';
 import { authApi, treasuryApi, accountsApi } from '../lib/api';
 import { toast } from 'sonner';
+
+const audioRef = { current: null as HTMLAudioElement | null };
+function playPop() {
+  try {
+    if (typeof window === 'undefined') return;
+    if (!audioRef.current) audioRef.current = new Audio('/pop.mp3');
+    audioRef.current.currentTime = 0;
+    audioRef.current.play().catch(() => {});
+  } catch {}
+}
 
 const NAV_ITEMS = [
   {href:'/superadmin',label:'Superadmin',icon:Settings,adminOnly:false},
@@ -163,12 +173,18 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
         <div className="flex items-center justify-between h-14 md:h-auto md:flex-col md:items-stretch md:gap-6">
 
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-sm bg-brand flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">S</span>
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-sm bg-brand flex items-center justify-center shrink-0">
+              <span className="text-white text-sm font-semibold">
+                {currentUser?.business?.name?.[0]?.toUpperCase() || 'S'}
+              </span>
             </div>
-            {!collapsed && <span className="font-semibold text-gray-900 text-sm">StockPro</span>}
-          </div>
+            {!collapsed && (
+              <span className="font-semibold text-gray-900 text-sm truncate max-w-[120px]">
+                {currentUser?.business?.name || 'StockPro'}
+              </span>
+            )}
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden md:flex md:flex-col md:items-stretch gap-1">
@@ -179,11 +195,11 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                   <div key={item.label} className="relative">
                     <button
                       type="button"
-                      onClick={() => setOpenMenu(openMenu === item.label ? null : item.label)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium
+                      onClick={() => { setOpenMenu(openMenu === item.label ? null : item.label); playPop(); }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium transition-colors
                         ${isActive
                           ? 'bg-brand/10 text-brand'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          : 'text-gray-600 hover:bg-brand/10 hover:text-brand'
                         }`}
                     >
                       <item.icon className="w-4 h-4" />
@@ -197,11 +213,11 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                           <Link
                             key={sub.href}
                             href={sub.href}
-                            onClick={() => setOpenMenu(null)}
-                            className={`flex items-center gap-2 px-3 py-2 text-sm
+                            onClick={() => { setOpenMenu(null); playPop(); }}
+                            className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors
                               ${pathname === sub.href
                                 ? 'bg-brand/10 text-brand'
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                : 'text-gray-600 hover:bg-brand/10 hover:text-brand'
                               }`}
                           >
                             <sub.icon className="w-4 h-4" />
@@ -219,10 +235,11 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium
+                  onClick={playPop}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium transition-colors
                     ${active
                       ? 'bg-brand/10 text-brand'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      : 'text-gray-600 hover:bg-brand/10 hover:text-brand'
                     }`}
                 >
                   <item.icon className="w-4 h-4" />
@@ -232,7 +249,6 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
             })}
           </div>
 
-          <ThemePicker/>
           {/* Right side */}
           <div className="flex items-center gap-2">
             {/* Alert bell */}
@@ -249,8 +265,8 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-sm text-gray-700 hover:bg-gray-100 "
+                onClick={() => { setUserMenuOpen(!userMenuOpen); playPop(); }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-sm text-gray-700 hover:bg-brand/10 hover:text-brand transition-colors"
               >
                   <div className="w-6 h-6 rounded-sm bg-brand text-white text-xs flex items-center justify-center font-medium">
                     {currentUser?.name?.[0]?.toUpperCase() || 'U'}
@@ -299,9 +315,9 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                 <div key={item.label} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setMobileOpenMenu(mobileOpenMenu === item.label ? null : item.label)}
-                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-sm text-sm font-medium
-                      ${isActive ? 'bg-brand/10 text-brand' : 'text-gray-700 hover:bg-gray-100'}`}
+                    onClick={() => { setMobileOpenMenu(mobileOpenMenu === item.label ? null : item.label); playPop(); }}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-sm text-sm font-medium transition-colors
+                      ${isActive ? 'bg-brand/10 text-brand' : 'text-gray-700 hover:bg-brand/10 hover:text-brand'}`}
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
@@ -315,9 +331,9 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                         <Link
                           key={sub.href}
                           href={sub.href}
-                          onClick={() => setMobileOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium
-                            ${pathname === sub.href ? 'bg-brand/10 text-brand' : 'text-gray-600 hover:bg-gray-100'}`}
+                          onClick={() => { setMobileOpen(false); playPop(); }}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors
+                            ${pathname === sub.href ? 'bg-brand/10 text-brand' : 'text-gray-600 hover:bg-brand/10 hover:text-brand'}`}
                         >
                           <sub.icon className="w-4 h-4" />
                           {sub.label}
@@ -334,9 +350,9 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium
-                  ${active ? 'bg-brand/10 text-brand' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => { setMobileOpen(false); playPop(); }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-colors
+                  ${active ? 'bg-brand/10 text-brand' : 'text-gray-700 hover:bg-brand/10 hover:text-brand'}`}
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}
