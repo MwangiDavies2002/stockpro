@@ -4,7 +4,27 @@
     "status": 200
   },
   {
+    "path": "/accounting/chart-of-accounts",
+    "status": 200
+  },
+  {
+    "path": "/accounting/dashboard",
+    "status": 200
+  },
+  {
     "path": "/accounting/journal-entry/create",
+    "status": 200
+  },
+  {
+    "path": "/accounting/journal-entry",
+    "status": 200
+  },
+  {
+    "path": "/accounting",
+    "status": 200
+  },
+  {
+    "path": "/accounting/settings",
     "status": 200
   },
   {
@@ -29,6 +49,10 @@
   },
   {
     "path": "/discounts",
+    "status": 200
+  },
+  {
+    "path": "/expenses",
     "status": 200
   },
   {
@@ -92,6 +116,14 @@
     "status": 200
   },
   {
+    "path": "/privacy",
+    "status": 200
+  },
+  {
+    "path": "/purchases/create",
+    "status": 200
+  },
+  {
     "path": "/purchases",
     "status": 200
   },
@@ -101,6 +133,10 @@
   },
   {
     "path": "/reports",
+    "status": 200
+  },
+  {
+    "path": "/roles",
     "status": 200
   },
   {
@@ -144,6 +180,14 @@
     "status": 200
   },
   {
+    "path": "/stock-adjustments",
+    "status": 200
+  },
+  {
+    "path": "/stock-transfers",
+    "status": 200
+  },
+  {
     "path": "/subscription/manage",
     "status": 200
   },
@@ -160,7 +204,19 @@
     "status": 200
   },
   {
+    "path": "/superadmin/business/create",
+    "status": 200
+  },
+  {
+    "path": "/superadmin",
+    "status": 200
+  },
+  {
     "path": "/suppliers",
+    "status": 200
+  },
+  {
+    "path": "/terms",
     "status": 200
   },
   {

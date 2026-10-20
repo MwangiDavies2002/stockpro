@@ -14,6 +14,7 @@ app.whenReady().then(async()=>{
   const root=dataRoot();db=openDatabase(root);renderer=await serveRenderer(path.join(__dirname,'../bar-inventory-system/out'));
   ipcMain.handle('api:request',async(event,request)=>{try{trusted(event);if(restoring)throw new Error('Database restore is in progress');return await apiRequest(db,request);}catch(error){return{__stockproError:true,message:error.message,status:error.status||400};}});
   ipcMain.handle('share:whatsapp',async(event,authorization,text)=>{trusted(event);const user=authenticate(db,authorization);await require('./share-report').shareWhatsApp(user,text,url=>shell.openExternal(url));});
+  ipcMain.handle('share:document-whatsapp',async(event,authorization,phone,text,kind)=>{trusted(event);const user=authenticate(db,authorization);await require('./share-report').shareDocumentWhatsApp(user,phone,text,kind,url=>shell.openExternal(url));});
   ipcMain.handle('backup:export',async(event,authorization)=>{trusted(event);admin(authorization);const target=await dialog.showSaveDialog({defaultPath:'stockpro-backup.sqlite',filters:[{name:'SQLite backup',extensions:['sqlite']}]});if(target.canceled||!target.filePath)return null;return exportBackup(db,target.filePath);});
   ipcMain.handle('backup:restore',async(event,authorization)=>{
     trusted(event);admin(authorization);const selected=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'StockPro backup',extensions:['sqlite']}]});if(selected.canceled)return null;

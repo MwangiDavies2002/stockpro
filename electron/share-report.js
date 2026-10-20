@@ -1,3 +1,4 @@
 const policy=require('../bar-inventory-backend/src/utils/accessPolicy');
 async function shareWhatsApp(user,text,openExternal){policy.assertAccess(user.access,'/reports/stock-overview','get');if(!user.access.permissions.reports?.export)throw new Error('Your role cannot export reports');if(typeof text!=='string'||!text.trim()||text.length>8000)throw new Error('Enter a report summary up to 8000 characters');await openExternal('https://wa.me/?text='+encodeURIComponent(text));}
-module.exports={shareWhatsApp};
+async function shareDocumentWhatsApp(user,phone,text,kind,openExternal){const route=kind==='sales'?'/sales-documents':kind==='purchases'?'/orders':null;if(!route)throw new Error('Choose a valid sales invoice or purchase receipt');policy.assertAccess(user.access,route,'get');if(typeof phone!=='string'||!/^\d{8,15}$/.test(phone))throw new Error('Enter a valid phone number with country code');if(typeof text!=='string'||!text.trim()||text.length>8000)throw new Error('Document message must be between 1 and 8000 characters');await openExternal(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`);}
+module.exports={shareWhatsApp,shareDocumentWhatsApp};

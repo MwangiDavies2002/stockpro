@@ -58,6 +58,33 @@ async function migrate(connection) {
     await add('discounts','customer_restriction_id','INT NULL');
     await add('users','google_sub','VARCHAR(255) NULL');
   });
+  await step('018-product-identifiers-and-sellability',async()=>{
+    await add('inventory_items','barcode_type',"VARCHAR(20) NOT NULL DEFAULT 'code128'");
+    await add('inventory_items','track_serial_numbers','BOOLEAN NOT NULL DEFAULT FALSE');
+    await add('inventory_items','serial_number','VARCHAR(150) NULL');
+    await add('inventory_items','chassis_number','VARCHAR(100) NULL');
+    await add('inventory_items','color','VARCHAR(80) NULL');
+    await add('inventory_items','lot_number','VARCHAR(100) NULL');
+    await add('inventory_items','not_for_selling','BOOLEAN NOT NULL DEFAULT FALSE');
+  });
+  await step('019-customer-contact-details',async()=>{
+    for(const[column,type]of [['contact_type',"VARCHAR(20) NOT NULL DEFAULT 'customer'"],['entity_type',"VARCHAR(20) NOT NULL DEFAULT 'individual'"],['contact_id','VARCHAR(40) NULL'],['customer_group','VARCHAR(100) NULL'],['currency_code',"VARCHAR(3) NOT NULL DEFAULT 'KES'"],['alternate_phone','VARCHAR(20) NULL'],['landline','VARCHAR(20) NULL'],['email','VARCHAR(150) NULL'],['assigned_to','VARCHAR(120) NULL'],['account_type','VARCHAR(30) NULL'],['tax_number','VARCHAR(50) NULL'],['address_line1','VARCHAR(200) NULL'],['address_line2','VARCHAR(200) NULL'],['city','VARCHAR(100) NULL'],['state','VARCHAR(100) NULL'],['country','VARCHAR(100) NULL'],['zip_code','VARCHAR(20) NULL']])await add('customers',column,type);
+    const[indices]=await q('SHOW INDEX FROM customers');if(!indices.some(row=>row.Key_name==='uq_customer_business_contact'))await q('ALTER TABLE customers ADD UNIQUE KEY uq_customer_business_contact(business_id,contact_id)');
+  });
+  await step('020-customer-opening-and-address-details',async()=>{
+    for(const[column,type]of [['opening_balance','DECIMAL(15,2) NOT NULL DEFAULT 0'],['payment_term_value','INT NULL'],['payment_term_unit','VARCHAR(20) NULL'],['landmark','VARCHAR(150) NULL'],['street_name','VARCHAR(150) NULL'],['building_number','VARCHAR(50) NULL'],['additional_number','VARCHAR(50) NULL'],['id_number','VARCHAR(80) NULL'],...Array.from({length:10},(_,i)=>[`custom_field_${i+1}`,'VARCHAR(200) NULL'])])await add('customers',column,type);
+  });
+  await step('021-built-in-cashier-role',async()=>{
+    const access=require('../utils/accessPolicy');
+    await add('access_roles','is_builtin','BOOLEAN NOT NULL DEFAULT FALSE');
+    const permissions=JSON.stringify(access.permissionDefaults(false));
+    const [businesses]=await q('SELECT id FROM businesses');
+    for(const business of businesses){
+      await q('INSERT IGNORE INTO access_roles (business_id,name,permissions_json,is_builtin) VALUES (?,?,?,TRUE)',[business.id,'Cashier',permissions]);
+      await q('UPDATE access_roles SET is_builtin=TRUE WHERE business_id=? AND name=?',[business.id,'Cashier']);
+      await q("UPDATE users u JOIN access_roles r ON r.business_id=u.business_id AND r.name='Cashier' SET u.access_role_id=r.id WHERE u.business_id=? AND u.role='employee' AND u.access_role_id IS NULL",[business.id]);
+    }
+  });
 
 }
 module.exports = { migrate };

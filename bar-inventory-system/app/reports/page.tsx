@@ -9,7 +9,7 @@ import StockReports from '../components/reports/StockReports';
 import Navbar from '../components/Navbar';
 import {useAccess} from '../components/AccessBoundary';
 import {canAct} from '../lib/access';
-import { reportsApi, authApi } from '../lib/api';
+import api, { reportsApi, authApi } from '../lib/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import {

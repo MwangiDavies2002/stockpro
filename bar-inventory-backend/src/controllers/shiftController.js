@@ -82,9 +82,9 @@ async function close(req, res, next) {
     }
 
     const cashSalesRes = await query(
-      `SELECT COALESCE(SUM(total), 0) AS cash_total
-       FROM sales
-       WHERE created_by=? AND business_id=? AND payment_method='cash' AND ${shift.sales_start_id==null?'created_at >= ?':'id > ?'}`,
+      `SELECT COALESCE(SUM(CASE WHEN s.payment_method='cash' THEN s.total WHEN s.payment_method='mixed' THEN COALESCE((SELECT SUM(p.amount) FROM sales_documents d JOIN sales_document_payments p ON p.document_id=d.id WHERE d.sale_id=s.id AND d.business_id=s.business_id AND p.method='cash'),0) ELSE 0 END),0) AS cash_total
+       FROM sales s
+       WHERE s.created_by=? AND s.business_id=? AND ${shift.sales_start_id==null?'s.created_at >= ?':'s.id > ?'}`,
       [shift.user_id, getBusinessId(req), shift.sales_start_id??shift.opened_at]
     );
     const cashSalesTotal = Number(cashSalesRes.rows[0].cash_total);

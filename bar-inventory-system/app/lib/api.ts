@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 import {showDone} from './feedback';
 
 declare global {
-  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown>;shareWhatsApp?:(authorization:string,text:string)=>Promise<void>; exportDatabase: (authorization:string)=>Promise<string|null>; restoreDatabase: (authorization:string)=>Promise<{restored:boolean;recovery:string}|null> } }
+  interface Window { stockpro?: { request: (request: unknown) => Promise<unknown>;shareWhatsApp?:(authorization:string,text:string)=>Promise<void>;shareWhatsAppDocument?:(authorization:string,phone:string,text:string,kind:'sales'|'purchases')=>Promise<void>; exportDatabase: (authorization:string)=>Promise<string|null>; restoreDatabase: (authorization:string)=>Promise<{restored:boolean;recovery:string}|null> } }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
@@ -202,7 +202,7 @@ const customersApi = {
   getAll: () => api.get('/customers'),
   getOne: (id: number) => api.get(`/customers/${id}`),
   getStatement: (id: number) => api.get(`/customers/${id}/statement`),
-  create: (data: { name: string; phone?: string; creditLimit?: number }) => api.post('/customers', data),
+  create: (data: any) => api.post('/customers', data),
   update: (id: number, data: any) => api.put(`/customers/${id}`, data),
   recordPayment: (id: number, data: { amount: number; method?: string; notes?: string }) =>
     api.post(`/customers/${id}/payments`, data),
@@ -306,6 +306,7 @@ export interface InventoryItemPayload {
   imageUrl?: string;
   sku?: string;
   barcode?: string;
+  barcodeType?: 'code128' | 'code39' | 'ean13' | 'ean8' | 'upca' | 'upce';
   locationId?: number;
   categoryId?: number | null;
   unitId?: number | null;
@@ -319,6 +320,12 @@ export interface InventoryItemPayload {
   cost: number;
   price: number;
   supplierId?: number;
+  trackSerialNumbers?: boolean;
+  serialNumber?: string;
+  chassisNumber?: string;
+  color?: string;
+  lotNumber?: string;
+  notForSelling?: boolean;
 }
 
 export type ReferenceType = 'units' | 'categories' | 'brands';
@@ -379,6 +386,7 @@ export interface SalesDocumentPayload {
   referenceInvoiceId?: number | null;
   notes?: string;
   payment?: { amount: number; method?: string; referenceNo?: string };
+  payments?: { amount: number; method: string; referenceNo?: string }[];
   items: { itemId: number; quantity: number; unitPrice: number; discountPercent?: number; taxPercent?: number }[];
 }
 

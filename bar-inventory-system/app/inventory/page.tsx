@@ -20,8 +20,9 @@ import {showDone} from '../lib/feedback';
 
 type RefRow = { id: number; name: string; location_id: number; short_name?: string; allow_decimal?: boolean | number; parent_name?: string; description?: string };
 type Location = { id: number; name: string; active?: boolean };
+type BarcodeType = NonNullable<import('../lib/api').InventoryItemPayload['barcodeType']>;
 
-const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:'' as any, threshold:'' as any, cost:'' as any, price:'' as any, sold:0, imageUrl:'', sku:'', barcode:'' };
+const EMPTY_FORM = { name:'', category:'', unit:'Pieces', brand:'', categoryId:'', unitId:'', brandId:'', locationId:'', stock:'' as any, threshold:'' as any, cost:'' as any, price:'' as any, sold:0, imageUrl:'', sku:'', barcode:'', barcodeType:'code128' as BarcodeType, trackSerialNumbers:false, serialNumber:'', chassisNumber:'', color:'', lotNumber:'', notForSelling:false };
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function InventoryPage() {
   const [brands, setBrands]         = useState<RefRow[]>([]);
   const [search, setSearch]         = useState('');
   const [catFilter, setCatFilter]   = useState('All');
+  const [stockFilter, setStockFilter] = useState('all');
   const [modalOpen, setModalOpen]   = useState(false);
   const [editItem, setEditItem]     = useState<InventoryItem | null>(null);
   const [adjustmentItem, setAdjustmentItem] = useState<InventoryItem | null>(null);
@@ -106,8 +108,14 @@ export default function InventoryPage() {
     void loadItems();
   }, [loadItems]);
 
+  useEffect(() => {
+    const initial=new URLSearchParams(window.location.search).get('status');
+    if(['low','out','healthy','not-for-sale'].includes(initial||''))setStockFilter(initial!=='not-for-sale'?initial!:'not-for-sale');
+  },[]);
+
   const filtered = items.filter((i) =>
     (catFilter === 'All' || i.category === catFilter) &&
+    (stockFilter==='all'||(stockFilter==='out'?Number(i.stock)<=0:stockFilter==='low'?Number(i.stock)>0&&Number(i.stock)<=Number(i.threshold):stockFilter==='healthy'?Number(i.stock)>Number(i.threshold):Boolean(i.not_for_selling))) &&
     (locationFilter==='All'||String(i.location_id)===locationFilter)&&[i.name,i.sku,i.barcode,i.brand,i.category,i.location_name].join(' ').toLowerCase().includes(search.toLowerCase())
   );
 
@@ -121,7 +129,7 @@ export default function InventoryPage() {
   function openEdit(item: InventoryItem) {
     setEditItem(item);setAttempted(false);requestId.current=crypto.randomUUID();
     const nextLocationId = String((item as any).location_id || form.locationId || locations[0]?.id || '');
-    setForm({ name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold, imageUrl:(item as any).image_url || '',sku:item.sku||'',barcode:item.barcode||'' });
+    setForm({ ...EMPTY_FORM, name:item.name, category:item.category, unit:item.unit, brand:(item as any).brand || '', categoryId:String((item as any).category_id || ''), unitId:String((item as any).unit_id || ''), brandId:String((item as any).brand_id || ''), locationId:nextLocationId, stock:item.stock, threshold:item.threshold, cost:item.cost, price:item.price, sold:item.sold, imageUrl:(item as any).image_url || '',sku:item.sku||'',barcode:item.barcode||'',barcodeType:(item as any).barcode_type||'code128', trackSerialNumbers:Boolean((item as any).track_serial_numbers), serialNumber:(item as any).serial_number||'', chassisNumber:(item as any).chassis_number||'', color:(item as any).color||'', lotNumber:(item as any).lot_number||'', notForSelling:Boolean((item as any).not_for_selling) });
     void loadReferenceData(nextLocationId);
     setModalOpen(true);
   }
@@ -151,11 +159,11 @@ export default function InventoryPage() {
       if (editItem) {
         const { data } = await inventoryApi.update(editItem.id, {...payload,stock:undefined,...(editItem.stock>0?{cost:undefined}:{})});
         setItems((prev) => prev.map((i) => i.id === editItem.id ? data : i));
-        toast.success('Item updated');
+        toast.success(`${data.name} updated`);
       } else {
         const { data } = await inventoryApi.create(payload);
         setItems((prev) => [...prev, data]);
-        toast.success('Item added');
+        toast.success(`${data.name} added to inventory`);
       }
       setModalOpen(false);
     } catch (e:any) {
@@ -206,7 +214,7 @@ export default function InventoryPage() {
       if (quickAdd === 'brands') { setBrands(current => [...current, data]); setForm(current => ({ ...current, brandId: String(data.id), brand: data.name })); }
       setQuickAdd(null);
       setQuickForm({ name: '', shortName: '', allowDecimal: false, description: '' });
-      toast.success('Saved');
+      toast.success(`${data.name} added`);
     } catch (err: any) {
       toast.error(message(err));
     } finally {setQuickSaving(false);}
@@ -380,16 +388,20 @@ export default function InventoryPage() {
             />
           </div>
           <select
+            aria-label="Filter inventory category"
             value={catFilter}
             onChange={(e) => setCatFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             {['All', ...Array.from(new Set(items.map((i) => i.category).filter(Boolean)))].map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{c==='All'?`All categories (${items.length})`:`${c} (${items.filter(item=>item.category===c).length})`}</option>
             ))}
           </select>
+          <select aria-label="Filter stock status" value={stockFilter} onChange={e=>setStockFilter(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500"><option value="all">All stock statuses</option><option value="out">Out of stock</option><option value="low">Low stock</option><option value="healthy">Healthy stock</option><option value="not-for-sale">Not for sale</option></select>
+          {(search||catFilter!=='All'||stockFilter!=='all'||locationFilter!=='All')&&<button type="button" onClick={()=>{setSearch('');setCatFilter('All');setStockFilter('all');setLocationFilter('All');window.history.replaceState(null,'',window.location.pathname);}} className="px-3 py-2 text-sm text-brand underline">Clear filters</button>}
         </div>
 
+        <p aria-live="polite" className="text-xs text-gray-500">Showing {filtered.length} of {items.length} products</p>
         <label className="block text-sm">Location<select aria-label="Filter inventory location" value={locationFilter} onChange={e=>setLocationFilter(e.target.value)} className="ml-3 border p-2 rounded-sm"><option value="All">All assigned locations</option>{locations.map(l=><option value={l.id} key={l.id}>{l.name}</option>)}</select></label>
         {/* Table */}
         <InventoryTable
@@ -460,7 +472,8 @@ export default function InventoryPage() {
                   <label htmlFor="item-name" className="text-xs font-medium text-gray-600 mb-1 block">Item Name</label>
                   <input id="item-name" required maxLength={150} type="text" placeholder="e.g. Tusker Lager" value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                <div className="grid grid-cols-2 gap-3"><label className="text-xs">SKU<input aria-label="SKU" maxLength={100} placeholder="Auto-generated if blank" className="mt-1 border p-2 rounded-sm w-full" value={form.sku} onChange={e=>setForm({...form,sku:e.target.value})}/></label><label className="text-xs">Barcode<input aria-label="Barcode" maxLength={100} className="mt-1 border p-2 rounded-sm w-full" value={form.barcode} onChange={e=>setForm({...form,barcode:e.target.value})}/></label></div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs">SKU<input aria-label="SKU" maxLength={100} placeholder="Auto-generated if blank" className="mt-1 border p-2 rounded-sm w-full" value={form.sku} onChange={e=>setForm({...form,sku:e.target.value})}/></label><label className="text-xs">Barcode<input aria-label="Barcode" maxLength={100} className="mt-1 border p-2 rounded-sm w-full" value={form.barcode} onChange={e=>setForm({...form,barcode:e.target.value})}/></label></div>
+                <label className="block text-xs font-medium text-gray-600">Barcode Type *<select aria-label="Barcode type" value={form.barcodeType} onChange={e=>setForm(current=>({...current,barcodeType:e.target.value as BarcodeType}))} className="mt-1 w-full rounded-sm border border-gray-300 px-3 py-2 text-sm"><option value="code128">Code 128 (C128)</option><option value="code39">Code 39 (C39)</option><option value="ean13">EAN-13</option><option value="ean8">EAN-8</option><option value="upca">UPC-A</option><option value="upce">UPC-E</option></select></label>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Product Picture</label>
                   <div className="flex items-center gap-3"><label className="cursor-pointer px-3 py-2 border rounded-sm text-sm hover:bg-gray-50"><Upload className="w-4 h-4 inline mr-2" />Choose image<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={(e) => handleImage(e.target.files?.[0])} /></label>{form.imageUrl && <img src={form.imageUrl} alt="Preview" className="w-12 h-12 rounded-sm object-cover" />}</div>
@@ -501,6 +514,15 @@ export default function InventoryPage() {
                 <div>
                   <label htmlFor="item-price" className="text-xs font-medium text-gray-600 mb-1 block">Selling Price per Unit (KES)</label>
                   <input id="item-price" aria-label="Selling price per unit" type="number" min="0" max="99999999.99" step="0.01" required placeholder="0.00" value={form.price} onChange={(e) => { setAttempted(false); setForm(current=>({...current, price: e.target.value === '' ? '' : Number(e.target.value)})); }} className="w-full px-3 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div className="border-t pt-4 space-y-3">
+                  <label className="flex items-start gap-3 text-sm font-medium text-gray-800"><input type="checkbox" checked={form.trackSerialNumbers} onChange={e=>setForm(current=>({...current,trackSerialNumbers:e.target.checked}))} className="mt-0.5"/><span>Track IMEI or serial details<p className="mt-1 text-xs font-normal text-gray-500">Use for products identified by IMEI, serial, chassis, colour or lot.</p></span></label>
+                  {form.trackSerialNumbers && <div className="space-y-3 rounded-sm bg-gray-50 p-3">
+                    <label className="block text-xs">IMEI / serial number<input maxLength={150} value={form.serialNumber} onChange={e=>setForm(current=>({...current,serialNumber:e.target.value}))} className="mt-1 w-full rounded-sm border p-2 text-sm" placeholder="IMEI or serial number"/></label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="block text-xs">Chassis number<input maxLength={100} value={form.chassisNumber} onChange={e=>setForm(current=>({...current,chassisNumber:e.target.value}))} className="mt-1 w-full rounded-sm border p-2 text-sm"/></label><label className="block text-xs">Colour<input maxLength={80} value={form.color} onChange={e=>setForm(current=>({...current,color:e.target.value}))} className="mt-1 w-full rounded-sm border p-2 text-sm"/></label></div>
+                    <label className="block text-xs">Lot number<input maxLength={100} value={form.lotNumber} onChange={e=>setForm(current=>({...current,lotNumber:e.target.value}))} className="mt-1 w-full rounded-sm border p-2 text-sm"/></label>
+                  </div>}
+                  <label className="flex items-center gap-3 text-sm font-medium text-gray-800"><input type="checkbox" checked={form.notForSelling} onChange={e=>setForm(current=>({...current,notForSelling:e.target.checked}))}/><span>Not for selling<p className="mt-1 text-xs font-normal text-gray-500">Keeps this product out of POS and blocks sales documents and checkout.</p></span></label>
                 </div>
                 <div className="rounded-sm bg-gray-50 border p-3 text-sm">
                   <p className="font-medium">Expected gross profit per unit: KES {(form.price - form.cost).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

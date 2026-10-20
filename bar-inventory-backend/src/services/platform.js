@@ -69,7 +69,19 @@ async function dispatch(db,user,method,path,body={},params={},options={}){
  }
  if(method==='get'&&path==='/settings')return catalog.settings(db);
  if(method==='put'&&path==='/settings'){const appName=String(body.appName||'').trim(),supportEmail=String(body.supportEmail||'').trim(),expiryAlertDays=Number(body.expiryAlertDays);if(!appName||appName.length>100||supportEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)||!Number.isInteger(expiryAlertDays)||expiryAlertDays<0||expiryAlertDays>365||typeof body.registrationEnabled!=='boolean')fail('Enter valid platform settings',400);const value={appName,supportEmail,expiryAlertDays,registrationEnabled:body.registrationEnabled};return transaction('settings.save',null,async tx=>{await tx.query('UPDATE platform_settings SET settings_json=? WHERE id=1',[JSON.stringify(value)]);return{data:value,audit:value};});}
- if(method==='get'&&path==='/audit')return (await rows('SELECT a.*,u.name actor_name FROM platform_audit a LEFT JOIN users u ON u.id=a.actor_user_id ORDER BY a.id DESC LIMIT 200')).map(row=>({...row,details:parse(row.details_json,{})}));
+ if(method==='get'&&path==='/audit'){
+  const search=String(params.search||'').trim().slice(0,100),businessId=Number(params.businessId)||0;
+  const events=await rows(`SELECT activity.*,u.name actor_name,u.email actor_email,b.name business_name FROM (
+   SELECT a.id,a.actor_user_id user_id,a.business_id,a.action,a.details_json,a.created_at,'Platform' source,NULL entity_id FROM platform_audit a
+   UNION ALL
+   SELECT e.id,e.user_id,e.business_id,e.action,e.details_json,e.created_at,'Sales' source,e.document_id entity_id FROM sales_document_events e
+   UNION ALL
+   SELECT e.id,e.user_id,e.business_id,e.action,e.details_json,e.created_at,'Purchases' source,e.order_id entity_id FROM purchase_events e
+  ) activity LEFT JOIN users u ON u.id=activity.user_id LEFT JOIN businesses b ON b.id=activity.business_id
+  WHERE (?=0 OR activity.business_id=?) AND (?='' OR u.name LIKE ? OR u.email LIKE ? OR b.name LIKE ? OR activity.action LIKE ?)
+  ORDER BY activity.created_at DESC,activity.id DESC LIMIT 500`,[businessId,businessId,search,`%${search}%`,`%${search}%`,`%${search}%`,`%${search}%`]);
+  return events.map(row=>({...row,details:parse(row.details_json,{})}));
+ }
  fail('Superadmin endpoint not found',404);
 }
 module.exports={dispatch};

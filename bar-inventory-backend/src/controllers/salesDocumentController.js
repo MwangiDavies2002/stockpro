@@ -34,13 +34,15 @@ function validateHeader(body){
  const locationId=Number(body.locationId??body.location_id);if(!Number.isInteger(locationId)||locationId<1)throw badRequest('Business location is required');
  const customerId=body.customerId||body.customer_id?Number(body.customerId??body.customer_id):null;
  if(customerId&&(!Number.isInteger(customerId)||customerId<1))throw badRequest('Customer is invalid');
- if(!['pos','credit_note'].includes(type)&&!customerId)throw badRequest('Customer is required');
  const referenceInvoiceId=body.referenceInvoiceId||body.reference_invoice_id?Number(body.referenceInvoiceId??body.reference_invoice_id):null;
  if(type==='credit_note'&&!referenceInvoiceId)throw badRequest('Credit notes must reference an invoice');
  const documentDate=normalizeDate(body.date??body.document_date),dueDate=policy.date(body.dueDate??body.due_date),validUntil=policy.date(body.validUntil??body.valid_until);
  if(dueDate&&dueDate<documentDate||validUntil&&validUntil<documentDate)throw badRequest('Due and validity dates must be on or after the document date');
  const text=(value,max)=>{const v=String(value||'').trim();if(v.length>max)throw badRequest('Document text is too long');return v||null;};
- return{type,customerId,locationId,documentDate,dueDate,validUntil,referenceNo:text(body.referenceNo??body.reference_no,100),status:policy.status(type,body.status),convertedFromId:Number(body.convertedFromId??body.converted_from_id)||null,referenceInvoiceId,notes:text(body.notes,4000),staffNotes:text(body.staffNotes??body.staff_notes,4000),terms:text(body.terms,4000),payment:body.payment||null};
+ const payments=Array.isArray(body.payments)?body.payments:body.payment?[body.payment]:[];
+ if(payments.length>10)throw badRequest('A sale can have at most 10 payment rows');
+ if(payments.some(row=>!row||typeof row!=='object'||Array.isArray(row)))throw badRequest('Each payment row must include a payment method and amount');
+ return{type,customerId,locationId,documentDate,dueDate,validUntil,referenceNo:text(body.referenceNo??body.reference_no,100),status:policy.status(type,body.status),convertedFromId:Number(body.convertedFromId??body.converted_from_id)||null,referenceInvoiceId,notes:text(body.notes,4000),staffNotes:text(body.staffNotes??body.staff_notes,4000),terms:text(body.terms,4000),payments,payment:payments[0]||null};
 }
 
 async function validateAndLoadItems(client, header, bodyItems, businessId = 1) {
@@ -54,6 +56,7 @@ async function validateAndLoadItems(client, header, bodyItems, businessId = 1) {
     const { rows: products } = await client.query('SELECT * FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE', [itemId, businessId]);
     if (!products.length) throw badRequest('Product no longer exists');
     const product = products[0];
+    if (header.type !== 'credit_note' && product.not_for_selling) throw badRequest(`${product.name} is marked not for selling`);
     if (Number(product.location_id) !== Number(header.locationId)) throw badRequest(`${product.name} belongs to another business location`);
     const unitPrice=Number(raw.unitPrice??product.price);
     let discountPercent=raw.discountPercent;
@@ -124,9 +127,13 @@ async function createDocument(client,header,rawItems,userId,businessId=1,updateI
  if(header.referenceInvoiceId&&!(await client.query("SELECT id FROM sales_documents WHERE id=? AND business_id=? AND type IN ('invoice','pos') AND status<>'draft'",[header.referenceInvoiceId,businessId])).rows.length)throw badRequest('Credit note must reference an issued invoice');
  const lines=await validateAndLoadItems(client,header,rawItems,businessId);
  if(header.type==='credit_note')await validateCreditNoteQuantities(client,header.referenceInvoiceId,lines);
- const totals=calculateTotals(lines),posting=policy.posting(header),paid=policy.payment(header.payment?.amount,totals.total);
+ const totals=calculateTotals(lines),posting=policy.posting(header),payments=(header.payments||[]).map(row=>({amount:policy.payment(row.amount,totals.total),method:policy.method(row.method),referenceNo:String(row.referenceNo||'').trim().slice(0,100)||null}));
+ const paid=policy.payment(payments.reduce((sum,row)=>sum+row.amount,0),totals.total);
+ if(payments.length>1&&paid!==totals.total)throw badRequest('Split payments must add up to the full sale total');
  if(!posting&&paid>0)throw badRequest('Record payments after issuing the invoice');
- if(paid>0)policy.method(header.payment?.method);
+ if(paid>0&&!payments.length)policy.method(header.payment?.method);
+ header.payments=payments;
+ header.payment=payments[0]||header.payment;
  const due=posting?Number((totals.total-paid).toFixed(2)):0;
  if(due>0&&(!customer||Number(customer.balance)+due>Number(customer.credit_limit)))throw badRequest('Customer credit limit would be exceeded. Record payment or update the customer credit limit.');
  const status=posting?(due<=0?'paid':paid>0?'partial':'issued'):header.status;
@@ -169,7 +176,8 @@ async function validateCreditNoteQuantities(client, invoiceId, lines) {
 
 async function postInvoice(client, documentId, header, lines, totals, paidAmount, userId, businessId = 1) {
   await require('../utils/accountingDefaults').ensureSalesAccountingMappings(client,totals.taxTotal>0);
-  const paymentMethod = paidAmount >= totals.total ? String(header.payment?.method || 'cash') : 'credit';
+  const methods=[...new Set((header.payments||[]).map(payment=>payment.method))];
+  const paymentMethod = paidAmount >= totals.total ? (methods.length>1?'mixed':String(header.payment?.method||'cash')) : 'credit';
   const { insertId: saleId } = await client.query(
     'INSERT INTO sales (business_id,total,created_by,notes,payment_method,location_id,customer_id) VALUES (?,?,?,?,?,?,?)',
     [businessId, totals.total, userId, header.notes || `${header.type === 'pos' ? 'POS' : 'Invoice'} #${documentId}`, paymentMethod, header.locationId, header.customerId]
@@ -188,11 +196,10 @@ async function postInvoice(client, documentId, header, lines, totals, paidAmount
     );
   }
   if (header.customerId && totals.total > paidAmount) await client.query('UPDATE customers SET balance=balance+? WHERE id=? AND business_id=?', [Number((totals.total - paidAmount).toFixed(2)), header.customerId, businessId]);
-  if (paidAmount > 0) {
-    await client.query('INSERT INTO sales_document_payments (document_id,amount,method,reference_no,notes,created_by) VALUES (?,?,?,?,?,?)', [documentId, paidAmount, header.payment?.method || 'cash', header.payment?.referenceNo || null, 'Opening payment', userId]);
-  }
+  if (paidAmount > 0) for(const payment of (header.payments?.length?header.payments:[{amount:paidAmount,method:header.payment?.method||'cash',referenceNo:header.payment?.referenceNo||null}])) await client.query('INSERT INTO sales_document_payments (document_id,amount,method,reference_no,notes,created_by) VALUES (?,?,?,?,?,?)', [documentId,payment.amount,payment.method,payment.referenceNo||null,'POS payment',userId]);
   const journalType = paymentMethod === 'credit' ? 'CREDIT_SALE' : paymentMethod === 'mpesa' ? 'MPESA_SALE' : paymentMethod === 'bank' ? 'BANK_SALE' : 'CASH_SALE';
-  await JournalEngine.generate(journalType, totals.total, `Sales document #${documentId}`, header.notes || 'Sales invoice', client, { cogsAmount: totalCogs, taxAmount:totals.taxTotal, postingDate: header.documentDate });
+  if(methods.length>1)await JournalEngine.generate('SPLIT_SALE',totals.total,`Sales document #${documentId}`,header.notes||'POS split payment',client,{paymentLines:header.payments,cogsAmount:totalCogs,taxAmount:totals.taxTotal,postingDate:header.documentDate});
+  else await JournalEngine.generate(journalType, totals.total, `Sales document #${documentId}`, header.notes || 'Sales invoice', client, { cogsAmount: totalCogs, taxAmount:totals.taxTotal, postingDate: header.documentDate });
   if(paidAmount>0&&paidAmount<totals.total)await JournalEngine.generate('DEBT_PAYMENT',paidAmount,`INVOICE-${documentId}-INITIAL-PAYMENT`, 'Initial invoice payment',client,{settingKey:header.payment.method==='mpesa'?'payment_mobile':header.payment.method==='bank'?'payment_bank':'payment_cash',postingDate:header.documentDate});
   await client.query('UPDATE sales_documents SET sale_id=? WHERE id=? AND business_id=?', [saleId, documentId, businessId]);
   client.updatedItems = updatedItems;
@@ -224,7 +231,7 @@ async function issue(req,res,next){
  const client=await getClient(),bid=getBusinessId(req);
  try{await client.query('BEGIN');await client.query('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[req.user.id,bid]);await client.query('SELECT id FROM sales_documents WHERE id=? AND business_id=? FOR UPDATE',[req.params.id,bid]);const doc=await loadDocument(client,req.params.id,bid);if(!doc||doc.type!=='invoice')throw badRequest('Choose a draft invoice');
  if(doc.status!=='draft'){await client.query('COMMIT');return res.json({...doc,replayed:true});}
- const header=validateHeader({...doc,status:'issued',payment:req.body.payment});header.snapshots={customer:doc.customer,seller:doc.seller};header.lineSnapshots=doc.items;
+ const header=validateHeader({...doc,status:'issued',payments:req.body.payment?[req.body.payment]:[]});header.snapshots={customer:doc.customer,seller:doc.seller};header.lineSnapshots=doc.items;
  await createDocument(client,header,doc.items.map(l=>({itemId:l.item_id,quantity:l.quantity,unitPrice:l.unit_price,discountPercent:l.discount_percent,taxPercent:l.tax_percent})),req.user.id,bid,doc.id);await activity(client,doc.id,bid,req.user.id,'issued',{total:doc.total});const fresh=await loadDocument(client,doc.id,bid);await client.query('COMMIT');res.json(fresh);
  }catch(e){await client.query('ROLLBACK');next(e);}finally{client.release();}
 }

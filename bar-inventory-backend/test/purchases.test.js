@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const { calculateLine } = require('../src/utils/purchaseMath');
 const database = require('../src/config/db');
 const {runForBusiness}=require('../src/utils/tenant');
-let connection, controller, inventory, suppliers, referenceData;
-const tables = ['sale_items','sales_document_items','purchase_events','purchase_payments','operation_requests','businesses','users','treasury','treasury_transactions','chart_of_accounts', 'units', 'categories', 'brands', 'inventory_items', 'orders', 'order_items', 'suppliers', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
+let connection, controller, inventory, suppliers, referenceData, customerController;
+const tables = ['sale_items','sales_document_items','purchase_events','purchase_payments','operation_requests','businesses','users','customers','treasury','treasury_transactions','chart_of_accounts', 'units', 'categories', 'brands', 'inventory_items', 'orders', 'order_items', 'suppliers', 'locations', 'inventory_stock_log', 'accounting_settings', 'journal_entries', 'journal_entry_lines'];
 const run = async (sql, params = []) => {
   const [result] = await connection.query(sql.replace(/\$\d+/g, '?').replace(new RegExp('\\b(' + tables.join('|') + ')\\b', 'g'), 'test_purchase_$1'), params);
   return { rows: Array.isArray(result) ? result : [], insertId: result.insertId, rowCount: result.affectedRows };
@@ -14,10 +14,13 @@ before(async () => {
   connection = await database.db.getConnection();
   // All controller SQL is redirected to connection-local temporary tables; no real records are touched.
   for (const table of tables) await connection.query(`CREATE TEMPORARY TABLE test_purchase_${table} LIKE ${table}`);
-  for (const column of ['category_id INT NULL', 'unit_id INT NULL', 'brand_id INT NULL']) {
+  for (const column of ['category_id INT NULL', 'unit_id INT NULL', 'brand_id INT NULL', "barcode_type VARCHAR(20) NOT NULL DEFAULT 'code128'", 'track_serial_numbers BOOLEAN NOT NULL DEFAULT FALSE', 'serial_number VARCHAR(150) NULL', 'chassis_number VARCHAR(100) NULL', 'color VARCHAR(80) NULL', 'lot_number VARCHAR(100) NULL', 'not_for_selling BOOLEAN NOT NULL DEFAULT FALSE', "contact_type VARCHAR(20) NOT NULL DEFAULT 'customer'", "entity_type VARCHAR(20) NOT NULL DEFAULT 'individual'", 'contact_id VARCHAR(40) NULL', 'customer_group VARCHAR(100) NULL', "currency_code VARCHAR(3) NOT NULL DEFAULT 'KES'", 'alternate_phone VARCHAR(20) NULL', 'landline VARCHAR(20) NULL', 'email VARCHAR(150) NULL', 'assigned_to VARCHAR(120) NULL', 'account_type VARCHAR(30) NULL', 'tax_number VARCHAR(50) NULL', 'address_line1 VARCHAR(200) NULL', 'address_line2 VARCHAR(200) NULL', 'city VARCHAR(100) NULL', 'state VARCHAR(100) NULL', 'country VARCHAR(100) NULL', 'zip_code VARCHAR(20) NULL']) {
     const name = column.split(' ')[0];
     const [existing] = await connection.query(`SHOW COLUMNS FROM test_purchase_inventory_items LIKE '${name}'`);
     if (!existing.length) await connection.query(`ALTER TABLE test_purchase_inventory_items ADD COLUMN ${column}`);
+  }
+  for (const column of ["contact_type VARCHAR(20) NOT NULL DEFAULT 'customer'", "entity_type VARCHAR(20) NOT NULL DEFAULT 'individual'", 'contact_id VARCHAR(40) NULL', 'customer_group VARCHAR(100) NULL', "currency_code VARCHAR(3) NOT NULL DEFAULT 'KES'", 'alternate_phone VARCHAR(20) NULL', 'landline VARCHAR(20) NULL', 'email VARCHAR(150) NULL', 'assigned_to VARCHAR(120) NULL', 'account_type VARCHAR(30) NULL', 'tax_number VARCHAR(50) NULL', 'address_line1 VARCHAR(200) NULL', 'address_line2 VARCHAR(200) NULL', 'city VARCHAR(100) NULL', 'state VARCHAR(100) NULL', 'country VARCHAR(100) NULL', 'zip_code VARCHAR(20) NULL', 'opening_balance DECIMAL(15,2) NOT NULL DEFAULT 0', 'payment_term_value INT NULL', 'payment_term_unit VARCHAR(20) NULL', 'landmark VARCHAR(150) NULL', 'street_name VARCHAR(150) NULL', 'building_number VARCHAR(50) NULL', 'additional_number VARCHAR(50) NULL', 'id_number VARCHAR(80) NULL', ...Array.from({length:10},(_,i)=>`custom_field_${i+1} VARCHAR(200) NULL`)]) {
+    const name=column.split(' ')[0];const[existing]=await connection.query(`SHOW COLUMNS FROM test_purchase_customers LIKE '${name}'`);if(!existing.length)await connection.query(`ALTER TABLE test_purchase_customers ADD COLUMN ${column}`);
   }
   database.query = run;
   database.getClient = async () => ({ query: run, release() {} });
@@ -25,6 +28,7 @@ before(async () => {
   inventory = require('../src/controllers/inventoryController');
   suppliers = require('../src/controllers/supplierController');
   referenceData = require('../src/controllers/referenceDataController');
+  customerController = require('../src/controllers/customerController');
 });
 after(async () => { if (connection) { await connection.rollback(); connection.release(); } await database.db.end(); });
 beforeEach(async () => {
@@ -67,10 +71,11 @@ test('discount, tax, margin and zero-cost selling price', () => {
   for (const override of [{ quantity: -1 }, { quantity: 1.5 }, { discountPercent: 101 }, { taxPercent: -1 }, { costBeforeDiscount: NaN }, { sellingPrice: -1 }]) assert.throws(() => calculateLine({ ...payload().items[0], ...override }));
 });
 test('products can be created, edited and imported with blank categories', async () => {
-  const { result: item, code } = await invoke(inventory.create, { name: 'Uncategorized part', category: '', unit: 'Pieces', stock: 0, price: 10, locationId: 1 });
+  const { result: item, code } = await invoke(inventory.create, { name: 'Uncategorized part', category: '', unit: 'Pieces', stock: 0, price: 10, locationId: 1, trackSerialNumbers: true, serialNumber: 'IMEI-TEST-01', chassisNumber: 'CHASSIS-01', color: 'Blue', lotNumber: 'LOT-01', notForSelling: true });
   assert.equal(code, 201);
   assert.equal(item.category, '');
   assert.equal(item.category_id, null);
+  assert.equal(Number(item.track_serial_numbers), 1); assert.equal(item.serial_number, 'IMEI-TEST-01'); assert.equal(item.chassis_number, 'CHASSIS-01'); assert.equal(item.color, 'Blue'); assert.equal(item.lot_number, 'LOT-01'); assert.equal(Number(item.not_for_selling), 1);
   const { result: edited } = await invoke(inventory.update, { name: item.name, category: '', unit: item.unit, stock: 0, threshold: 5, cost: 0, price: 12, locationId: 1 }, { id: item.id });
   assert.equal(edited.category, '');
   const imported = await invoke(inventory.bulkImport, { items: [{ name: 'Imported part', category: '', unit: 'Pieces', stock: 10, threshold: 0, cost: 2, price: 3, sku: 'BLANK-CATEGORY' }] });
@@ -82,6 +87,22 @@ test('products can be created, edited and imported with blank categories', async
   const invalid = await invoke(inventory.bulkImport, { items: [{ name: '', category: '' }] });
   assert.equal(invalid.code, 400);
   assert.equal(invalid.result.errors[0].message, 'name is required');
+});
+
+test('new customer contacts save identity, group, payment terms and extended address', async () => {
+  const {result,code}=await invoke(customerController.create,{name:'Example Motors',entityType:'business',contactId:'CLIENT-001',customerGroup:'Wholesale',currencyCode:'KES',phone:'0712345678',alternatePhone:'0722000000',landline:'0201234567',email:'accounts@example.test',assignedTo:'Sales desk',accountType:'wholesale',taxNumber:'P051234567A',addressLine1:'Industrial Area',city:'Nairobi',country:'Kenya',zipCode:'00100',landmark:'Near station',streetName:'Mombasa Road',buildingNumber:'B12',additionalNumber:'Unit 3',idNumber:'12345678',customField2:'Fleet customer',paymentTermValue:30,paymentTermUnit:'days',creditLimit:25000});
+  assert.equal(code,201);assert.equal(result.contact_type,'customer');assert.equal(result.entity_type,'business');assert.equal(result.contact_id,'CLIENT-001');assert.equal(result.customer_group,'Wholesale');assert.equal(result.currency_code,'KES');assert.equal(result.alternate_phone,'0722000000');assert.equal(result.email,'accounts@example.test');assert.equal(result.address_line1,'Industrial Area');assert.equal(result.landmark,'Near station');assert.equal(result.street_name,'Mombasa Road');assert.equal(result.building_number,'B12');assert.equal(result.additional_number,'Unit 3');assert.equal(result.id_number,'12345678');assert.equal(result.custom_field_2,'Fleet customer');assert.equal(result.payment_term_value,30);assert.equal(result.payment_term_unit,'days');assert.equal(Number(result.credit_limit),25000);assert.equal(Number(result.balance),0);
+});
+test('customer opening balance posts once to receivables against opening equity', async () => {
+  const {result,code}=await invoke(customerController.create,{name:'Opening balance client',contactId:'CLIENT-OPEN-1',openingBalance:1250.50});
+  assert.equal(code,201);assert.equal(Number(result.balance),1250.5);assert.equal(Number(result.opening_balance),1250.5);
+  const {rows:[journal]}=await run("SELECT je.entry_type,SUM(jel.debit) debit,SUM(jel.credit) credit FROM journal_entries je JOIN journal_entry_lines jel ON jel.journal_entry_id=je.id WHERE je.reference=? GROUP BY je.id",[`OPEN-CUSTOMER-${result.id}`]);
+  assert.equal(journal.entry_type,'opening_balance');assert.equal(Number(journal.debit),1250.5);assert.equal(Number(journal.credit),1250.5);
+});
+test('customer opening balance rejects invalid payment terms and rolls back', async () => {
+  const invalid=await invoke(customerController.create,{name:'Bad terms',paymentTermValue:30});
+  assert.equal(invalid.code,400);
+  assert.equal((await run("SELECT COUNT(*) count FROM customers WHERE name='Bad terms'")).rows[0].count,0);
 });
 test('received purchase persists calculations, updates stock/references and posts balanced journal', async () => {
   const { code, result } = await invoke(controller.create, payload());

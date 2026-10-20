@@ -1,10 +1,16 @@
 const {query}=require('../config/db');
 const policy=require('./accessPolicy');
 const mysql=require('mysql2');
+async function ensureCashierRole(businessId,db={query}){
+ let {rows:[role]}=await db.query("SELECT * FROM access_roles WHERE business_id=? AND name='Cashier' LIMIT 1",[businessId]);
+ if(!role){await db.query('INSERT IGNORE INTO access_roles (business_id,name,permissions_json,is_builtin) VALUES (?,?,?,TRUE)',[businessId,'Cashier',JSON.stringify(policy.permissionDefaults(false))]);({rows:[role]}=await db.query("SELECT * FROM access_roles WHERE business_id=? AND name='Cashier' LIMIT 1",[businessId]));}
+ else if(!role.is_builtin){await db.query("UPDATE access_roles SET is_builtin=TRUE WHERE id=? AND business_id=?",[role.id,businessId]);role.is_builtin=true;}
+ return role;
+}
 async function loadAccess(user,db={query}){
  const {rows:[business]}=await db.query('SELECT * FROM businesses WHERE id=?',[user.business_id]);
  const {rows:[subscription]}=await db.query("SELECT plan FROM subscriptions WHERE business_id=? AND status='approved' AND start_date<=CURRENT_TIMESTAMP AND end_date>=CURRENT_TIMESTAMP ORDER BY approved_at DESC,id DESC LIMIT 1",[user.business_id]);
- const {rows:[role]}=user.access_role_id?await db.query('SELECT * FROM access_roles WHERE id=? AND business_id=?',[user.access_role_id,user.business_id]):{rows:[]};
+ const {rows:[role]}=user.access_role_id?await db.query('SELECT * FROM access_roles WHERE id=? AND business_id=?',[user.access_role_id,user.business_id]):user.role==='employee'?{rows:[await ensureCashierRole(user.business_id,db)]}:{rows:[]};
  if(user.access_role_id&&!role)policy.fail('Assigned role no longer exists');
  const {rows:locations}=await db.query('SELECT location_id FROM user_locations WHERE user_id=? AND business_id=?',[user.id,user.business_id]);
  const plan=await require('./platformCatalog').getPackage(subscription?.plan||business?.registration_plan||'basic',db);
@@ -41,4 +47,4 @@ async function checkReferences(req){
  if(req.body?.sale)policy.assertAccess(access,'/sales-documents','post',req.body.sale);
  if(!access.owner&&(['sales','pos'].includes(policy.moduleFor(path))||req.body?.sale)){for(const line of req.body?.sale?.items||req.body?.items||[]){if(line.discountPercent>0&&!access.permissions.sales.discount)policy.fail('Your role cannot apply sales discounts');if(line.unitPrice!==undefined){const row=await check('inventory_items',line.itemId);if(row&&Number(line.unitPrice)!==Number(row.price)&&!access.permissions.sales.price)policy.fail('Your role cannot change selling prices');}}}
 }
-module.exports={loadAccess,validateAssignments,saveAssignments,member,checkReferences};
+module.exports={loadAccess,ensureCashierRole,validateAssignments,saveAssignments,member,checkReferences};

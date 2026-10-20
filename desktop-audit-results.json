@@ -13,11 +13,13 @@
   },
   {
     "name": "Purchase → receive → stock and cost",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Suppliers. Choose another package to use this feature."
   },
   {
     "name": "Search and location filters applied",
-    "status": "pass"
+    "status": "fail",
+    "error": "Record not found"
   },
   {
     "name": "Negative sale quantity rejected",
@@ -33,7 +35,8 @@
   },
   {
     "name": "Stock movement writes history",
-    "status": "pass"
+    "status": "fail",
+    "error": "Receive supplier stock through Purchases. Use stock correction for a physical-count difference."
   },
   {
     "name": "Manual journal balance validated",
@@ -45,7 +48,8 @@
   },
   {
     "name": "Desktop automatic discount target and request replay",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Discounts. Choose another package to use this feature."
   },
   {
     "name": "Disabled desktop user session is revoked",
@@ -113,7 +117,8 @@
   },
   {
     "name": "Desktop endpoint GET /owner-network",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Business network. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /subscriptions",
@@ -125,11 +130,13 @@
   },
   {
     "name": "Desktop endpoint GET /loyalty/customers",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Loyalty. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /loyalty/redemptions",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Loyalty. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /sales-documents",
@@ -137,7 +144,8 @@
   },
   {
     "name": "Desktop endpoint GET /discounts",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Discounts. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /etims/config",
@@ -145,15 +153,18 @@
   },
   {
     "name": "Desktop endpoint GET /accounting-settings",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Accounting and treasury. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /accounts/1/book",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Accounting and treasury. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /treasury/1/transactions",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Accounting and treasury. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /customers/1/statement",
@@ -165,7 +176,8 @@
   },
   {
     "name": "Desktop endpoint PUT /suppliers/1",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Suppliers. Choose another package to use this feature."
   },
   {
     "name": "Desktop endpoint GET /sales/1",
@@ -173,6 +185,7 @@
   },
   {
     "name": "Desktop endpoint GET /orders/1",
-    "status": "pass"
+    "status": "fail",
+    "error": "Basic POS does not include Purchases. Choose another package to use this feature."
   }
 ]

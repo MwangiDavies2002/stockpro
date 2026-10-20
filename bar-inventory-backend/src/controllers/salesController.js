@@ -44,7 +44,7 @@ async function create(req, res, next) {
     const stockChecks = [];
     for (const line of items) {
       const { rows } = await client.query(
-        'SELECT id, name, stock, threshold, price, cost, location_id FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE',
+        'SELECT id, name, stock, threshold, price, cost, location_id, not_for_selling FROM inventory_items WHERE id=? AND business_id=? FOR UPDATE',
         [line.itemId, getBusinessId(req)]
       );
       if (!rows.length) {
@@ -52,6 +52,10 @@ async function create(req, res, next) {
         return res.status(404).json({ message: `Item ${line.itemId} not found` });
       }
       const item = rows[0];
+      if (item.not_for_selling) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: `${item.name} is marked not for selling` });
+      }
       if (item.stock < line.quantity) {
         await client.query('ROLLBACK');
         return res.status(400).json({
@@ -186,9 +190,10 @@ async function getAll(req, res, next) {
   const client = await getClient();
   try {
     const { rows: sales } = await client.query(
-      `SELECT s.*, u.name AS created_by_name
+      `SELECT s.*, u.name AS created_by_name,c.name AS customer_name
        FROM sales s
-       LEFT JOIN users u ON u.id = s.created_by
+       LEFT JOIN users u ON u.id = s.created_by AND u.business_id=s.business_id
+       LEFT JOIN customers c ON c.id=s.customer_id AND c.business_id=s.business_id
        WHERE s.business_id=?
        ORDER BY s.created_at DESC
        LIMIT 200`,

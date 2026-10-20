@@ -19,6 +19,12 @@ test('Basic allows two locations, reports, and denies every accounting entry poi
  itemB=send(token,'/inventory','post',{name:'Second product',locationId:other,stock:20,price:10,cost:2});
 });
 test('roles grant scoped access and members require an explicit assignment',()=>{
+ const cashier=send(token,'/roles').roles.find(r=>r.name==='Cashier');assert.ok(cashier?.is_builtin,'Cashier should be a built-in editable role');
+ const defaultUser=send(token,'/users','post',{name:'Default cashier',email:'default-cashier@access.invalid',password:'AccessOnlyStrong123!',role:'employee',locationIds:[other]});
+ const defaultStaff=send(null,'/auth/login','post',{email:defaultUser.email,password:'AccessOnlyStrong123!'}).token;assert.deepEqual(send(defaultStaff,'/locations').map(r=>r.id),[other]);assert.deepEqual(send(defaultStaff,'/inventory').map(r=>r.id),[itemB.id]);
+ const cashierPermissions={...cashier.permissions,inventory:{...cashier.permissions.inventory,view:'none'}};send(token,`/roles/${cashier.id}`,'put',{name:'Cashier',permissions:cashierPermissions});assert.throws(()=>send(defaultStaff,'/inventory'),e=>e.status===403);
+ assert.throws(()=>send(token,`/roles/${cashier.id}`,'delete'),/cannot be deleted/);assert.throws(()=>send(token,`/roles/${cashier.id}`,'put',{name:'Not Cashier',permissions:cashier.permissions}),/cannot be renamed/);
+ send(token,`/roles/${cashier.id}`,'put',{name:'Cashier',permissions:cashier.permissions});send(token,`/users/${defaultUser.id}`,'delete');
  const permissions=policy.permissionDefaults(false);permissions.reports.view='all';
  role=send(token,'/roles','post',{name:'Branch cashier',permissions});
  assert.throws(()=>send(token,'/users','post',{name:'Unassigned',email:'unassigned@access.invalid',password:'AccessOnlyStrong123!',role:'employee'}),/at least one location/);

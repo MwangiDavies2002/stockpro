@@ -72,6 +72,22 @@ const JournalEngine = {
         break;
       }
 
+      case 'SPLIT_SALE': {
+        const methods={cash:'payment_cash',bank:'payment_bank',mpesa:'payment_mobile'};
+        const tax=Number(data?.taxAmount||0),net=Number((Number(amount)-tax).toFixed(2));
+        if(tax>0&&!map.sales_vat_output)throw Object.assign(new Error('Map a VAT Output account before issuing a taxed invoice'),{status:400});
+        for(const payment of data?.paymentLines||[]){
+          const key=methods[payment.method];if(!key)throw Object.assign(new Error('Unsupported split payment method'),{status:400});
+          const treasuryId=treasuryMap[key],linkedGL=await getTreasuryGL(treasuryId),account=linkedGL||map[key]||map.payment_cash||map.sales_receivable,value=Number(payment.amount);
+          if(value>0)lines.push({account_id:account,debit:value,description:`POS ${payment.method} payment`});
+          if(treasuryId&&value>0){const q=client?client.query.bind(client):query;await q('UPDATE treasury SET current_balance=current_balance+?,updated_at=NOW() WHERE id=?',[value,treasuryId]);await q('INSERT INTO treasury_transactions (treasury_id,transaction_type,amount,reference,description) VALUES (?,?,?,?,?)',[treasuryId,'Deposit',value,reference,`POS ${payment.method} payment`]);}
+        }
+        if(net>0&&map.sales_revenue)lines.push({account_id:map.sales_revenue,credit:net,description:'Sales Revenue'});
+        if(tax>0)lines.push({account_id:map.sales_vat_output,credit:tax,description:'VAT Output'});
+        if(data?.cogsAmount&&map.inventory_cogs&&map.inventory_asset){lines.push({account_id:map.inventory_cogs,debit:data.cogsAmount,description:'COGS'});lines.push({account_id:map.inventory_asset,credit:data.cogsAmount,description:'Inventory Asset'});}
+        break;
+      }
+
       case 'DEBT_PAYMENT': {
         // Use provided treasuryId or fallback to setting
         let settingKey = data?.settingKey || 'payment_cash';

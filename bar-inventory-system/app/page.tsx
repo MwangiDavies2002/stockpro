@@ -3,6 +3,7 @@ import {canVisit} from './lib/access';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Cookies from 'js-cookie';
 import {
   Package, TrendingUp, AlertTriangle, CreditCard,
@@ -55,7 +56,7 @@ const GROUP_META: Record<string, { range: string; color: string }> = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: number; name: string; role: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; name: string; role: string; email: string; access?: any } | null>(null);
 
   const [stock, setStock]   = useState<StockRow[]>([]);
   const [usage, setUsage]   = useState<UsageRow[]>([]);
@@ -118,6 +119,7 @@ export default function DashboardPage() {
   }, []);
 
   const lowStock = stock.filter((s) => s.status === 'LOW');
+  const outOfStock = stock.filter((s) => Number(s.stock) <= 0);
   const totalRevenue14d = usage.reduce((sum, u) => sum + Number(u.revenue), 0);
   const totalSold14d = usage.reduce((sum, u) => sum + Number(u.units_sold), 0);
   const activeCategories = new Set(stock.map((s) => s.category)).size;
@@ -175,6 +177,14 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <header className="border-b border-gray-300 pb-5"><p className="text-sm text-gray-500 mb-2">Your business today</p><h1 className="text-3xl">Sales and stock</h1><p className="mt-2 text-sm text-gray-600">Track sales, check stock levels, and plan your next order.</p></header>
+        <section aria-label="Common tasks" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 className="text-base font-semibold">What would you like to do?</h2><p className="text-sm text-gray-500">Shortcuts to everyday work</p></div><div className="flex flex-wrap gap-2 text-sm">{outOfStock.length>0&&<Link href="/inventory?status=out" className="rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800">{outOfStock.length} out of stock</Link>}{lowStock.length>0&&<Link href="/inventory?status=low" className="rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">{lowStock.length} low stock</Link>}</div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
+          {href:'/pos',title:'Sell now',detail:'Open or continue your shift',accent:'bg-emerald-700'},
+          {href:'/purchases',title:'Receive a purchase',detail:'Record supplier goods and bills',accent:'bg-slate-800'},
+          {href:'/stock-transfers',title:'Transfer stock',detail:'Move items to another shop',accent:'bg-slate-800'},
+          {href:'/stock-adjustments',title:'Adjust stock',detail:'Record a count, damage or wastage',accent:'bg-slate-800'},
+          {href:'/expenses',title:'Record an expense',detail:'Choose a kind and linked ledger',accent:'bg-slate-800'},
+          {href:'/inventory',title:'Manage inventory',detail:'Search products and stock status',accent:'bg-slate-800'},
+        ].filter(task=>canVisit(user.access,task.href)).map(task=><Link key={task.href} href={task.href} className="group rounded-sm border border-gray-200 bg-white p-4 transition hover:border-brand hover:shadow-sm"><span className={`inline-flex rounded-sm px-3 py-1.5 text-sm font-semibold text-white ${task.accent}`}>{task.title}</span><span className="mt-2 block text-sm text-gray-600">{task.detail}</span></Link>)}</div></section>
         {loading ? <LoadingSheet label="Loading sales and stock" /> : <>
         {/* Metric cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

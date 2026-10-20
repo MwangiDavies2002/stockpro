@@ -9,7 +9,7 @@ import Navbar from '../components/Navbar';
 import {useAccess} from '../components/AccessBoundary';
 import {canAct} from '../lib/access';
 import Receipt from '../components/Receipt';
-import { inventoryApi, salesDocumentsApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi, businessSettingsApi } from '../lib/api';
+import { inventoryApi, salesDocumentsApi, salesApi, authApi, shiftsApi, customersApi, locationsApi, discountsApi, mpesaApi, businessSettingsApi } from '../lib/api';
 import {showDone} from '../lib/feedback';
 import { toast } from 'sonner';
 import {readQueue,appendQueue,removeSynced} from '../lib/offlineQueue';
@@ -26,6 +26,7 @@ interface Product {
   barcode?: string;
   sku?: string;
   image_url?: string;
+  not_for_selling?: boolean | number;
 }
 
 interface CartLine {
@@ -58,6 +59,10 @@ export default function POSPage() {
   const [posSettings, setPosSettings] = useState<any>({ posShortcuts:{}, disableExpressCheckout:false, hideProductSuggestions:false, disableDiscount:false, enableTransactionDate:true, disableCreditSaleButton:false });
   const [transactionDate, setTransactionDate] = useState(todayISO());
   const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const [multiPayOpen,setMultiPayOpen]=useState(false),[paymentRows,setPaymentRows]=useState<Array<{method:'cash'|'card';amount:string;referenceNo:string}>>([{method:'cash',amount:'0',referenceNo:''}]);
+  const [cardModalOpen,setCardModalOpen]=useState(false),[cardReference,setCardReference]=useState(''),[cardBrand,setCardBrand]=useState('Visa');
+  const [recentOpen,setRecentOpen]=useState(false),[recentSales,setRecentSales]=useState<any[]>([]),[recentLoading,setRecentLoading]=useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const productSearchRef = useRef<HTMLInputElement>(null);
   const [discountRules,setDiscountRules]=useState<any[]>([]);
   useEffect(()=>{businessSettingsApi.get().then(({data})=>setPosSettings((current:any)=>({...current,...data,posShortcuts:{...(current.posShortcuts||{}),...(data.posShortcuts||{})}}))).catch(()=>{});},[]);
@@ -88,7 +93,8 @@ export default function POSPage() {
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', creditLimit: 0 });
   const [ageVerified, setAgeVerified] = useState(false);
   const [ageModalOpen, setAgeModalOpen] = useState(false);
-  const [pendingPayment, setPendingPayment] = useState<'cash' | 'mpesa' | 'card' | 'credit' | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<'cash' | 'mpesa' | 'card' | 'bank' | 'credit' | null>(null);
+  const pendingSplitCheckout=useRef<{method:'cash'|'mpesa'|'card'|'bank'|'credit';rows:Array<{method:'cash'|'card';amount:number;referenceNo?:string}>;label?:string}|null>(null);
 
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSales, setPendingSales] = useState<any[]>([]);
@@ -220,7 +226,7 @@ export default function POSPage() {
 
   useEffect(() => {
     if (!user) return;
-    locationsApi.getAll().then(res=>{const active=res.data.filter((row:any)=>row.active!==false&&Number(row.active)!==0);setLocations(active);setLocationId(active[0]?String(active[0].id):'');}).catch(()=>toast.error('Failed to load business locations'));
+    locationsApi.getAll().then(res=>{const active=res.data.filter((row:any)=>row.active!==false&&Number(row.active)!==0);setLocations(active);const preferenceKey=`pos_last_location:${user.business_id}:${user.id}`,saved=localStorage.getItem(preferenceKey),preferred=active.find((row:any)=>String(row.id)===saved);setLocationId(String(preferred?.id??active[0]?.id??''));}).catch(()=>toast.error('Failed to load business locations'));
   }, [user?.id]);
   useEffect(() => { if (user && locationId) {setCart([]);void loadProducts();} },[user?.id,locationId]);
 
@@ -250,7 +256,7 @@ export default function POSPage() {
   }
 
   const filtered = useMemo(() => {
-    return products.filter((p) =>
+    return products.filter((p) => !p.not_for_selling &&
       (catFilter === 'All' || p.category === catFilter) &&
       p.name.toLowerCase().includes(search.toLowerCase())
     ).sort((a, b) =>
@@ -277,6 +283,7 @@ export default function POSPage() {
   }, [categoriesOpen]);
 
   function addToCart(product: Product) {
+    if (product.not_for_selling) { toast.error(`${product.name} is marked not for selling`); return; }
     if (!shift) { setShiftModalOpen(true); toast.error('Open a shift before starting a sale'); return; }
     if(pendingMpesa.current)return toast.error('Resolve the pending M-Pesa payment before editing this cart');
     checkoutRequestId.current=null;
@@ -388,7 +395,19 @@ export default function POSPage() {
     }
   }
 
-  async function checkout(method: 'cash' | 'mpesa' | 'card' | 'credit', customerId?: number) {
+  function openMultiplePay(){setPaymentRows([{method:'cash',amount:subtotal.toFixed(2),referenceNo:''}]);setMultiPayOpen(true);}
+  function addPaymentRow(){setPaymentRows(rows=>[...rows,{method:'cash',amount:'0',referenceNo:''}]);}
+  async function openRecentTransactions(){setRecentOpen(true);setRecentLoading(true);try{const {data}=await salesApi.getAll();setRecentSales(data.filter((sale:any)=>!locationId||Number(sale.location_id)===Number(locationId)).slice(0,50));}catch(e:any){toast.error(e?.response?.data?.message||'Could not load recent transactions');}finally{setRecentLoading(false);}}
+  function finalizeMultiplePay(){
+    const rows=paymentRows.map(row=>({...row,amount:Number(row.amount)}));
+    if(rows.some(row=>!Number.isFinite(row.amount)||row.amount<=0)){toast.error('Enter an amount greater than zero for every payment row');return;}
+    if(rows.some(row=>row.method==='card'&&!row.referenceNo.trim())){toast.error('Enter the card terminal approval reference for each card payment');return;}
+    const paid=Number(rows.reduce((sum,row)=>sum+row.amount,0).toFixed(2));
+    if(Math.abs(paid-subtotal)>0.009){toast.error(`Payment rows must total KSh ${subtotal.toLocaleString()}`);return;}
+    setMultiPayOpen(false);void checkout('cash',undefined,rows);
+  }
+
+  async function checkout(method: 'cash' | 'mpesa' | 'card' | 'bank' | 'credit', customerId?: number, splitPayments?:Array<{method:'cash'|'card';amount:number;referenceNo?:string}>, paymentLabel?:string) {
     if (!shift) { setShiftModalOpen(true); return toast.error('Open a shift before completing a sale'); }
     if(pendingMpesa.current&&method!=='mpesa')return toast.error('Resolve the pending M-Pesa payment before using another payment method');
     if (checkoutLockRef.current) return;
@@ -404,18 +423,22 @@ export default function POSPage() {
     checkoutLockRef.current = true;
     setCheckingOut(true);
 
+    const payments=splitPayments?.map(row=>({amount:Number(row.amount),method:row.method==='card'?'bank':row.method,referenceNo:row.referenceNo||undefined}));
+    const normalizedMethod=method==='card'?'bank':method;
     const salePayload = {
       type: 'pos' as const,
       requestId: checkoutRequestId.current ||= crypto.randomUUID(),
       locationId: Number(locationId),
       date: transactionDate || todayISO(),
-      payment: method === 'credit' ? undefined : { amount: saleTotal(customerId), method },
+      payment: method === 'credit' ? undefined : payments?.length?{amount:Number(payments.reduce((sum,row)=>sum+row.amount,0).toFixed(2)),method:payments[0].method,referenceNo:payments[0].referenceNo}:{ amount: saleTotal(customerId), method:normalizedMethod },
+      payments:payments?.length?payments:undefined,
       items: cart.map((l) => ({ itemId: l.id, quantity: l.quantity, unitPrice: l.price, discountPercent:discountFor(l,customerId) })),
-      paymentMethod: method,
+      paymentMethod: normalizedMethod,
       customerId: method === 'credit' ? customerId : undefined,
     };
 
     if (requiresAgeVerification && !ageVerified) {
+      if(splitPayments)pendingSplitCheckout.current={method,rows:splitPayments,label:paymentLabel};
       setPendingPayment(method);
       setAgeModalOpen(true);
       setCheckingOut(false);
@@ -457,7 +480,7 @@ export default function POSPage() {
         saleId: queuedSale.localId,
         items: cart.map((l) => ({ item_name: l.name, quantity: l.quantity, unit_price: l.price,line_total:Number((l.quantity*l.price-Number((l.quantity*l.price*discountFor(l,customerId)/100).toFixed(2))).toFixed(2)) })),
         total: subtotal,
-        paymentMethod: method,
+        paymentMethod: paymentLabel|| (splitPayments?'Multiple':method==='bank'?'Card':method),
         cashierName: user?.name,
         offline: true,
       });
@@ -494,7 +517,7 @@ export default function POSPage() {
         saleId: data.sale_id || data.saleId || data.id,
         items: data.items.map((item: any) => ({ item_name: item.item_name, quantity: item.quantity, unit_price: item.unit_price,line_total:Number(item.line_total) })),
         total: Number(data.total),
-        paymentMethod: method,
+        paymentMethod: paymentLabel|| (splitPayments?'Multiple':method==='bank'?'Card':method),
         cashierName: user?.name,
       });
       clearCart();
@@ -511,7 +534,7 @@ export default function POSPage() {
   function scanBarcode() {
     const code = barcodeInput.trim().toLowerCase();
     if (!code) return;
-    const match = products.find((p) => p.barcode?.toLowerCase() === code || p.sku?.toLowerCase() === code);
+    const match = products.find((p) => !p.not_for_selling && (p.barcode?.toLowerCase() === code || p.sku?.toLowerCase() === code));
     if (!match) { toast.error('No product found for that barcode/SKU'); return; }
     addToCart(match);
     setBarcodeInput('');
@@ -535,8 +558,13 @@ export default function POSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#b9d9f4] text-slate-900 pb-24">
       <Navbar user={user} />
+
+      <div className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/60 bg-[#d5eaff] px-4 py-3 shadow-sm sm:mx-5">
+        <div className="flex flex-wrap items-center gap-3"><label className="text-sm font-semibold">Location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>{setLocationId(event.target.value);if(user)localStorage.setItem(`pos_last_location:${user.business_id}:${user.id}`,event.target.value);}} className="ml-3 border border-blue-200 bg-white/70 px-3 py-2 text-sm font-normal"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>{posSettings.enableTransactionDate&&<input aria-label="Transaction date" type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="border-0 bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"/>}<span className={`rounded-full px-3 py-2 text-xs font-semibold ${shift?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}>{shift?`Shift open · Float KSh ${Number(shift.opening_float).toLocaleString()}`:'No shift open'}</span></div>
+        <div className="flex flex-wrap items-center gap-2">{cart.length>0&&<input aria-label="M-Pesa phone number" type="tel" placeholder="M-Pesa phone 07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} className="w-52 border border-blue-200 bg-white/80 px-3 py-2 text-sm"/>}<button onClick={()=>setShiftModalOpen(true)} className="rounded-lg border border-blue-200 bg-white/70 px-3 py-2 text-sm font-medium">{shift?'Close shift':'Open shift'}</button><button onClick={()=>setPaymentPickerOpen(true)} disabled={!cart.length||!shift} className="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">▦ Point of Sale</button></div>
+      </div>
 
       {!shiftStatusChecked && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4" role="status" aria-live="polite">
@@ -544,8 +572,7 @@ export default function POSPage() {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto px-4 pt-3 space-y-2">
-        <label className="block text-sm font-medium">Business location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>setLocationId(event.target.value)} className="ml-3 rounded-sm border border-gray-300 p-2"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
+      <div className="max-w-[1600px] mx-auto px-4 pt-2 space-y-2">
         {!isOnline && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-sm px-4 py-2 text-sm text-red-800">
             <WifiOff className="w-4 h-4" />
@@ -575,7 +602,7 @@ export default function POSPage() {
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-sm px-4 py-2 text-sm">
+          <div className="flex flex-col items-start justify-between gap-2 bg-amber-50 border border-amber-200 rounded-sm px-3 py-2 text-sm sm:flex-row sm:items-center sm:px-4">
             <span className="text-amber-800">No shift open — sales won't be tracked in cash reconciliation</span>
             <button onClick={() => setShiftModalOpen(true)} className="text-amber-700 font-medium hover:underline">
               Open Shift
@@ -584,24 +611,27 @@ export default function POSPage() {
         )}
       </div>
 
-      <main className="max-w-[1600px] mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-4">
+      <main className="max-w-[1800px] mx-auto px-2 py-2 pb-28 sm:px-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.95fr)] gap-3 sm:gap-4">
         {/* -- Left: Cart ------------------------------- */}
-        <div className="bg-white rounded-sm border border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h1 className="text-base font-semibold text-gray-900">New Sale</h1>
-            <p className="text-xs text-gray-500 mt-0.5">{itemCount} item(s) in cart</p>
-            {posSettings.enableTransactionDate && <label className="mt-3 block text-xs font-medium text-gray-600">Transaction date<input type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="mt-1 block w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm" /></label>}
+        <div className="min-h-[52vh] lg:h-[calc(100vh-255px)] rounded-[20px] border border-white/70 bg-[#d6eaff]/80 shadow-[0_5px_18px_rgba(33,85,130,.12)] flex flex-col">
+          <div className="p-3 sm:p-4 border-b border-blue-200">
+            <button type="button" onClick={() => setMobileCartOpen(value => !value)} aria-expanded={mobileCartOpen} className="flex w-full items-center justify-between text-left lg:pointer-events-none">
+              <span><span className="block text-base font-semibold text-gray-900">New Sale</span><span className="mt-0.5 block text-xs text-gray-500">{itemCount} item(s) in cart</span></span>
+              <span className="text-xs font-medium text-green-700 lg:hidden">{mobileCartOpen?'Hide cart':'View cart'}</span>
+            </button>
+            {posSettings.enableTransactionDate && <label className={`${mobileCartOpen?'':'hidden'} lg:block mt-3 text-xs font-medium text-gray-600`}>Transaction date<input type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="mt-1 block w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm" /></label>}
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[55vh] divide-y divide-gray-100">
+          <div className="grid grid-cols-[minmax(0,1fr)_55px_65px_70px_24px] border-b border-blue-200 px-3 py-3 text-[10px] font-bold sm:grid-cols-[minmax(0,1.4fr)_90px_100px_100px_30px] lg:grid-cols-[minmax(0,1.4fr)_110px_120px_120px_36px]"><span>Product</span><span>Qty</span><span>Price</span><span>Subtotal</span><span></span></div>
+          <div className={`${mobileCartOpen?'':'hidden'} lg:block flex-1 overflow-y-auto max-h-[55vh] lg:max-h-none divide-y divide-blue-100`}>
             {cart.length === 0 && (
               <div className="p-8 text-center text-sm text-gray-400">
                 Click a product on the right to add it here
               </div>
             )}
             {cart.map((line) => (
-              <div key={line.id} className="p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
+              <div key={line.id} className="grid grid-cols-[minmax(0,1fr)_55px_65px_70px_24px] items-center gap-1 p-3 sm:grid-cols-[minmax(0,1.4fr)_90px_100px_100px_30px] sm:gap-2 lg:grid-cols-[minmax(0,1.4fr)_110px_120px_120px_36px]">
+                <div className="min-w-0">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{line.name}</p>
                     <p className="text-xs text-gray-500">{line.unit}</p>
@@ -613,9 +643,7 @@ export default function POSPage() {
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-[10px] uppercase text-gray-400">Qty</label>
                     <input
                       type="number"
                       data-pos-quantity
@@ -627,7 +655,6 @@ export default function POSPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-gray-400">Price</label>
                     <input
                       type="number"
                       min={0}
@@ -637,17 +664,15 @@ export default function POSPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-gray-400">Subtotal</label>
                     <div className="px-2 py-1.5 text-sm font-medium text-gray-900">
                       {(line.quantity * line.price).toLocaleString()}
                     </div>
                   </div>
-                </div>
               </div>
             ))}
           </div>
 
-          <div className="p-4 border-t border-gray-200 space-y-3">
+          <div className="hidden p-4 border-t border-gray-200 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">Items</span>
               <span className="font-medium text-gray-900">{itemCount}</span>
@@ -699,7 +724,7 @@ export default function POSPage() {
         </div>
 
         {/* -- Right: Product grid ------------------------- */}
-        <div className="space-y-3">
+        <div className="min-h-[52vh] lg:h-[calc(100vh-255px)] space-y-3 flex flex-col">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative w-full flex gap-2">
               <ScanLine className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -725,9 +750,9 @@ export default function POSPage() {
                 aria-expanded={categoriesOpen}
                 aria-controls="pos-category-options"
                 onClick={() => setCategoriesOpen(open => !open)}
-                className={`inline-flex items-center gap-2 rounded-sm border px-3 py-2 text-sm font-medium ${categoriesOpen || catFilter !== 'All' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                className={`inline-flex min-h-[54px] flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-base font-semibold ${categoriesOpen || catFilter !== 'All' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-blue-200 bg-indigo-600 text-white hover:bg-blue-700'}`}
               >
-                Categories <span aria-hidden="true">{categoriesOpen ? '▲' : '▼'}</span>
+                ▦ Category <span aria-hidden="true">{categoriesOpen ? '▲' : '▼'}</span>
                 {catFilter !== 'All' && <span className="max-w-48 truncate rounded-sm bg-white/20 px-2 py-0.5 text-xs">{catFilter}</span>}
               </button>
               {categoriesOpen && (
@@ -755,7 +780,7 @@ export default function POSPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                 {topSellers.map((product, index) => (
                   <button key={product.id} onClick={() => addToCart(product)}
-                    className="rounded-sm border border-green-200 bg-white p-3 text-left hover:border-green-500  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
+                    className="min-h-28 rounded-sm border border-green-200 bg-white p-3 text-left hover:border-green-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
                     <span className="text-[11px] font-semibold text-green-700">#{index + 1} best seller</span>
                     <p className="text-sm font-medium text-gray-900 line-clamp-2 mt-1">{product.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{Number(product.sold).toLocaleString()} sold · {product.stock} in stock</p>
@@ -769,19 +794,19 @@ export default function POSPage() {
           {loading ? (
             <div className="text-center py-16 text-sm text-gray-400">Loading products...</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="flex-1 overflow-y-auto rounded-[18px] bg-[#cbe3fa]/70 p-2"><div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
               {filtered.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
                   disabled={product.stock <= 0}
-                  className="bg-white border border-gray-200 rounded-sm p-3 text-left hover:border-green-500  transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="min-h-36 rounded-[18px] border border-white/70 bg-[#d9edff] p-2.5 text-center hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {product.image_url && <img src={product.image_url} alt="" className="w-full h-28 object-cover rounded-sm mb-2" />}
+                  {product.image_url ? <img src={product.image_url} alt="" className="mx-auto mb-2 h-16 w-16 object-cover" /> : <span aria-hidden="true" className="mx-auto mb-2 flex h-16 w-16 items-center justify-center bg-blue-100 text-2xl text-blue-400">▧</span>}
                   <p className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm font-semibold text-green-700">
+                    <span className="text-sm font-semibold text-indigo-700">
                       KSh {product.price.toLocaleString()}
                     </span>
                     <span className={`text-[11px] ${product.stock <= 5 ? 'text-red-500' : 'text-gray-400'}`}>
@@ -795,21 +820,42 @@ export default function POSPage() {
                   No products match your search
                 </div>
               )}
-            </div>
+            </div></div>
           )}
         </div>
       </main>
 
+      <div className="pos-checkout-bar fixed bottom-0 left-0 right-0 z-40 hidden items-center gap-3 border-t border-blue-200 bg-[#d5eaff] px-4 py-3 shadow-[0_-4px_14px_rgba(30,75,120,.12)] lg:flex md:left-60">
+        <button onClick={openMultiplePay} disabled={!cart.length||!shift||checkingOut} className="rounded-lg border border-blue-200 bg-white/70 px-4 py-3 text-sm font-semibold disabled:opacity-50">Multiple pay</button>
+        {!posSettings.disableCreditSaleButton&&<button onClick={()=>setCreditModalOpen(true)} disabled={!cart.length||!shift||checkingOut} className="rounded-lg border border-blue-200 bg-white/70 px-4 py-3 text-sm font-semibold disabled:opacity-50">Credit sale</button>}
+        <button onClick={()=>{setCardReference('');setCardModalOpen(true);}} disabled={!cart.length||!shift||checkingOut} className="rounded-lg bg-slate-800 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Card</button>
+        <button onClick={()=>checkout('cash')} disabled={!cart.length||!shift||checkingOut} className="rounded-lg bg-emerald-600 px-8 py-3 text-sm font-semibold text-white disabled:opacity-50">Cash</button>
+        <button onClick={clearCart} disabled={!cart.length||checkingOut} className="rounded-lg bg-red-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Cancel</button>
+        <div className="ml-auto text-right"><span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Total payable</span><span className="text-2xl font-bold text-emerald-800">KSh {subtotal.toLocaleString()}</span></div>
+        <button onClick={()=>void openRecentTransactions()} className="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Recent transactions</button>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-14 z-40 border-t border-gray-300 bg-white/95 p-2 shadow-[0_-4px_12px_rgba(0,0,0,.08)] backdrop-blur-sm lg:hidden" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
+        <div className="mx-auto flex max-w-xl items-center gap-2">
+          <button type="button" onClick={() => setMobileCartOpen(value => !value)} aria-expanded={mobileCartOpen} className="min-h-12 flex-1 rounded-sm border border-gray-300 px-3 text-left text-sm font-medium text-gray-800"><span className="block">Cart · {itemCount} item(s)</span><span className="text-xs text-gray-500">KSh {subtotal.toLocaleString()}</span></button>
+          <button type="button" onClick={openMultiplePay} disabled={!cart.length||!shift||checkingOut} className="min-h-12 rounded-sm border border-blue-300 px-3 text-sm font-semibold disabled:opacity-50">Split</button>
+          <button type="button" onClick={() => setPaymentPickerOpen(true)} disabled={!cart.length || !shift || checkingOut} className="min-h-12 flex-1 rounded-sm bg-green-700 px-4 text-sm font-semibold text-white disabled:opacity-50">{checkingOut?'Processing…':'Checkout'}</button>
+        </div>
+      </div>
+
       {/* -- Credit sale: customer picker ------------------- */}
-      {paymentPickerOpen && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-picker-title"><div className="w-full max-w-sm space-y-3 rounded-sm bg-white p-6"><div className="flex items-center justify-between"><h2 id="payment-picker-title" className="text-lg font-semibold">Pay &amp; Checkout</h2><button onClick={()=>setPaymentPickerOpen(false)} aria-label="Close payment methods"><X className="h-4 w-4 text-gray-500"/></button></div><p className="text-sm text-gray-600">Choose how the customer is paying KSh {subtotal.toLocaleString()}.</p><button onClick={()=>{setPaymentPickerOpen(false);void checkout('cash');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Cash</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('card');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-slate-700 py-2.5 text-sm font-medium text-white disabled:opacity-50">Card</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('mpesa');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-800 py-2.5 text-sm font-medium text-white disabled:opacity-50">M-Pesa</button>{!posSettings.disableCreditSaleButton&&<button onClick={()=>{setPaymentPickerOpen(false);setCreditModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-amber-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Credit / Tab</button>}<button onClick={()=>setPaymentPickerOpen(false)} className="w-full rounded-sm border py-2 text-sm">Cancel</button></div></div>}
+      {paymentPickerOpen && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-picker-title"><div className="w-full max-w-sm space-y-3 rounded-sm bg-white p-6"><div className="flex items-center justify-between"><h2 id="payment-picker-title" className="text-lg font-semibold">Pay &amp; Checkout</h2><button onClick={()=>setPaymentPickerOpen(false)} aria-label="Close payment methods"><X className="h-4 w-4 text-gray-500"/></button></div><p className="text-sm text-gray-600">Choose how the customer is paying KSh {subtotal.toLocaleString()}.</p><button onClick={()=>{setPaymentPickerOpen(false);void checkout('cash');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Cash</button><button onClick={()=>{setPaymentPickerOpen(false);setCardReference('');setCardModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-slate-700 py-2.5 text-sm font-medium text-white disabled:opacity-50">Card</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('mpesa');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-800 py-2.5 text-sm font-medium text-white disabled:opacity-50">M-Pesa</button>{!posSettings.disableCreditSaleButton&&<button onClick={()=>{setPaymentPickerOpen(false);setCreditModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-amber-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Credit / Tab</button>}<button onClick={()=>setPaymentPickerOpen(false)} className="w-full rounded-sm border py-2 text-sm">Cancel</button></div></div>}
+      {multiPayOpen&&<div className="fixed inset-0 z-[76] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="multi-pay-title"><section className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><div><h2 id="multi-pay-title" className="text-xl font-semibold">Multiple payment</h2><p className="mt-1 text-sm text-slate-600">Split the sale across cash and card. Card payments should already be approved on your terminal.</p></div><button onClick={()=>setMultiPayOpen(false)} aria-label="Close multiple payment" className="p-2"><X/></button></header><div className="grid gap-5 p-5 md:grid-cols-[1fr_230px]"><div className="space-y-4">{paymentRows.map((row,index)=><div key={index} className="grid gap-3 rounded-lg bg-white/55 p-4 sm:grid-cols-[1fr_1fr_1.2fr_auto]"><label className="text-sm font-semibold">Amount<input type="number" min="0.01" step="0.01" value={row.amount} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,amount:e.target.value}:item))} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Payment method<select value={row.method} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,method:e.target.value as 'cash'|'card'}:item))} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"><option value="cash">Cash</option><option value="card">Card</option></select></label><label className="text-sm font-semibold">Terminal reference <span className="font-normal text-slate-500">(card only)</span><input value={row.referenceNo} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,referenceNo:e.target.value}:item))} disabled={row.method!=='card'} placeholder="Authorization reference" className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal disabled:bg-slate-100"/></label><button type="button" disabled={paymentRows.length===1} onClick={()=>setPaymentRows(rows=>rows.filter((_,i)=>i!==index))} className="self-end px-3 py-2 text-rose-700 disabled:opacity-30">Remove</button></div>)}<button onClick={addPaymentRow} className="w-full rounded-lg bg-rose-700 px-4 py-3 text-sm font-semibold text-white">Add payment row</button><p className="text-xs text-slate-600">Payment accounts are taken from your accounting settings. Do not enter card numbers or security codes here.</p></div><aside className="h-fit rounded-lg bg-amber-600 p-5 text-white"><p className="text-sm font-semibold">Total payable</p><p className="mt-1 text-2xl font-bold">KSh {subtotal.toLocaleString()}</p><hr className="my-4 border-amber-800/50"/><p className="text-sm font-semibold">Total paying</p><p className="text-xl font-bold">KSh {paymentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0).toLocaleString()}</p><p className="mt-3 text-sm font-semibold">Remaining</p><p className="text-lg font-bold">KSh {Math.max(0,subtotal-paymentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0)).toLocaleString()}</p></aside></div><footer className="flex justify-end gap-3 border-t border-blue-200 px-5 py-4"><button onClick={()=>setMultiPayOpen(false)} className="rounded-lg border border-blue-300 px-5 py-2.5">Close</button><button onClick={finalizeMultiplePay} disabled={checkingOut||!shift} className="rounded-lg bg-rose-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{checkingOut?'Processing…':'Finalize payment'}</button></footer></section></div>}
+      {cardModalOpen&&<div className="fixed inset-0 z-[77] flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="card-payment-title"><section className="w-full max-w-2xl rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><h2 id="card-payment-title" className="text-xl font-semibold">Card transaction details</h2><button onClick={()=>setCardModalOpen(false)} aria-label="Close card payment"><X/></button></header><div className="grid gap-4 p-6 sm:grid-cols-2"><label className="text-sm font-semibold">Amount<input readOnly value={`KSh ${subtotal.toLocaleString()}`} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Card type<select value={cardBrand} onChange={e=>setCardBrand(e.target.value)} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"><option>Visa</option><option>Mastercard</option><option>American Express</option><option>Other</option></select></label><label className="text-sm font-semibold sm:col-span-2">Card transaction reference<input autoFocus required value={cardReference} onChange={e=>setCardReference(e.target.value)} placeholder="Enter the approval code from your card terminal" className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><p className="text-xs text-slate-600 sm:col-span-2">Take payment on your card terminal first, then enter its approval reference. This screen never asks for or stores a card number or security code.</p></div><footer className="flex justify-end gap-3 border-t border-blue-200 px-6 py-4"><button onClick={()=>setCardModalOpen(false)} className="rounded-lg border border-blue-300 px-5 py-2.5">Close</button><button onClick={()=>{if(!cardReference.trim()){toast.error('Enter the terminal approval reference');return;}const reference=`${cardBrand}: ${cardReference.trim()}`;setCardModalOpen(false);void checkout('bank',undefined,[{method:'card',amount:subtotal,referenceNo:reference}],'Card');}} disabled={checkingOut||!cart.length||!shift} className="rounded-lg bg-rose-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{checkingOut?'Processing…':'Finalize payment'}</button></footer></section></div>}
+      {recentOpen&&<div className="fixed inset-0 z-[78] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="recent-transactions-title"><section className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><div><h2 id="recent-transactions-title" className="text-xl font-semibold">Recent transactions</h2><p className="mt-1 text-sm text-slate-600">Latest sales for the selected location.</p></div><button onClick={()=>setRecentOpen(false)} aria-label="Close recent transactions"><X/></button></header>{recentLoading?<p className="p-8 text-center">Loading recent transactions…</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-blue-200"><tr>{['Sale','Customer','Cashier','Payment','When','Total','Items'].map(label=><th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody>{recentSales.map(sale=><tr key={sale.id} className="border-b border-blue-100"><td className="px-4 py-3 font-semibold">{sale.id}</td><td className="px-4 py-3">{sale.customer_name||'Walk-in customer'}</td><td className="px-4 py-3">{sale.created_by_name||'—'}</td><td className="px-4 py-3 capitalize">{sale.payment_method||'—'}</td><td className="px-4 py-3 whitespace-nowrap">{new Date(sale.created_at).toLocaleString()}</td><td className="px-4 py-3 font-semibold">KSh {Number(sale.total).toLocaleString()}</td><td className="px-4 py-3">{sale.items?.reduce((sum:number,item:any)=>sum+Number(item.quantity),0)||0}</td></tr>)}</tbody></table>{!recentSales.length&&<p className="p-8 text-center text-slate-600">No sales found yet.</p>}</div>}<footer className="flex justify-between gap-3 border-t border-blue-200 px-5 py-4"><Link href="/sales" onClick={()=>setRecentOpen(false)} className="text-indigo-800 underline">Open sales history</Link><button onClick={()=>void openRecentTransactions()} className="rounded-lg border border-blue-300 px-4 py-2">Refresh</button></footer></section></div>}
       {ageModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
           <div className="bg-white rounded-sm max-w-sm w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">Age verification required</h2>
             <p className="text-sm text-gray-600">Confirm the customer is legally permitted to purchase alcohol before completing this sale.</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ageVerified} onChange={(e) => setAgeVerified(e.target.checked)} /> Customer is of legal drinking age</label>
-            <div className="flex gap-2"><button onClick={() => { setAgeModalOpen(false); setPendingPayment(null); }} className="flex-1 border rounded-sm py-2 text-sm">Cancel</button>
-              <button disabled={!ageVerified} onClick={() => { setAgeModalOpen(false); const method = pendingPayment; setPendingPayment(null); if (method) checkout(method); }} className="flex-1 bg-green-600 disabled:opacity-50 text-white rounded-sm py-2 text-sm">Verify & Continue</button></div>
+              <div className="flex gap-2"><button onClick={() => { setAgeModalOpen(false); setPendingPayment(null);pendingSplitCheckout.current=null; }} className="flex-1 border rounded-sm py-2 text-sm">Cancel</button>
+              <button disabled={!ageVerified} onClick={() => { setAgeModalOpen(false); const method = pendingPayment; setPendingPayment(null);const pending=pendingSplitCheckout.current;pendingSplitCheckout.current=null;if(pending)void checkout(pending.method,undefined,pending.rows,pending.label);else if(method)void checkout(method); }} className="flex-1 bg-green-600 disabled:opacity-50 text-white rounded-sm py-2 text-sm">Verify & Continue</button></div>
           </div>
         </div>
       )}

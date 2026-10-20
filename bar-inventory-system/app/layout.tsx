@@ -33,7 +33,7 @@ export default function RootLayout({
         <ThemeProvider>
         <Suspense fallback={<p className="p-8">Loading workspace...</p>}><AccessBoundary>{children}</AccessBoundary></Suspense>
         <footer className="site-footer"><span>StockPro</span><a href="/terms">Terms of use</a><a href="/privacy">Privacy</a></footer>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" duration={2500} />
         </ThemeProvider>
       </body>
     </html>

@@ -17,7 +17,7 @@ import {
   Tags,
   Ruler,
   Badge,
-  FileText, PanelLeftClose, PanelLeftOpen, TrendingUp, Gift, Award
+  FileText, TrendingUp, Gift, Award
 } from './TextMark';
 import Cookies from 'js-cookie';
 import {useAccess} from './AccessBoundary';
@@ -38,7 +38,7 @@ function playPop() {
 
 const NAV_ITEMS = [
   {href:'/superadmin',label:'Superadmin',icon:Settings,adminOnly:false},
-  {label:'Administration',icon:Settings,adminOnly:true,subItems:[{href:'/users',label:'Members',icon:Users},{href:'/roles',label:'Roles',icon:Users},{href:'/business/settings',label:'Business settings',icon:Settings}]},
+  {label:'Administration',icon:Settings,adminOnly:true,subItems:[{href:'/users',label:'Members',icon:Users},{href:'/roles',label:'Roles',icon:Users},{href:'/business/settings',label:'Business settings',icon:Settings},{href:'/locations',label:'Locations',icon:MapPin},{href:'/customers',label:'Customers',icon:Users2},{href:'/suppliers',label:'Suppliers',icon:ShoppingCart},{href:'/loyalty',label:'Loyalty Overview',icon:Award},{href:'/loyalty/rewards',label:'Loyalty Rewards',icon:Gift},{href:'/loyalty/history',label:'Loyalty History',icon:Receipt},{href:'/network',label:'StockPro Network',icon:Users2},{href:'/network/invite',label:'Invite to Network',icon:Users2},{href:'/subscription',label:'Packages',icon:CreditCard},{href:'/subscription/status',label:'Subscription Status',icon:CreditCard},{href:'/subscription/overview',label:'Subscription Overview',icon:CreditCard},{href:'/subscription/manage',label:'Subscription Requests',icon:CreditCard,adminOnly:true}]},
   { href: '/',          label: 'Dashboard',  icon: LayoutDashboard, adminOnly: false },
   {href:'/pos',               label:'POS',   icon:CreditCard,                       adminOnly:false},
   { label: 'Inventory', icon: Package, adminOnly: false, subItems: [
@@ -72,24 +72,10 @@ const NAV_ITEMS = [
     { href: '/staff-performance', label: 'Staff Performance', icon: TrendingUp, adminOnly: true },
     { href: '/users', label: 'User Management', icon: Users, adminOnly: true },
   ] },
-  {href: '/sales', label:'Sales', icon:Receipt, adminOnly:false},
-  {href:'/payments',label:'M-Pesa Payments',icon:CreditCard,adminOnly:true},
-  { href: '/locations', label: 'Locations', icon: MapPin, adminOnly: true },
-  { label: 'Business Partners', icon: Users2, adminOnly: false, subItems: [
-    { href: '/customers', label: 'Customers', icon: Users2 },
-    { href: '/suppliers', label: 'Suppliers', icon: ShoppingCart },
-    { href: '/loyalty', label: 'Loyalty Overview', icon: Award },
-    { href: '/loyalty/rewards', label: 'Loyalty Rewards', icon: Gift },
-    { href: '/loyalty/history', label: 'Loyalty History', icon: Receipt },
-    { href: '/network', label: 'StockPro Network', icon: Users2 },
-    { href: '/network/invite', label: 'Invite to Network', icon: Users2 },
-  ] },
-  { label: 'Packages', icon: CreditCard, adminOnly: false, subItems: [
-    { href: '/subscription', label: 'Packages', icon: CreditCard },
-    { href: '/subscription/status', label: 'Subscription Status', icon: CreditCard },
-    { href: '/subscription/overview', label: 'Subscription Overview', icon: CreditCard },
-    { href: '/subscription/manage', label: 'Subscription Requests', icon: CreditCard, adminOnly: true },
-  ] },
+  { label:'Sales', icon:Receipt, adminOnly:false, subItems:[
+    {href:'/sales',label:'Sales History',icon:Receipt},
+    {href:'/payments',label:'M-Pesa Payments',icon:CreditCard,adminOnly:true},
+  ]},
   { href: '/account/account',  label: 'Treasury',   icon: Wallet, adminOnly: true  },
   {
     label: 'Accounting',
@@ -121,7 +107,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
-  const collapsed = false;
+  const [collapsed, setCollapsed] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(user ?? workspaceUser ?? null);
   const [treasuryConfigured, setTreasuryConfigured] = useState(false);
@@ -185,6 +171,21 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
               </span>
             )}
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setCollapsed(value => !value)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="sidebar-collapse-toggle hidden md:inline-flex self-end items-center justify-center w-9 h-9 rounded-sm border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <svg aria-hidden="true" viewBox="0 0 20 20" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="2.25" y="3.25" width="15.5" height="13.5" rx="1.5" />
+              <path d="M8 3.5v13" />
+              {collapsed ? <path d="m10.5 8 2 2-2 2" /> : <path d="m12.5 8-2 2 2 2" />}
+            </svg>
+          </button>
 
           {/* Desktop nav */}
           <div className="hidden md:flex md:flex-col md:items-stretch gap-1">
@@ -307,7 +308,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-1">
+        <div className="md:hidden fixed inset-x-0 top-14 bottom-16 z-[60] overflow-y-auto border-t border-gray-200 bg-white px-4 py-3 pb-6 shadow-lg space-y-1">
           {visibleItems.map((item) => {
             if (item.subItems) {
               const isActive = item.subItems.some(sub => pathname === sub.href);
@@ -361,6 +362,17 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
           })}
         </div>
       )}
+      <div className="mobile-bottom-nav md:hidden fixed inset-x-0 bottom-0 z-[55] grid grid-cols-4 border-t border-gray-300 bg-white shadow-[0_-4px_12px_rgba(0,0,0,.08)]">
+        {[
+          { href: '/', label: 'Home', icon: LayoutDashboard },
+          { href: '/pos', label: 'POS', icon: CreditCard },
+          { href: '/inventory', label: 'Stock', icon: Package },
+        ].filter(item => canVisit(access, item.href)).map(item => {
+          const active = pathname === item.href;
+          return <Link key={item.href} href={item.href} onClick={() => { setMobileOpen(false); playPop(); }} aria-current={active ? 'page' : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium ${active ? 'text-brand' : 'text-gray-600'}`}><item.icon className="h-5 w-5" />{item.label}</Link>;
+        })}
+        <button type="button" onClick={() => setMobileOpen(value => !value)} aria-expanded={mobileOpen} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium ${mobileOpen ? 'text-brand' : 'text-gray-600'}`}><Menu className="h-5 w-5" />More</button>
+      </div>
     </nav>
   );
 }

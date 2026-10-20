@@ -22,6 +22,7 @@ function upgrade(db){
   for(const table of ['users','suppliers','inventory_items','shifts','sales','journal_entries','chart_of_accounts','locations','customers','treasury','orders'])add(table,'business_id','INTEGER NOT NULL DEFAULT 1');
   add('businesses','registration_plan',"TEXT NOT NULL DEFAULT 'basic'");
   db.exec('CREATE TABLE IF NOT EXISTS access_roles(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,name TEXT NOT NULL,permissions_json TEXT NOT NULL,UNIQUE(business_id,name)); CREATE TABLE IF NOT EXISTS user_locations(business_id INTEGER NOT NULL,user_id INTEGER NOT NULL,location_id INTEGER NOT NULL,PRIMARY KEY(user_id,location_id));');
+  add('access_roles','is_builtin','INTEGER NOT NULL DEFAULT 0');
   add('users','theme_color','TEXT');add('businesses','created_by','INTEGER');add('businesses','created_at','TEXT');
   add('subscriptions','recorded_payment_method','TEXT');add('subscriptions','payment_reference','TEXT');
   for(const column of ['country','state','city','zip_code','landmark','locale','logo_url','website','contact_number','alternate_contact_number'])add('businesses',column,'TEXT');
@@ -40,8 +41,8 @@ function upgrade(db){
   require('./operations-schema').upgrade(db);
   const fields={
     users:{username:'TEXT',is_owner:'INTEGER DEFAULT 0',access_role_id:'INTEGER'},
-    inventory_items:{location_id:'INTEGER DEFAULT 1',category_id:'INTEGER',unit_id:'INTEGER',brand_id:'INTEGER',brand:'TEXT',barcode:'TEXT',sku:'TEXT',image_url:'TEXT',previous_unit_price:'REAL',previous_discount:'REAL'},
-    locations:{active:'INTEGER DEFAULT 1',payment_options:'TEXT'},customers:{active:'INTEGER DEFAULT 1'},
+    inventory_items:{location_id:'INTEGER DEFAULT 1',category_id:'INTEGER',unit_id:'INTEGER',brand_id:'INTEGER',brand:'TEXT',barcode:'TEXT',barcode_type:'TEXT NOT NULL DEFAULT \'code128\'',sku:'TEXT',image_url:'TEXT',previous_unit_price:'REAL',previous_discount:'REAL',track_serial_numbers:'INTEGER NOT NULL DEFAULT 0',serial_number:'TEXT',chassis_number:'TEXT',color:'TEXT',lot_number:'TEXT',not_for_selling:'INTEGER NOT NULL DEFAULT 0'},
+    locations:{active:'INTEGER DEFAULT 1',payment_options:'TEXT'},customers:{active:'INTEGER DEFAULT 1',contact_type:"TEXT NOT NULL DEFAULT 'customer'",entity_type:"TEXT NOT NULL DEFAULT 'individual'",contact_id:'TEXT',customer_group:'TEXT',currency_code:"TEXT NOT NULL DEFAULT 'KES'",alternate_phone:'TEXT',landline:'TEXT',email:'TEXT',assigned_to:'TEXT',account_type:'TEXT',tax_number:'TEXT',address_line1:'TEXT',address_line2:'TEXT',city:'TEXT',state:'TEXT',country:'TEXT',zip_code:'TEXT',opening_balance:'REAL NOT NULL DEFAULT 0',payment_term_value:'INTEGER',payment_term_unit:'TEXT',landmark:'TEXT',street_name:'TEXT',building_number:'TEXT',additional_number:'TEXT',id_number:'TEXT',...Object.fromEntries(Array.from({length:10},(_,i)=>[`custom_field_${i+1}`,'TEXT']))},
     shifts:{user_id:'INTEGER',closing_expected:'REAL DEFAULT 0',closing_actual:'REAL DEFAULT 0',variance:'REAL DEFAULT 0',notes:'TEXT'},
     sales:{created_by:'INTEGER',location_id:'INTEGER DEFAULT 1',customer_id:'INTEGER',notes:'TEXT'},
     sale_items:{item_name:'TEXT',unit_cost:'REAL',net_revenue:'REAL'},
@@ -53,6 +54,7 @@ function upgrade(db){
   };
   for(const[table,columns]of Object.entries(fields))for(const[name,type]of Object.entries(columns))add(table,name,type);
   add('discounts','customer_restriction_id','INTEGER');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_business_contact ON customers(business_id,contact_id)');
   db.exec('CREATE TABLE IF NOT EXISTS sales_document_events(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,document_id INTEGER NOT NULL,user_id INTEGER,action TEXT NOT NULL,details_json TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
   db.exec('CREATE TABLE IF NOT EXISTS purchase_payments(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,order_id INTEGER NOT NULL,amount REAL NOT NULL,method TEXT NOT NULL,treasury_id INTEGER,cash_account_id INTEGER NOT NULL,reference_no TEXT,notes TEXT,created_by INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE TABLE IF NOT EXISTS purchase_events(id INTEGER PRIMARY KEY,business_id INTEGER NOT NULL,order_id INTEGER NOT NULL,user_id INTEGER,action TEXT NOT NULL,details_json TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
   const columns=db.prepare('PRAGMA table_info(chart_of_accounts)').all();

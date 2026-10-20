@@ -22,6 +22,12 @@ export interface InventoryItem {
   location_id?: number;
   location_name?: string;
   image_url?: string;
+  track_serial_numbers?: boolean | number;
+  serial_number?: string;
+  chassis_number?: string;
+  color?: string;
+  lot_number?: string;
+  not_for_selling?: boolean | number;
 }
 
 interface InventoryTableProps {
@@ -109,13 +115,14 @@ export default function InventoryTable({
     const badge = critical ? 'bg-red-50 text-red-700' : low ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700';
     const label = critical ? 'Critical' : low ? 'Low' : 'OK';
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <div className="w-16 h-1.5 bg-gray-100 rounded-sm overflow-hidden">
           <div className={`h-full rounded-sm stock-bar-fill ${color}`} style={{ width: `${pct}%` }} />
         </div>
         <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${badge} ${critical ? 'low-stock-pulse' : ''}`}>
           {label}
         </span>
+        {Boolean(item.not_for_selling)&&<span className="text-xs px-2 py-0.5 rounded-sm bg-gray-100 text-gray-700 font-medium">Not for sale</span>}
       </div>
     );
   }
