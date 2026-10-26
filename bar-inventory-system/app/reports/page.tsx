@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { Download, TrendingUp, BarChart2, FileSpreadsheet } from '../components/TextMark';
 import StockReports from '../components/reports/StockReports';
+import DailySalesWhatsApp from '../components/reports/DailySalesWhatsApp';
+import SalesGroupsManager from '../components/reports/SalesGroupsManager';
 import Navbar from '../components/Navbar';
 import {useAccess} from '../components/AccessBoundary';
 import {canAct} from '../lib/access';
@@ -39,6 +41,7 @@ interface SizeGroup {
   count: number;
   total: number;
   avg_amount: number;
+  range_label: string;
 }
 
 const GROUP_COLORS: Record<string, string> = {
@@ -47,13 +50,6 @@ const GROUP_COLORS: Record<string, string> = {
   Medium: '#BA7517',
   Large: '#D85A30',
 };
-const GROUP_RANGES: Record<string, string> = {
-  Micro: 'KES 0–50',
-  Small: 'KES 51–500',
-  Medium: 'KES 501–1000',
-  Large: 'KES 1001+',
-};
-
 type Period = '7' | '14' | '30';
 type ProfitReport = {
   items: Array<{ item_id: number; item_name: string; units_sold: number; net_revenue: number; recorded_cost: number; missing_cost_lines: number; gross_profit: number | null }>;
@@ -105,7 +101,7 @@ export default function ReportsPage() {
       const [usageRes, trendRes, groupsRes, profitRes] = await Promise.all([
         reportsApi.getUsage(parseInt(period)),
         reportsApi.getSalesTrend(parseInt(period)),
-        reportsApi.getMpesaGroups(parseInt(period)), // hits /reports/sale-size-groups
+        reportsApi.getSaleSizeGroups(parseInt(period)),
         reportsApi.getProfit(parseInt(period)),
       ]);
       if(version!==reportVersion.current)return;setProfit(profitRes.data);
@@ -138,7 +134,7 @@ export default function ReportsPage() {
       const [usageRes, trendRes, groupsRes, profitRes] = await Promise.all([
         reportsApi.getUsage(days),
         reportsApi.getSalesTrend(days),
-        reportsApi.getMpesaGroups(days),
+        reportsApi.getSaleSizeGroups(days),
         reportsApi.getProfit(days),
       ]);
 
@@ -218,6 +214,7 @@ export default function ReportsPage() {
         </div>
 
         <StockReports days={Number(period)}/>
+        <DailySalesWhatsApp />
         {/* Summary metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -363,12 +360,15 @@ export default function ReportsPage() {
 
             {/* Sale size group detail */}
             <div className="bg-white border border-gray-200 rounded-sm p-5">
-              <h2 className="text-sm font-medium mb-4">Sale Size Groups Breakdown</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-sm font-medium">Sale Size Groups Breakdown</h2>
+                <SalesGroupsManager onSaved={loadReports} />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {groups.map((g) => (
                   <div key={g.price_group} className="border border-gray-200 rounded-sm p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-gray-500">{GROUP_RANGES[g.price_group] || ''}</span>
+                      <span className="text-xs text-gray-500">{g.range_label}</span>
                       <span className="w-2.5 h-2.5 rounded-sm" style={{ background: GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)' }} />
                     </div>
                     <div className="text-2xl font-semibold" style={{ color: GROUP_COLORS[g.price_group] || 'var(--chart-accent, #354f43)' }}>{g.count}</div>

@@ -14,6 +14,7 @@ Successful imports and completed sales now show a green **DONE!** toast at the t
 
 | Report change | Implemented behavior | Evidence or remaining verification |
 |---|---|---|
+| Sales groups and WhatsApp daily report | Owners can add, rename and remove 2–12 sale-value groups; saved groups drive the breakdown and the reviewable daily WhatsApp message. WhatsApp still requires choosing a recipient and tapping Send; scheduled automatic sending is not configured. | Shared grouping/validation tests, desktop operations tests and frontend typecheck passed; web end-to-end interaction remains unverified |
 | Financial-route authentication and tenant isolation | Authenticated admin access, scoped accounts/settings/journals/treasury/shifts and current account-status checks | HTTP audit passed authorization and cross-shop checks |
 | Desktop authentication and password exposure | Authenticated local sessions, role checks, current-user redaction | Desktop audit passed; broader penetration review remains outside these checks |
 | Excel validation, timeout, categories and retries | Batch inserts, optional/long categories, 120-second timeout, replay protection and SKU skipping | All 1,590 workbook rows imported, including 836 blank categories; repeat request replayed; independent repeat skipped all 1,590 SKUs |

@@ -66,7 +66,7 @@ export default function ReportsPage() {
       const [usageRes, trendRes, groupsRes] = await Promise.all([
         reportsApi.getUsage(parseInt(period, 10)),
         reportsApi.getSalesTrend(parseInt(period, 10)),
-        reportsApi.getMpesaGroups(), // still named this in lib/api.ts; hits /sale-size-groups
+        reportsApi.getSaleSizeGroups(),
       ]);
       setUsage(usageRes.data as UsageRow[]);
       setTrend((trendRes.data as TrendRow[]).map((r) => ({
@@ -100,7 +100,7 @@ export default function ReportsPage() {
       const [usageRes, trendRes, groupsRes] = await Promise.all([
         reportsApi.getUsage(days),
         reportsApi.getSalesTrend(days),
-        reportsApi.getMpesaGroups(),
+        reportsApi.getSaleSizeGroups(),
       ]);
 
       const ws1 = XLSX.utils.json_to_sheet(usageRes.data.map((i: UsageRow) => ({

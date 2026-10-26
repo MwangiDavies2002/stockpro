@@ -135,6 +135,7 @@ function apiRequest(db,request){
     const business=own('businesses',bid),stored=JSON.parse(business.settings_json||'{}');
     if(method==='get')return{...stored,businessName:business.name||stored.businessName||'',startDate:stored.startDate||'',currency:business.currency||stored.currency||'KES',logoUrl:stored.logoUrl||'',timezone:business.timezone||stored.timezone||'Africa/Nairobi',stockAccountingMethod:stored.stockAccountingMethod||'weighted_average',financialYearStartMonth:Number(stored.financialYearStartMonth||1)};
     const next={...stored,...body};
+    if(body.saleSizeGroups!==undefined)next.saleSizeGroups=require('../bar-inventory-backend/src/utils/stockReport').validateSaleSizeGroups(body.saleSizeGroups);
     const name=String(body.businessName??business.name).trim(),currency=String(body.currency??business.currency).trim().toUpperCase(),timezone=String(body.timezone??business.timezone).trim(),month=Number(body.financialYearStartMonth??stored.financialYearStartMonth??1),method=String(body.stockAccountingMethod??stored.stockAccountingMethod??'weighted_average');
     if(!name||name.length>180)fail('Business name is required and must be 180 characters or fewer');
     if(!/^[A-Z]{3}$/.test(currency))fail('Choose a valid three-letter currency code');

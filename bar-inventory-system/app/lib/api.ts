@@ -147,7 +147,7 @@ const reportsApi = {
   getProfit: (days: number) => api.get('/reports/profit', { params: { days } }),
   getStock: () => api.get('/reports/stock'),
   getUsage: (days?: number) => api.get('/reports/usage', { params: { days } }),
-  getMpesaGroups: (days=30) => api.get('/reports/sale-size-groups',{params:{days}}),
+  getSaleSizeGroups: (days=30) => api.get('/reports/sale-size-groups',{params:{days}}),
   getSalesTrend: (days: number) =>
     api.get('/reports/sales-trend', { params: { days } }),
   getHourlySales: (days: number) =>
@@ -406,4 +406,3 @@ export interface DiscountPayload {
 
 export { stockTransfersApi,expensesApi,inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
 export default api;
-

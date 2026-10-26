@@ -64,6 +64,19 @@ test('quotation converts to invoice and only invoice deducts stock', async () =>
   assert.equal((await run('SELECT * FROM sales')).rows.length, 1);
 });
 
+test('zero stock blocks POS and issued invoices but permits quotations and draft review', async () => {
+  await run('UPDATE inventory_items SET stock=0 WHERE id=1');
+  await assert.rejects(invoke(salesDocuments.create, payload('pos')), /Insufficient stock/);
+  await assert.rejects(invoke(salesDocuments.create, payload('invoice')), /Insufficient stock/);
+  const draft = await invoke(salesDocuments.create, { ...payload('invoice'), status: 'draft' });
+  assert.equal(draft.code, 201);
+  await assert.rejects(invoke(salesDocuments.issue, { payment: { amount: 0 } }, { id: draft.result.id }), /Insufficient stock/);
+  const quote = await invoke(salesDocuments.create, payload('quotation'));
+  assert.equal(quote.code, 201);
+  assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock, 0);
+  assert.equal((await run('SELECT * FROM sales')).rows.length, 0);
+});
+
 test('credit note must reference an invoice and reverses stock', async () => {
   const invoice = await invoke(salesDocuments.create, payload('invoice'));
   assert.equal((await run('SELECT stock FROM inventory_items WHERE id=1')).rows[0].stock, 8);

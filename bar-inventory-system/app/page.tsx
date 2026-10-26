@@ -1,9 +1,10 @@
 'use client';
-import {canVisit} from './lib/access';
+import {canAct, canVisit} from './lib/access';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import * as Dialog from '@radix-ui/react-dialog';
 import Cookies from 'js-cookie';
 import {
   Package, TrendingUp, AlertTriangle, CreditCard,
@@ -57,6 +58,7 @@ const GROUP_META: Record<string, { range: string; color: string }> = {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: number; name: string; role: string; email: string; access?: any } | null>(null);
+  const [sellMenuOpen, setSellMenuOpen] = useState(false);
 
   const [stock, setStock]   = useState<StockRow[]>([]);
   const [usage, setUsage]   = useState<UsageRow[]>([]);
@@ -94,7 +96,7 @@ export default function DashboardPage() {
           reportsApi.getStock(),
           reportsApi.getUsage(14),
           reportsApi.getSalesTrend(14),
-          reportsApi.getMpesaGroups(), // hits /reports/sale-size-groups
+          reportsApi.getSaleSizeGroups(),
           reportsApi.getHourlySales(3),
         ]);
         setStock(stockRes.data);
@@ -165,6 +167,11 @@ export default function DashboardPage() {
       up: true,
     },
   ];
+  const salesChoices = [
+    { href: '/pos', title: 'POS — instant sale', detail: 'Take payment now and update stock immediately.' },
+    { href: '/sales-ar/invoice?new=1', title: 'Invoice', detail: 'Create an invoice and choose to issue now or save as a draft.' },
+    { href: '/sales-ar/quotation?new=1', title: 'Quotation', detail: 'Prepare a quote without recording a sale or reducing stock.' },
+  ].filter((choice) => canVisit(user?.access, choice.href) && canAct(user?.access, 'sales', 'create'));
 
   if (!user) {
     return <div className="min-h-screen bg-gray-50" />;
@@ -177,14 +184,35 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <header className="border-b border-gray-300 pb-5"><p className="text-sm text-gray-500 mb-2">Your business today</p><h1 className="text-3xl">Sales and stock</h1><p className="mt-2 text-sm text-gray-600">Track sales, check stock levels, and plan your next order.</p></header>
-        <section aria-label="Common tasks" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 className="text-base font-semibold">What would you like to do?</h2><p className="text-sm text-gray-500">Shortcuts to everyday work</p></div><div className="flex flex-wrap gap-2 text-sm">{outOfStock.length>0&&<Link href="/inventory?status=out" className="rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800">{outOfStock.length} out of stock</Link>}{lowStock.length>0&&<Link href="/inventory?status=low" className="rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">{lowStock.length} low stock</Link>}</div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
-          {href:'/pos',title:'Sell now',detail:'Open or continue your shift',accent:'bg-emerald-700'},
+        <section aria-label="Common tasks" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 className="text-base font-semibold">What would you like to do?</h2><p className="text-sm text-gray-500">Shortcuts to everyday work</p></div><div className="flex flex-wrap gap-2 text-sm">{outOfStock.length>0&&<Link href="/inventory?status=out" className="rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800">{outOfStock.length} out of stock</Link>}{lowStock.length>0&&<Link href="/inventory?status=low" className="rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">{lowStock.length} low stock</Link>}</div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {salesChoices.length > 0 && <button type="button" onClick={() => setSellMenuOpen(true)} className="group rounded-sm border border-gray-200 bg-white p-4 text-left transition hover:border-brand hover:shadow-sm"><span className="inline-flex rounded-sm bg-emerald-700 px-3 py-1.5 text-sm font-semibold text-white">Sell now</span><span className="mt-2 block text-sm text-gray-600">Choose POS, invoice or quotation</span></button>}
+          {[
           {href:'/purchases',title:'Receive a purchase',detail:'Record supplier goods and bills',accent:'bg-slate-800'},
           {href:'/stock-transfers',title:'Transfer stock',detail:'Move items to another shop',accent:'bg-slate-800'},
           {href:'/stock-adjustments',title:'Adjust stock',detail:'Record a count, damage or wastage',accent:'bg-slate-800'},
           {href:'/expenses',title:'Record an expense',detail:'Choose a kind and linked ledger',accent:'bg-slate-800'},
           {href:'/inventory',title:'Manage inventory',detail:'Search products and stock status',accent:'bg-slate-800'},
         ].filter(task=>canVisit(user.access,task.href)).map(task=><Link key={task.href} href={task.href} className="group rounded-sm border border-gray-200 bg-white p-4 transition hover:border-brand hover:shadow-sm"><span className={`inline-flex rounded-sm px-3 py-1.5 text-sm font-semibold text-white ${task.accent}`}>{task.title}</span><span className="mt-2 block text-sm text-gray-600">{task.detail}</span></Link>)}</div></section>
+        <Dialog.Root open={sellMenuOpen} onOpenChange={setSellMenuOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+            <Dialog.Content className="fixed left-1/2 top-1/2 z-[60] w-[calc(100%_-_2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 space-y-4 bg-white p-6 shadow-xl">
+              <Dialog.Title className="text-xl font-semibold">Choose how to sell</Dialog.Title>
+              <Dialog.Description className="text-sm text-gray-600">StockPro checks available stock before recording a sale. Quotations do not reduce stock.</Dialog.Description>
+              <div className="space-y-2">
+                {salesChoices.map((choice) => (
+                  <Dialog.Close asChild key={choice.href}>
+                    <Link href={choice.href} className="block rounded-sm border p-3 transition hover:border-brand hover:bg-gray-50">
+                      <span className="block font-medium">{choice.title}</span>
+                      <span className="mt-1 block text-sm text-gray-600">{choice.detail}</span>
+                    </Link>
+                  </Dialog.Close>
+                ))}
+              </div>
+              <Dialog.Close className="rounded-sm border px-4 py-2 text-sm">Cancel</Dialog.Close>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         {loading ? <LoadingSheet label="Loading sales and stock" /> : <>
         {/* Metric cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,5 +1,6 @@
 const { query } = require('../config/db');
 const { getBusinessId } = require('../utils/tenant');
+const { validateSaleSizeGroups } = require('../utils/stockReport');
 
 function parseSettings(value) {
   try { return typeof value === 'string' ? JSON.parse(value) : value || {}; } catch { return {}; }
@@ -92,6 +93,7 @@ exports.update = async (req, res, next) => {
 
     const config = { ...body };
     for (const key of ['businessName','startDate','currency','logoUrl','timezone','stockAccountingMethod','financialYearStartMonth']) delete config[key];
+    if (body.saleSizeGroups !== undefined) config.saleSizeGroups = validateSaleSizeGroups(body.saleSizeGroups);
     config.transactionEditDays = editDays;
     config.defaultProfitPercent = profit;
     config.currencyPrecision = currencyPrecision;

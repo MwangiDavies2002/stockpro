@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 const Journal = require('../models/Journal');
 const stockReport=require('../utils/stockReport'),operationsReport=require('./operationsReportController');
 async function reportingWindow(req,defaultDays=30){const{bid,business,window}=await operationsReport.context({...req,query:{...req.query,days:req.query.days??defaultDays}});const range=stockReport.range(window);return{bid,business,window,since:new Date(range.since),until:new Date(range.until)};}
-async function series(req,kind,days){const w=await reportingWindow(req,days);const{rows}=await query('SELECT total,created_at FROM sales WHERE business_id=? AND created_at>=? AND created_at<?',[w.bid,w.since,w.until]);return stockReport.salesSeries(rows,w.window.timezone,kind);}
+async function series(req,kind,days){const w=await reportingWindow(req,days);const{rows}=await query('SELECT total,created_at FROM sales WHERE business_id=? AND created_at>=? AND created_at<?',[w.bid,w.since,w.until]);let saleGroups;if(kind==='size'){const settingsRows=await query('SELECT settings_json FROM businesses WHERE id=?',[w.bid]);const value=settingsRows.rows[0]?.settings_json,settings=typeof value==='string'?JSON.parse(value):value||{};saleGroups=stockReport.validateSaleSizeGroups(settings.saleSizeGroups===undefined?stockReport.DEFAULT_SALE_SIZE_GROUPS:settings.saleSizeGroups);}return stockReport.salesSeries(rows,w.window.timezone,kind,saleGroups,w.business.currency||'KES');}
 const { getBusinessId } = require('../utils/tenant');
 
 async function getProfit(req, res, next) {
@@ -64,10 +64,7 @@ async function getStock(req, res, next) {
 async function getUsage(req,res,next){try{const report=await operationsReport.stockData(req);res.json(report.items.map(i=>({...i,units_sold:i.net_units_sold})).sort((a,b)=>b.units_sold-a.units_sold||b.revenue-a.revenue));}catch(e){next(e);}}
 
 /* GET /api/reports/sale-size-groups */
-/**
- * Report: sales bucketed by transaction size (Micro/Small/Medium/Large),
- * derived from the real sales table.
- */
+/** Report: sales grouped by the business-configured transaction amount ranges. */
 async function getSaleSizeGroups(req,res,next){try{res.json(await series(req,'size',30));}catch(e){next(e);}}
 async function getSalesTrend(req,res,next){try{res.json(await series(req,'day',14));}catch(e){next(e);}}
 async function getHourlySales(req,res,next){try{res.json(await series(req,'hour',3));}catch(e){next(e);}}
