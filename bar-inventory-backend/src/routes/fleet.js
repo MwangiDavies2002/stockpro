@@ -1,0 +1,10 @@
+const router=require('express').Router();
+const {authenticate}=require('../middleware/auth');
+const controller=require('../controllers/fleetController');
+router.use(authenticate);
+router.get('/dashboard',controller.dashboard);
+router.get('/:resource',controller.collection);
+router.post('/:resource',controller.collection);
+router.put('/:resource/:id',controller.collection);
+router.delete('/:resource/:id',controller.collection);
+module.exports=router;

@@ -33,6 +33,14 @@ exports.createTreasury=async(req,res)=>{res.status(201);return transaction(req,r
   if(paymentSetting&&req.body.status&&req.body.status!=='active') fail('A payment account must be active');
   const opening=amount(req.body.opening_balance??0,false);
   let linked=Number(req.body.linked_gl_account)||null;
+  if(req.body.autoCreateGlAccount===true){
+    const type=data.type==='Bank'?'Bank':data.type==='Mobile Money'?'Mobile money':'Cash';
+    const policy=require('../utils/accountPolicy');
+    const accounts=(await client.query('SELECT * FROM chart_of_accounts WHERE business_id=?',[businessId])).rows;
+    const account=policy.normalize({account_name:name,account_type:'Assets',account_subtype:'Cash and cash equivalents',detail_type:type,normal_balance:'Debit',active:true},accounts);
+    const created=await client.query('INSERT INTO chart_of_accounts(business_id,account_code,account_name,parent_id,account_type,account_subtype,detail_type,normal_balance,active,details) VALUES (?,?,?,?,?,?,?,?,?,?)',[businessId,account.account_code,account.account_name,account.parent_id,account.account_type,account.account_subtype,account.detail_type,account.normal_balance,account.active,JSON.stringify({description:`Linked Treasury account: ${name}`})]);
+    linked=created.insertId;
+  }
   if(!linked) fail('Select an existing Chart of Accounts asset account');
   await activeAccount(client,linked,businessId);
   const {rows:[gl]}=await client.query('SELECT * FROM chart_of_accounts WHERE id=? AND business_id=? FOR UPDATE',[linked,businessId]);

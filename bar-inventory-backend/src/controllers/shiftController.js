@@ -1,5 +1,32 @@
 const { query, getClient } = require('../config/db');
 const { getBusinessId } = require('../utils/tenant');
+const DEFAULT_DURATION_HOURS=12;
+function durationHours(value){const n=Number(value);return Number.isInteger(n)&&n>=1&&n<=72?n:DEFAULT_DURATION_HOURS;}
+function hoursFromSettings(value){try{const settings=typeof value==='string'?JSON.parse(value||'{}'):value||{};return durationHours(settings.shiftDurationHours);}catch{return DEFAULT_DURATION_HOURS;}}
+async function computeCashSalesTotal(query,shift,businessId){
+  const result=await query(`SELECT COALESCE(SUM(CASE WHEN s.payment_method='cash' THEN s.total WHEN s.payment_method='mixed' THEN COALESCE((SELECT SUM(p.amount) FROM sales_documents d JOIN sales_document_payments p ON p.document_id=d.id WHERE d.sale_id=s.id AND d.business_id=s.business_id AND p.method='cash'),0) ELSE 0 END),0) AS cash_total FROM sales s WHERE s.created_by=? AND s.business_id=? AND ${shift.sales_start_id==null?'s.created_at >= ?':'s.id > ?'}`,[shift.user_id,businessId,shift.sales_start_id??shift.opened_at]);
+  return Number(result.rows[0]?.cash_total||0);
+}
+async function closeExpired(query,userId,businessId){
+  const found=await query("SELECT * FROM shifts WHERE user_id=? AND business_id=? AND status='open' LIMIT 1 FOR UPDATE",[userId,businessId]);
+  const shift=found.rows[0];if(!shift)return{shift:null,autoClosed:false};
+  const opened=shift.opened_at instanceof Date?shift.opened_at.getTime():new Date(String(shift.opened_at).replace(' ','T')+'Z').getTime();
+  let hours=Number(shift.duration_hours);if(!Number.isInteger(hours)){const{rows}=await query('SELECT settings_json FROM businesses WHERE id=?',[businessId]);hours=hoursFromSettings(rows[0]?.settings_json);}hours=durationHours(hours);if(!Number.isFinite(opened)||Date.now()<opened+hours*3600000)return{shift,autoClosed:false};
+  const expected=Number(shift.opening_float)+await computeCashSalesTotal(query,shift,businessId);
+  await query("UPDATE shifts SET closing_expected=?,closing_actual=NULL,variance=NULL,status='closed',closed_at=NOW(),notes='Automatically closed after configured duration; cash count not recorded' WHERE id=? AND business_id=? AND status='open'",[expected,shift.id,businessId]);
+  return{shift:null,autoClosed:true};
+}
+async function autoCloseExpiredShifts(){
+  const {rows}=await query("SELECT * FROM shifts WHERE status='open'");let closed=0;
+  for(const shift of rows){
+    const opened=shift.opened_at instanceof Date?shift.opened_at.getTime():new Date(String(shift.opened_at).replace(' ','T')+'Z').getTime();
+    const businessId=Number(shift.business_id);let hours=Number(shift.duration_hours);if(!Number.isInteger(hours)){const settings=await query('SELECT settings_json FROM businesses WHERE id=?',[businessId]);hours=hoursFromSettings(settings.rows[0]?.settings_json);}if(!Number.isFinite(opened)||Date.now()<opened+durationHours(hours)*3600000)continue;
+    const expected=Number(shift.opening_float)+await computeCashSalesTotal(query,shift,businessId);
+    const result=await query("UPDATE shifts SET closing_expected=?,closing_actual=NULL,variance=NULL,status='closed',closed_at=NOW(),notes='Automatically closed after configured duration; cash count not recorded' WHERE id=? AND business_id=? AND status='open'",[expected,shift.id,businessId]);
+    if(result.rowCount)closed++;
+  }
+  return closed;
+}
 
 /* POST /api/shifts */
 /**
@@ -17,20 +44,20 @@ async function open(req, res, next) {
 
     await query('BEGIN');
     await query('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[req.user.id,getBusinessId(req)]);
-    const existing = await query(
-      "SELECT id FROM shifts WHERE user_id=? AND status='open'",
-      [req.user.id]
-    );
+    await closeExpired(query,req.user.id,getBusinessId(req));
+    const existing = await query("SELECT id FROM shifts WHERE user_id=? AND business_id=? AND status='open'",[req.user.id,getBusinessId(req)]);
     if (existing.rows.length) {
       await query('ROLLBACK');
       return res.status(400).json({ message: 'You already have an open shift' });
     }
 
+    const {rows:businessRows}=await query('SELECT settings_json FROM businesses WHERE id=?',[getBusinessId(req)]);
+    const duration=hoursFromSettings(businessRows[0]?.settings_json);
     const boundary=await query('SELECT COALESCE(MAX(id),0) id FROM sales WHERE created_by=? AND business_id=?',[req.user.id,getBusinessId(req)]);
-    const { insertId } = await query(
-      'INSERT INTO shifts (business_id,user_id, opening_float, status,sales_start_id) VALUES (?,?,?,?,?)',
-      [getBusinessId(req), req.user.id, openingFloat, 'open',boundary.rows[0].id]
-    );
+    let inserted;
+    try{inserted=await query('INSERT INTO shifts (business_id,user_id, opening_float, status,sales_start_id,duration_hours) VALUES (?,?,?,?,?,?)',[getBusinessId(req),req.user.id,openingFloat,'open',boundary.rows[0].id,duration]);}
+    catch(err){if(err.code!=='ER_BAD_FIELD_ERROR'||!String(err.message).includes('duration_hours'))throw err;inserted=await query('INSERT INTO shifts (business_id,user_id, opening_float, status,sales_start_id) VALUES (?,?,?,?,?)',[getBusinessId(req),req.user.id,openingFloat,'open',boundary.rows[0].id]);}
+    const insertId=inserted.insertId;
     const { rows } = await query('SELECT * FROM shifts WHERE id=?', [insertId]);
     await query('COMMIT');
     res.status(201).json(rows[0]);
@@ -43,13 +70,19 @@ async function open(req, res, next) {
  * Get the logged-in user's currently open shift, if any.
  */
 async function current(req, res, next) {
+  const client=await getClient();const run=(...args)=>client.query(...args);
   try {
-    const { rows } = await query(
+    await run('BEGIN');
+    await run('SELECT id FROM users WHERE id=? AND business_id=? FOR UPDATE',[req.user.id,getBusinessId(req)]);
+    const expiry=await closeExpired(run,req.user.id,getBusinessId(req));
+    const { rows } = await run(
       "SELECT * FROM shifts WHERE user_id=? AND status='open' LIMIT 1",
       [req.user.id]
     );
-    res.json(rows[0] || null);
-  } catch (err) { next(err); }
+    await run('COMMIT');
+    res.json(rows[0]||null);
+  } catch (err) { await run('ROLLBACK');next(err); }
+  finally{client.release();}
 }
 
 /* PATCH /api/shifts/:id/close */
@@ -81,13 +114,7 @@ async function close(req, res, next) {
       return res.status(400).json({ message: 'Shift already closed' });
     }
 
-    const cashSalesRes = await query(
-      `SELECT COALESCE(SUM(CASE WHEN s.payment_method='cash' THEN s.total WHEN s.payment_method='mixed' THEN COALESCE((SELECT SUM(p.amount) FROM sales_documents d JOIN sales_document_payments p ON p.document_id=d.id WHERE d.sale_id=s.id AND d.business_id=s.business_id AND p.method='cash'),0) ELSE 0 END),0) AS cash_total
-       FROM sales s
-       WHERE s.created_by=? AND s.business_id=? AND ${shift.sales_start_id==null?'s.created_at >= ?':'s.id > ?'}`,
-      [shift.user_id, getBusinessId(req), shift.sales_start_id??shift.opened_at]
-    );
-    const cashSalesTotal = Number(cashSalesRes.rows[0].cash_total);
+    const cashSalesTotal = await computeCashSalesTotal(query,shift,getBusinessId(req));
     const expected = Number(shift.opening_float) + cashSalesTotal;
     const variance = Number(actualCash) - expected;
 
@@ -130,4 +157,4 @@ async function getAll(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { open, current, close, getAll };
+module.exports = { open, current, close, getAll, autoCloseExpiredShifts };

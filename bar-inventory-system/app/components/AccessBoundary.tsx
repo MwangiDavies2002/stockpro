@@ -10,7 +10,7 @@ import SupportBanner from './SupportBanner';
 import {AccountTheme} from './ThemeProvider';
 const Context=createContext<{user:any;access:Access|undefined}>({user:null,access:undefined});
 export const useAccess=()=>useContext(Context);
-const publicPages=['/login','/register','/register-business','/terms','/privacy'];
+const publicPages=['/login','/register','/register-business','/terms','/privacy','/marketplace'];
 export default function AccessBoundary({children}:{children:React.ReactNode}){
  const pathname=usePathname().replace(/\/$/,'')||'/';const [state,setState]=useState<{path:string;user:any;error:string}>({path:'',user:null,error:''});
  const publicPage=publicPages.includes(pathname);

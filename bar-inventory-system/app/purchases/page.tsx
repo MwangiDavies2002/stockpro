@@ -11,7 +11,7 @@ import PurchaseView from '../components/purchases/PurchaseView';
 import { downloadCsv } from '../lib/csv';
 import { authApi, inventoryApi, locationsApi, ordersApi, suppliersApi, referenceDataApi, treasuryApi } from '../lib/api';
 
-type Product = { id: number; name: string; sku?: string; barcode?: string; stock: number; cost: number; price: number; previous_unit_price?: number; previous_discount?: number };
+type Product = { id: number; name: string; sku?: string; barcode?: string; stock: number; threshold?: number; cost: number; price: number; previous_unit_price?: number; previous_discount?: number };
 type Line = { product: Product; quantity: number; costBeforeDiscount: number; discountPercent: number; taxPercent: number; profitMargin: number; sellingPrice: number; accountType: string; lotNumber?: string };
 type Named = { id: number; name: string; active?: boolean; phone?: string; email?: string; address?: string };
 type RefRow = { id: number; name: string; short_name?: string; parent_name?: string };
@@ -21,6 +21,12 @@ function amounts(line: Line) {
   const after = round(line.costBeforeDiscount * (1 - line.discountPercent / 100), 4);
   const subtotal = round(line.quantity * after);
   return { after, subtotal, total: round(subtotal + round(subtotal * line.taxPercent / 100)), taxedUnit: after * (1 + line.taxPercent / 100) };
+}
+function createLine(product: Product, quantity = 1): Line {
+  const line: Line = { product, quantity, costBeforeDiscount: Number(product.previous_unit_price ?? product.cost), discountPercent: Number(product.previous_discount ?? 0), taxPercent: 0, profitMargin: 0, sellingPrice: Number(product.price), accountType: 'asset' };
+  const cost = amounts(line).taxedUnit;
+  line.profitMargin = cost > 0 ? (line.sellingPrice / cost - 1) * 100 : 0;
+  return line;
 }
 const field = 'w-full rounded-sm border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500';
 const button = 'inline-flex items-center justify-center gap-2 rounded-sm border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50';
@@ -66,6 +72,7 @@ export default function PurchasesPage() {
   const inlineRequest=useRef('');useEffect(()=>{inlineRequest.current=crypto.randomUUID();},[modal]);
   const [recent, setRecent] = useState<any[]>([]);
   const [initialError, setInitialError] = useState('');
+  const [restockingLowStock, setRestockingLowStock] = useState(false);
 
   async function loadReferenceData(nextLocationId = locationId) {
     if (!nextLocationId) return;
@@ -84,11 +91,17 @@ export default function PurchasesPage() {
       try {
         const me = await authApi.me();
         if (!canVisit(me.data.access,window.location.pathname)) { router.replace('/pos'); return; }
-        const [s, l, o, t] = await Promise.all([suppliersApi.getAll(), locationsApi.getAll(), ordersApi.getAll(), treasuryApi.getAll().catch(()=>({data:[]}))]);
+        const [s, l, t] = await Promise.all([suppliersApi.getAll(), locationsApi.getAll(), treasuryApi.getAll().catch(()=>({data:[]}))]);
         if (!live) return;
         setUser(me.data); setTreasury(t.data); setSuppliers(s.data); setLocations(l.data.filter((x: Named) => x.active !== false && Number(x.active) !== 0));
-        setRecent(o.data.filter((x: any) => x.transaction_type !== 'opening_stock'));
-        const itemId=new URLSearchParams(window.location.search).get('itemId');if(itemId){const p=await inventoryApi.getOne(Number(itemId));if(live){setLocationId(String(p.data.location_id));addProduct(p.data);setEditor(true);}}
+        // Purchase history is large and may take longer to aggregate than the
+        // supplier/location data required to create a purchase. Load it without
+        // blocking the purchase editor.
+        void ordersApi.getAll().then(o=>{if(live)setRecent(o.data.filter((x:any)=>x.transaction_type!=='opening_stock'));}).catch(()=>{});
+        const params=new URLSearchParams(window.location.search),itemId=params.get('itemId'),selectedItems=(params.get('purchaseItems')||'').split(',').map(Number).filter(id=>Number.isInteger(id)&&id>0),restockLowStock=params.get('restockLowStock')==='1',restockLocationId=Number(params.get('locationId'));
+        if(selectedItems.length&&restockLocationId){const inventory=await inventoryApi.getAll({locationId:restockLocationId});if(live){const selectedProducts:Product[]=inventory.data.filter((product:Product)=>selectedItems.includes(Number(product.id)));setLocationId(String(restockLocationId));setSupplierId('');setSupplierSearch('');setTransactionType('purchase');setStatus('pending');setRestockingLowStock(true);setLines(selectedProducts.map(product=>createLine(product,Math.max(1,Number(product.threshold??0)+1-Number(product.stock)))));setEditor(true);if(selectedProducts.length)toast.info(`${selectedProducts.length} selected product(s) added. Choose a supplier and adjust quantities before saving.`);else toast.error('The selected products were not found at that location. Select them again from Insight Actions.');}}
+        else if(itemId){const p=await inventoryApi.getOne(Number(itemId));if(live){setLocationId(String(p.data.location_id));addProduct(p.data);setEditor(true);}}
+        else if(restockLowStock&&restockLocationId){const inventory=await inventoryApi.getAll({locationId:restockLocationId});if(live){const lowStockProducts:Product[]=inventory.data.filter((product:Product)=>Number(product.stock)<=Number(product.threshold??0));setLocationId(String(restockLocationId));setSupplierId('');setSupplierSearch('');setStatus('pending');setRestockingLowStock(true);setLines(lowStockProducts.map(product=>createLine(product,Math.max(1,Number(product.threshold??0)+1-Number(product.stock)))));setEditor(true);if(lowStockProducts.length)toast.info(`${lowStockProducts.length} low-stock item(s) added. Choose a supplier and review the reorder quantities.`);else toast.info('No low-stock items remain at this shop.');}}
       } catch (err) { if (live) setInitialError(errorMessage(err)); }
     })();
     return () => { live = false; };
@@ -114,10 +127,7 @@ export default function PurchasesPage() {
   function addProduct(product: Product) {
     setLines(previous => {
       if (previous.some(l => l.product.id === product.id)) return previous.map(l => l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l);
-      const line: Line = { product, quantity: 1, costBeforeDiscount: Number(product.previous_unit_price ?? product.cost), discountPercent: Number(product.previous_discount ?? 0), taxPercent: 0, profitMargin: 0, sellingPrice: Number(product.price), accountType: 'asset' };
-      const cost = amounts(line).taxedUnit;
-      line.profitMargin = cost > 0 ? (line.sellingPrice / cost - 1) * 100 : 0;
-      return [...previous, line];
+      return [...previous, createLine(product)];
     });
     ++searchVersion.current; setSearch(''); setResults([]); setSearchOpen(false); setSearching(false);
     searchInput.current?.focus();
@@ -162,7 +172,7 @@ export default function PurchasesPage() {
       const label=transactionType==='opening_stock'?'Opening stock':'Purchase',shop=locations.find(location=>String(location.id)===locationId)?.name||'selected shop',units=lines.reduce((sum,line)=>sum+Number(line.quantity),0);toast.success(status==='delivered'?`${label} #${res.data.id}: ${units} units received at ${shop}.`:`${label} #${res.data.id} saved as ${status}; stock updates when received.`);
       clearEditor();setEditor(false);setView(res.data);
       loadOrders().catch(() => toast.error('Purchase saved, but the purchase list could not refresh.'));
-    } catch (err:any) { if(err.response)setAttempted(false);toast.error(errorMessage(err)); }
+    } catch (err:any) { if(err.response)setAttempted(false);const timedOut=['ECONNABORTED','ETIMEDOUT'].includes(err?.code);toast.error(timedOut?'The purchase may still be processing. Click Save Purchase again to safely check the same request without creating a duplicate.':errorMessage(err)); }
     finally { setSaving(false); saveLock.current = false; }
   }
   async function createInline(e: FormEvent<HTMLFormElement>) {
@@ -210,7 +220,7 @@ export default function PurchasesPage() {
   const filtered=recent.filter(o=>(filter==='all'||filter==='unpaid'&&Number(o.balance_due)>0||o.status===filter)&&[o.reference_no,o.id,o.supplier_name,o.location_name].join(' ').toLowerCase().includes(listSearch.toLowerCase()));
   const pages=Math.max(1,Math.ceil(filtered.length/25)),visible=filtered.slice((Math.min(page,pages)-1)*25,Math.min(page,pages)*25);
   async function openPurchase(id:number){try{const r=await ordersApi.getOne(id);setView(r.data);}catch(e){toast.error(errorMessage(e));}}
-  function clearEditor(){setEditingId(null);setAttempted(false);setStatus('delivered');setTransactionType('purchase');setPurchaseDate(today());setPayTerm('Due on receipt');requestId.current=crypto.randomUUID();setLines([]);setReferenceNo('');setDueDate('');setTaxTreatment('included');setShippingCost(0);setOtherCost(0);setNotes('');setShippingDetails('');setOtherCostNote('');setPaymentAmount(0);setPaymentReference('');setSearch('');}
+  function clearEditor(){setEditingId(null);setAttempted(false);setRestockingLowStock(false);setStatus('delivered');setTransactionType('purchase');setPurchaseDate(today());setPayTerm('Due on receipt');requestId.current=crypto.randomUUID();setLines([]);setReferenceNo('');setDueDate('');setTaxTreatment('included');setShippingCost(0);setOtherCost(0);setNotes('');setShippingDetails('');setOtherCostNote('');setPaymentAmount(0);setPaymentReference('');setSearch('');}
   function editPurchase(o:any){clearEditor();setEditingId(o.id);setTransactionType(o.transaction_type||'purchase');setSupplierId(String(o.supplier_id));setSupplierSearch(o.supplier?.name||o.supplier_name);setLocationId(String(o.location_id));setReferenceNo(o.reference_no||'');setPurchaseDate(String(o.purchase_date||o.created_at).slice(0,10));setDueDate(o.due_date?String(o.due_date).slice(0,10):'');setStatus(o.status);setPayTerm(o.pay_term||'Due on receipt');setNotes(o.notes||'');setShippingCost(Number(o.shipping_cost||0));setOtherCost(Number(o.other_cost||0));setShippingDetails(o.shipping_details||'');setOtherCostNote(o.other_cost_note||'');setTaxTreatment(o.tax_treatment||'included');setLines(o.items.map((l:any)=>({product:{id:l.item_id,name:l.item_name,stock:0,cost:Number(l.unit_price),price:Number(l.selling_price||0)},quantity:Number(l.quantity),costBeforeDiscount:Number(l.cost_before_discount??l.unit_price),discountPercent:Number(l.discount_percent||0),taxPercent:Number(l.tax_percent||0),profitMargin:Number(l.profit_margin||0),sellingPrice:Number(l.selling_price||0),accountType:l.account_type||'asset',lotNumber:l.lot_number||''})));setView(null);setEditor(true);window.scrollTo({top:0,behavior:'smooth'});}
 
   function numberInput(line: Line, index: number, key: keyof Omit<Line,'product' | 'accountType'>, label: string, min = 0, max?: number, step: number | string = 'any') {
@@ -219,12 +229,12 @@ export default function PurchasesPage() {
   return <><Navbar user={user} /><main className="p-4 lg:p-8 space-y-6">
     <div className="flex justify-between gap-4"><div><h1 className="text-2xl font-semibold text-gray-900">{editor?(editingId?`Edit purchase #${editingId}`:'Add purchase'):'Purchases A/P'}</h1><p className="mt-1 text-sm text-gray-500">{editor?'Choose a supplier and location, then search or scan products.':'Receive goods, track supplier bills, and record payments.'}</p></div><button type="button" className={button} onClick={()=>{clearEditor();setEditor(!editor);}}>{editor?'Back to purchases':'Add purchase'}</button></div>
     {initialError && <p role="alert" className="rounded-sm bg-red-50 p-4 text-red-700">{initialError}</p>}
-    {editor&&<form onSubmit={save} className="space-y-6"><fieldset disabled={saving || !user || attempted} className="space-y-6 min-w-0">
+    {editor&&<form onSubmit={save} className="space-y-6">{restockingLowStock&&<div className="rounded-sm border border-emerald-200 bg-emerald-50 p-4 text-sm"><p className="font-semibold text-emerald-900">Low-stock items added to a pending purchase</p><p className="mt-1 text-emerald-800">Review the suggested reorder quantities, choose the supplier, and save. This pending purchase will not increase stock until the goods are marked as received.</p></div>}<fieldset disabled={saving || !user || attempted} className="space-y-6 min-w-0">
       <section className="rounded-sm border bg-white p-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         <label className="text-sm font-medium">Transaction Type<select className={`${field} mt-2`} value={transactionType} onChange={e => setTransactionType(e.target.value as any)}><option value="purchase">Purchase (Supplier bill)</option><option value="opening_stock">Opening stock (Equity)</option></select></label>
         {transactionType === 'purchase' ? (
           <div><label htmlFor="supplier" className="block text-sm font-medium mb-2">Supplier *</label><div className="flex gap-2"><div className="relative flex-1"><input id="supplier" className={field} placeholder="Search supplier" value={supplierSearch} required autoComplete="off" role="combobox" aria-expanded={supplierOpen} aria-controls="supplier-results" onFocus={() => setSupplierOpen(true)} onBlur={() => setTimeout(() => setSupplierOpen(false), 150)} onChange={e => { setSupplierSearch(e.target.value); setSupplierId(''); setSupplierOpen(true); }} onKeyDown={e => { if (e.key === 'Escape') setSupplierOpen(false); if (e.key === 'Enter') { e.preventDefault(); const match = suppliers.filter(s => [s.name,s.phone,s.email].join(' ').toLowerCase().includes(supplierSearch.toLowerCase()))[0]; if (match) { setSupplierId(String(match.id)); setSupplierSearch(match.name); setSupplierOpen(false); } } }} />
-          {supplierOpen && <div id="supplier-results" role="listbox" className="absolute z-30 mt-1 max-h-56 overflow-auto w-full rounded-sm border bg-white ">{suppliers.filter(s => [s.name,s.phone,s.email].join(' ').toLowerCase().includes(supplierSearch.toLowerCase())).map(s => <button type="button" role="option" aria-selected={String(s.id) === supplierId} key={s.id} className="block w-full px-3 py-2 text-left text-sm hover:bg-emerald-50" onMouseDown={e => e.preventDefault()} onClick={() => { setSupplierId(String(s.id)); setSupplierSearch(s.name); setSupplierOpen(false); }}>{s.name}<span className="block text-xs text-gray-500">{s.phone} {s.email}</span></button>)}{!suppliers.some(s => [s.name,s.phone,s.email].join(' ').toLowerCase().includes(supplierSearch.toLowerCase())) && <p className="p-3 text-sm text-gray-500">No suppliers found. Add a supplier.</p>}</div>}</div><button type="button" aria-label="Add new supplier" className={button} onClick={() => setModal('supplier')}>Add supplier</button></div>{supplier&&<p className="mt-2 text-xs text-gray-500 whitespace-pre-line">{supplier.address}{supplier.phone&&` | ${supplier.phone}`}</p>}</div>
+          {supplierOpen && <div id="supplier-results" role="listbox" className="absolute z-30 mt-1 max-h-56 overflow-auto w-full rounded-sm border bg-white ">{suppliers.filter(s => [s.name,s.phone,s.email].join(' ').toLowerCase().includes(supplierSearch.toLowerCase())).map(s => <button type="button" role="option" aria-selected={String(s.id) === supplierId} key={s.id} className={`block w-full border border-transparent px-3 py-2 text-left text-sm hover:border-emerald-500 focus-visible:border-emerald-500 ${String(s.id)===supplierId?'border-emerald-500':''}`} onMouseDown={e => e.preventDefault()} onClick={() => { setSupplierId(String(s.id)); setSupplierSearch(s.name); setSupplierOpen(false); }}>{s.name}<span className="block text-xs text-gray-500">{s.phone} {s.email}</span></button>)}{!suppliers.some(s => [s.name,s.phone,s.email].join(' ').toLowerCase().includes(supplierSearch.toLowerCase())) && <p className="p-3 text-sm text-gray-500">No suppliers found. Add a supplier.</p>}</div>}</div><button type="button" aria-label="Add new supplier" className={button} onClick={() => setModal('supplier')}>Add supplier</button></div>{supplier&&<p className="mt-2 text-xs text-gray-500 whitespace-pre-line">{supplier.address}{supplier.phone&&` | ${supplier.phone}`}</p>}</div>
         ) : (
           <div><label className="block text-sm font-medium mb-2">Supplier</label><p className="py-2 text-sm text-gray-500 italic">Not required for opening stock.</p></div>
         )}
@@ -236,7 +246,7 @@ export default function PurchasesPage() {
       </section>
       <section className="rounded-sm border bg-white p-5 space-y-4">
         <div className="flex flex-col sm:flex-row gap-3"><div className="relative flex-1"><Search className="absolute left-3 top-3 text-gray-400" size={18}/><input ref={searchInput} aria-label="Enter Product name / SKU / Scan barcode" placeholder="Enter Product name / SKU / Scan barcode" className={`${field} pl-10`} disabled={!locationId} value={search} autoComplete="off" role="combobox" aria-expanded={searchOpen && !!search} aria-controls="product-results" aria-activedescendant={searchOpen && results[active] ? `product-${results[active].id}` : undefined} onFocus={() => setSearchOpen(true)} onBlur={() => setTimeout(() => setSearchOpen(false), 150)} onChange={e => { setSearch(e.target.value); setSearchOpen(true); }} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void lookup(); } if (e.key === 'ArrowDown') { e.preventDefault(); setActive(i => Math.min(i+1, results.length-1)); setSearchOpen(true); } if (e.key === 'ArrowUp') { e.preventDefault(); setActive(i => Math.max(0,i-1)); } if (e.key === 'Escape') setSearchOpen(false); }} />
-        {searchOpen && search && <div id="product-results" role="listbox" className="absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-sm border bg-white ">{searching ? <p className="p-3 text-sm">Searching...</p> : searchError ? <p role="alert" className="p-3 text-sm text-red-600">{searchError}</p> : results.length ? results.map((p,i) => <button id={`product-${p.id}`} type="button" role="option" aria-selected={active === i} key={p.id} className={`w-full text-left p-3 hover:bg-emerald-50 ${active === i ? 'bg-emerald-50' : ''}`} onMouseDown={e => e.preventDefault()} onClick={() => addProduct(p)}><span className="block text-sm font-medium">{p.name}</span><span className="text-xs text-gray-500">{p.sku || p.barcode || 'No SKU'} | Stock: {p.stock} | Cost: {money(Number(p.cost))}</span></button>) : <p className="p-3 text-sm text-gray-500">No matching products at this location. Add a new product.</p>}</div>}</div><button type="button" className={button} disabled={!locationId} onClick={() => setModal('product')}><Plus size={16}/>Add new product</button></div>
+        {searchOpen && search && <div id="product-results" role="listbox" className="absolute z-20 mt-1 w-full max-h-72 overflow-auto rounded-sm border bg-white ">{searching ? <p className="p-3 text-sm">Searching...</p> : searchError ? <p role="alert" className="p-3 text-sm text-red-600">{searchError}</p> : results.length ? results.map((p,i) => <button id={`product-${p.id}`} type="button" role="option" aria-selected={active === i} key={p.id} className={`w-full border border-transparent p-3 text-left hover:border-emerald-500 focus-visible:border-emerald-500 ${active===i?'border-emerald-500':''}`} onMouseDown={e => e.preventDefault()} onClick={() => addProduct(p)}><span className="block text-sm font-medium">{p.name}</span><span className="text-xs text-gray-500">{p.sku || p.barcode || 'No SKU'} | Stock: {p.stock} | Cost: {money(Number(p.cost))}</span></button>) : <p className="p-3 text-sm text-gray-500">No matching products at this location. Add a new product.</p>}</div>}</div><button type="button" className={button} disabled={!locationId} onClick={() => setModal('product')}><Plus size={16}/>Add new product</button></div>
         {!locationId && <p className="text-sm text-gray-500">Select a business location to search products.</p>}
         <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 text-xs text-gray-600"><tr>{['Product Name','Purchase Quantity','Unit Cost Before Discount','Discount Percent %','Unit Cost After Discount','Subtotal Before Tax','Product Tax %','Tax-inclusive Cost','Line Total','Markup %','Unit Selling Price (Inc. Tax)','Account Type','Lot reference',''].map((h,i) => <th key={i} className="text-left p-3 min-w-24">{h}</th>)}</tr></thead><tbody>
           {!lines.length && <tr><td colSpan={14} className="py-14 text-center text-gray-400"><ShoppingCart className="mx-auto mb-3" size={28}/>Search or scan a product to add your first line item.</td></tr>}

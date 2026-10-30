@@ -45,7 +45,7 @@ Vercel functions cannot use the local Laragon MySQL server. Create a managed MyS
 
 Use a strong, unique `JWT_SECRET`. Set `DB_SSL=true` when required by the provider. Do not add `.env` files to Git.
 
-Before starting the API, apply the current schema with `npm run migrate` from `bar-inventory-backend`. This applies additive schema migrations for features such as linked Google identities and customer-restricted discounts.
+Before starting the API, apply the current schema with `npm run migrate` from `bar-inventory-backend`. This applies additive schema migrations for features such as linked Google identities, customer-restricted discounts, customer contact fields, and public marketplace listings. Run this migration against the deployment's configured database before using the marketplace.
 
 For Google sign-in and Google-based business signup, create a Google Identity Services Web OAuth client. Set its client ID as `GOOGLE_CLIENT_ID` on the API and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on the web app. Use the same ID for both, and add each deployed web origin and local development origin to the OAuth client's authorized JavaScript origins. Google ID tokens are verified by the API before login or business registration.
 

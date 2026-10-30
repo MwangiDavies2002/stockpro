@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, BarChart3,
   Users, LogOut, Bell, Menu, X, ChevronDown,
   CreditCard,Receipt,
-  Users2,
+  UsersRound as Users2,
   MapPin,
   Wallet,
   BookOpen,
@@ -17,11 +17,14 @@ import {
   Tags,
   Ruler,
   Badge,
-  FileText, TrendingUp, Gift, Award
-} from './TextMark';
+  FileText, TrendingUp, Gift, Award, PanelLeftClose, PanelLeftOpen, Truck, Store
+} from 'lucide-react';
+import {Moon,Sun} from 'lucide-react';
 import Cookies from 'js-cookie';
 import {useAccess} from './AccessBoundary';
 import ThemePicker from './ThemePicker';
+import HelpAssistant from './HelpAssistant';
+import {useTheme} from './ThemeProvider';
 import {canVisit} from '../lib/access';
 import { authApi, treasuryApi, accountsApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -41,6 +44,9 @@ const NAV_ITEMS = [
   {label:'Administration',icon:Settings,adminOnly:true,subItems:[{href:'/users',label:'Members',icon:Users},{href:'/roles',label:'Roles',icon:Users},{href:'/business/settings',label:'Business settings',icon:Settings},{href:'/locations',label:'Locations',icon:MapPin},{href:'/customers',label:'Customers',icon:Users2},{href:'/suppliers',label:'Suppliers',icon:ShoppingCart},{href:'/loyalty',label:'Loyalty Overview',icon:Award},{href:'/loyalty/rewards',label:'Loyalty Rewards',icon:Gift},{href:'/loyalty/history',label:'Loyalty History',icon:Receipt},{href:'/network',label:'StockPro Network',icon:Users2},{href:'/network/invite',label:'Invite to Network',icon:Users2},{href:'/subscription',label:'Packages',icon:CreditCard},{href:'/subscription/status',label:'Subscription Status',icon:CreditCard},{href:'/subscription/overview',label:'Subscription Overview',icon:CreditCard},{href:'/subscription/manage',label:'Subscription Requests',icon:CreditCard,adminOnly:true}]},
   { href: '/',          label: 'Dashboard',  icon: LayoutDashboard, adminOnly: false },
   {href:'/pos',               label:'POS',   icon:CreditCard,                       adminOnly:false},
+  {href:'/fleet',label:'Fleet Management',icon:Truck,adminOnly:false},
+  {href:'/supermarket',label:'Supermarket',icon:ShoppingCart,adminOnly:false},
+  {href:'/marketplace',label:'Marketplace',icon:Store,adminOnly:false},
   { label: 'Inventory', icon: Package, adminOnly: false, subItems: [
     { href: '/inventory', label: 'Inventory Management', icon: Package },
     {href:'/stock-transfers',label:'Stock transfers',icon:Package},
@@ -94,20 +100,24 @@ const NAV_ITEMS = [
 interface NavbarProps {
   user?: { name: string; role: string; email: string } | null;
   alertCount?: number;
+  compactForPOS?: boolean;
+  hideHelpAssistant?: boolean;
 }
 
 /**
  * Left navigation sidebar component. Shows navigation links, alerts and user menu.
  */
-export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
+export default function Navbar({ user = null, alertCount = 0, compactForPOS = false, hideHelpAssistant = false }: NavbarProps) {
   const pathname = usePathname().replace(/\/$/,'')||'/';
   const {access,user:workspaceUser}=useAccess();
+  const {darkMode,toggleDarkMode}=useTheme();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpenMenu, setMobileOpenMenu] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedMenuTop, setCollapsedMenuTop] = useState(0);
 
   const [currentUser, setCurrentUser] = useState(user ?? workspaceUser ?? null);
   const [treasuryConfigured, setTreasuryConfigured] = useState(false);
@@ -119,6 +129,8 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
     const activeGroup = NAV_ITEMS.find((item: any) => item.subItems?.some((sub: any) => pathname === sub.href));
     if (activeGroup) setOpenMenu(activeGroup.label);
   }, [pathname]);
+
+  useEffect(()=>{if(!compactForPOS)return;const fit=()=>setCollapsed(window.innerWidth<1024);fit();window.addEventListener('resize',fit);return()=>window.removeEventListener('resize',fit);},[compactForPOS]);
 
   useEffect(() => {
     if (canVisit(access,'/treasury')) treasuryApi.getAll().then((res) => setTreasuryConfigured(Array.isArray(res.data) && res.data.length > 0)).catch(() => setTreasuryConfigured(false));
@@ -154,6 +166,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
 
   const visibleItems = NAV_ITEMS.map(item=>item.subItems?{...item,subItems:item.subItems.filter(sub=>canVisit(access,sub.href))}:item).filter(item=>item.subItems?item.subItems.length>0:canVisit(access,item.href||''));
   return (
+    <>
     <nav className={`app-sidebar bg-white border-b border-gray-200 sticky top-0 z-50 md:fixed md:left-0 md:h-screen md:border-r md:overflow-y-auto   ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
       <div className={`mx-auto md:py-5 ${collapsed ? 'px-1' : 'px-4'}`}>
         <div className="flex items-center justify-between h-14 md:h-auto md:flex-col md:items-stretch md:gap-6">
@@ -180,11 +193,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="sidebar-collapse-toggle hidden md:inline-flex self-end items-center justify-center w-9 h-9 rounded-sm border border-gray-300 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
-            <svg aria-hidden="true" viewBox="0 0 20 20" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="2.25" y="3.25" width="15.5" height="13.5" rx="1.5" />
-              <path d="M8 3.5v13" />
-              {collapsed ? <path d="m10.5 8 2 2-2 2" /> : <path d="m12.5 8-2 2 2 2" />}
-            </svg>
+            {collapsed ? <PanelLeftOpen aria-hidden="true" className="w-5 h-5" /> : <PanelLeftClose aria-hidden="true" className="w-5 h-5" />}
           </button>
 
           {/* Desktop nav */}
@@ -196,20 +205,22 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                   <div key={item.label} className="relative">
                     <button
                       type="button"
-                      onClick={() => { setOpenMenu(openMenu === item.label ? null : item.label); playPop(); }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium transition-colors
+                      onClick={(event) => { setOpenMenu(openMenu === item.label ? null : item.label); if(collapsed){const top=event.currentTarget.getBoundingClientRect().top;setCollapsedMenuTop(Math.min(top,window.innerHeight-240));} playPop(); }}
+                      title={collapsed ? item.label : undefined}
+                      aria-label={collapsed ? item.label : undefined}
+                      className={`flex items-center rounded-sm text-sm font-medium transition-colors ${collapsed ? 'h-10 justify-center px-0' : 'gap-2 px-3 py-2'}
                         ${isActive
                           ? 'bg-brand/10 text-brand'
                           : 'text-gray-600 hover:bg-brand/10 hover:text-brand'
                         }`}
                     >
-                      <item.icon className="w-4 h-4" />
+                      <item.icon className={collapsed ? 'w-5 h-5 shrink-0' : 'w-4 h-4 shrink-0'} />
                       {!collapsed && item.label}
                       {!collapsed && <ChevronDown className="w-3 h-3" />}
                     </button>
 
                     {openMenu === item.label && (
-                      <div className="mt-1 ml-3 bg-white border border-gray-200 rounded-sm  py-1 z-50">
+                      <div style={collapsed ? {position:'fixed',left:'4rem',top:collapsedMenuTop,width:'14rem'} : undefined} className={`bg-white border border-gray-200 rounded-sm py-1 z-50 ${collapsed ? 'shadow-lg' : 'mt-1 ml-3'}`}>
                         {item.subItems.filter((sub: any) => canVisit(access,sub.href)).map((sub) => (
                           <Link
                             key={sub.href}
@@ -237,24 +248,31 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
                   key={item.href}
                   href={item.href}
                   onClick={playPop}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-sm text-sm font-medium transition-colors
+                  title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  className={`flex items-center rounded-sm text-sm font-medium transition-colors ${collapsed ? 'h-10 justify-center px-0' : 'gap-2 px-3 py-2'}
                     ${active
                       ? 'bg-brand/10 text-brand'
                       : 'text-gray-600 hover:bg-brand/10 hover:text-brand'
                     }`}
                 >
-                  <item.icon className="w-4 h-4" />
-                    {!collapsed && item.label}
+                  <item.icon className={collapsed ? 'w-5 h-5 shrink-0' : 'w-4 h-4 shrink-0'} />
+                  {!collapsed && item.label}
                 </Link>
               );
             })}
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 md:w-full md:flex-col">
+            <button type="button" onClick={toggleDarkMode} title={darkMode?'Switch to light mode':'Switch to dark mode'} aria-label={darkMode?'Switch to light mode':'Switch to dark mode'} aria-pressed={darkMode} className={`flex h-10 items-center rounded-sm text-gray-600 hover:bg-gray-100 ${collapsed?'justify-center px-0':'gap-2 px-2'}`}>
+              {darkMode?<Sun className="h-5 w-5"/>:<Moon className="h-5 w-5"/>}
+              {!collapsed&&<span>{darkMode?'Light mode':'Dark mode'}</span>}
+            </button>
             {/* Alert bell */}
-            <button type="button" onClick={() => router.push('/insights')} title="Open business alerts" className="relative p-2 rounded-sm text-gray-500 hover:bg-gray-100 ">
-              <span>Alerts</span>
+            <button type="button" onClick={() => router.push('/insights')} title="Open business alerts" aria-label="Open business alerts" className={`relative flex h-10 items-center rounded-sm text-gray-500 hover:bg-gray-100 ${collapsed ? 'justify-center px-0' : 'gap-2 px-2'}`}>
+              <Bell className="w-5 h-5" />
+              {!collapsed && <span>Alerts</span>}
               {alertCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-sm flex items-center justify-center">
                   {alertCount > 9 ? '9+' : alertCount}
@@ -267,13 +285,13 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
               <button
                 type="button"
                 onClick={() => { setUserMenuOpen(!userMenuOpen); playPop(); }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-sm text-gray-700 hover:bg-brand/10 hover:text-brand transition-colors"
+                className={`flex items-center rounded-sm text-sm text-gray-700 hover:bg-brand/10 hover:text-brand transition-colors ${collapsed ? 'h-10 justify-center px-0' : 'gap-2 px-3 py-1.5'}`}
               >
                   <div className="w-6 h-6 rounded-sm bg-brand text-white text-xs flex items-center justify-center font-medium">
                     {currentUser?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
-                  <span className="hidden sm:block">{currentUser?.name || 'User'}</span>
-                <ChevronDown className="w-3 h-3" />
+                  {!collapsed && <span className="hidden sm:block">{currentUser?.name || 'User'}</span>}
+                {!collapsed && <ChevronDown className="w-3 h-3" />}
               </button>
 
               {userMenuOpen && (
@@ -374,5 +392,7 @@ export default function Navbar({ user = null, alertCount = 0 }: NavbarProps) {
         <button type="button" onClick={() => setMobileOpen(value => !value)} aria-expanded={mobileOpen} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium ${mobileOpen ? 'text-brand' : 'text-gray-600'}`}><Menu className="h-5 w-5" />More</button>
       </div>
     </nav>
+    {!hideHelpAssistant&&<HelpAssistant/>}
+    </>
   );
 }

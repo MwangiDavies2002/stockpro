@@ -49,7 +49,12 @@ export default function AuthForm() {
         router.push(data.user?.access?.superadmin?'/superadmin':'/');
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Something went wrong');
+      const message=err.response?.data?.message
+        ||(err.code==='ECONNABORTED'?'Sign-in timed out. Check your connection and try again.'
+        :err.response?.status?`Sign-in failed (server response ${err.response.status}). Please try again.`
+        :err.request?'Could not reach the StockPro server. Check your internet connection and try again.'
+        :'Sign-in failed. Please try again.');
+      toast.error(message);
     } finally {
       setLoading(false);
     }

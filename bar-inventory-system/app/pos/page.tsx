@@ -39,10 +39,12 @@ interface CartLine {
 }
 
 const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const shiftCloseTime=(shift:any)=>{if(!shift?.opened_at)return null;const opened=new Date(String(shift.opened_at).replace(' ','T'));if(!Number.isFinite(opened.getTime()))return null;return new Date(opened.getTime()+Number(shift.duration_hours||12)*3600000).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});};
 
 export default function POSPage() {
   const router = useRouter();
   const {access}=useAccess();
+  const supermarketCheckout=!!access?.plan?.modules.includes('supermarket');
   const [user, setUser] = useState<{ id: number; business_id: number; name: string; role: string; email: string; business?: { businessType?: string } } | null>(null);
   const businessType = String(user?.business?.businessType || '').trim().toLowerCase();
   const requiresAgeVerification = businessType === 'bar' || businessType === 'club';
@@ -59,6 +61,7 @@ export default function POSPage() {
   const [posSettings, setPosSettings] = useState<any>({ posShortcuts:{}, disableExpressCheckout:false, hideProductSuggestions:false, disableDiscount:false, enableTransactionDate:true, disableCreditSaleButton:false });
   const [transactionDate, setTransactionDate] = useState(todayISO());
   const [paymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const [cashReceived,setCashReceived]=useState('');
   const [multiPayOpen,setMultiPayOpen]=useState(false),[paymentRows,setPaymentRows]=useState<Array<{method:'cash'|'card';amount:string;referenceNo:string}>>([{method:'cash',amount:'0',referenceNo:''}]);
   const [cardModalOpen,setCardModalOpen]=useState(false),[cardReference,setCardReference]=useState(''),[cardBrand,setCardBrand]=useState('Visa');
   const [recentOpen,setRecentOpen]=useState(false),[recentSales,setRecentSales]=useState<any[]>([]),[recentLoading,setRecentLoading]=useState(false);
@@ -70,6 +73,7 @@ export default function POSPage() {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
+  const barcodeInputRef=useRef<HTMLInputElement>(null);
   const [catFilter, setCatFilter] = useState('All');
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const categoryMenuRef = useRef<HTMLDivElement>(null);
@@ -78,6 +82,7 @@ export default function POSPage() {
   const checkoutLockRef = useRef(false);
 
   const [shift, setShift] = useState<any>(null);
+  const shiftRef=useRef<any>(null);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftStatusChecked, setShiftStatusChecked] = useState(false);
   const [shiftStatusError, setShiftStatusError] = useState('');
@@ -99,6 +104,7 @@ export default function POSPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [pendingSales, setPendingSales] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
+  useEffect(()=>{if(supermarketCheckout&&locationId&&!loading&&!shiftModalOpen){barcodeInputRef.current?.focus();barcodeInputRef.current?.select();}},[supermarketCheckout,locationId,loading,shiftModalOpen,receiptData]);
 
   // Track connection status
   useEffect(() => {
@@ -208,14 +214,16 @@ export default function POSPage() {
     }
   }, [creditModalOpen]);
 
-  useEffect(() => { void loadShiftStatus(); }, []);
+  useEffect(() => { void loadShiftStatus();const timer=window.setInterval(()=>{if(!document.hidden)void loadShiftStatus();},60_000);return()=>window.clearInterval(timer); }, []);
 
   async function loadShiftStatus() {
     setShiftStatusError('');
     try {
       const { data } = await shiftsApi.getCurrent();
-      setShift(data);
-      setShiftModalOpen(!data);
+      const result=data&&typeof data==='object'&&'shift' in data?data:{shift:data,autoClosed:false};
+      const hadOpenShift=!!shiftRef.current;shiftRef.current=result.shift||null;setShift(result.shift||null);
+      if(!result.shift)setShiftModalOpen(true);
+      if(result.autoClosed||(!result.shift&&hadOpenShift))toast.warning('Your shift reached its time limit and was closed. Cash count was not recorded; open a new shift to continue.');
     } catch (err: any) {
       setShiftStatusError(err?.response?.data?.message || 'Could not verify whether a shift is already open.');
       setShiftModalOpen(true);
@@ -314,6 +322,7 @@ export default function POSPage() {
         },
       ];
     });
+    if(supermarketCheckout)requestAnimationFrame(()=>barcodeInputRef.current?.focus());
   }
 
   function updateQuantity(id: number, qty: number) {
@@ -363,11 +372,14 @@ export default function POSPage() {
   }
   const saleTotal=(customerId?:number)=>Number(cart.reduce((sum,line)=>{const gross=Number((line.quantity*line.price).toFixed(2));return sum+gross-Number((gross*discountFor(line,customerId)/100).toFixed(2));},0).toFixed(2));
   const subtotal = saleTotal();
+  useEffect(()=>{if(paymentPickerOpen)setCashReceived(String(subtotal));},[paymentPickerOpen,subtotal]);
+  const grossSubtotal=Number(cart.reduce((sum,line)=>sum+line.quantity*line.price,0).toFixed(2));
+  const discountSavings=Number(Math.max(0,grossSubtotal-subtotal).toFixed(2));
 
   async function openShift() {
     try {
       const { data } = await shiftsApi.open(Number(openingFloat || 0));
-      setShift(data);
+      shiftRef.current=data;setShift(data);
       setShiftStatusError('');
       setShiftModalOpen(false);
       toast.success('Shift opened');
@@ -388,7 +400,7 @@ export default function POSPage() {
       } else {
         toast.warning(`Shift closed — KSh ${Math.abs(variance).toFixed(2)} short`);
       }
-      setShift(null);
+      shiftRef.current=null;setShift(null);
       setShiftModalOpen(true);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to close shift');
@@ -558,12 +570,12 @@ export default function POSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#b9d9f4] text-slate-900 pb-24">
-      <Navbar user={user} />
+    <div className="min-h-screen bg-gray-50 text-slate-900 pb-24">
+      <Navbar user={user} compactForPOS hideHelpAssistant />
 
-      <div className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/60 bg-[#d5eaff] px-4 py-3 shadow-sm sm:mx-5">
-        <div className="flex flex-wrap items-center gap-3"><label className="text-sm font-semibold">Location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>{setLocationId(event.target.value);if(user)localStorage.setItem(`pos_last_location:${user.business_id}:${user.id}`,event.target.value);}} className="ml-3 border border-blue-200 bg-white/70 px-3 py-2 text-sm font-normal"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>{posSettings.enableTransactionDate&&<input aria-label="Transaction date" type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="border-0 bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"/>}<span className={`rounded-full px-3 py-2 text-xs font-semibold ${shift?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}>{shift?`Shift open · Float KSh ${Number(shift.opening_float).toLocaleString()}`:'No shift open'}</span></div>
-        <div className="flex flex-wrap items-center gap-2">{cart.length>0&&<input aria-label="M-Pesa phone number" type="tel" placeholder="M-Pesa phone 07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} className="w-52 border border-blue-200 bg-white/80 px-3 py-2 text-sm"/>}<button onClick={()=>setShiftModalOpen(true)} className="rounded-lg border border-blue-200 bg-white/70 px-3 py-2 text-sm font-medium">{shift?'Close shift':'Open shift'}</button><button onClick={()=>setPaymentPickerOpen(true)} disabled={!cart.length||!shift} className="rounded-lg bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">▦ Point of Sale</button></div>
+      <div className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-4 py-3 shadow-sm sm:mx-5">
+        <div className="flex flex-wrap items-center gap-3"><label className="text-sm font-semibold">Location<select aria-label="POS business location" value={locationId} disabled={!!cart.length || syncing || !!pendingSales.length} onChange={event=>{setLocationId(event.target.value);if(user)localStorage.setItem(`pos_last_location:${user.business_id}:${user.id}`,event.target.value);}} className="ml-3 border border-gray-300 bg-white px-3 py-2 text-sm font-normal"><option value="">Choose location</option>{locations.map(location=><option key={location.id} value={location.id}>{location.name}</option>)}</select></label>{posSettings.enableTransactionDate&&<input aria-label="Transaction date" type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800"/>}<span className={`rounded-md px-3 py-2 text-xs font-medium ${shift?'bg-gray-100 text-gray-700':'bg-amber-50 text-amber-800'}`}>{shift?`Shift open · Float KSh ${Number(shift.opening_float).toLocaleString()}${shiftCloseTime(shift)?` · closes at ${shiftCloseTime(shift)}`:''}`:'No shift open'}</span></div>
+        <div className="flex flex-wrap items-center gap-2">{cart.length>0&&<input aria-label="M-Pesa phone number" type="tel" placeholder="M-Pesa phone 07XXXXXXXX" value={mpesaPhone} onChange={event=>setMpesaPhone(event.target.value)} className="w-52 border border-gray-300 bg-white px-3 py-2 text-sm"/>}<button onClick={()=>setShiftModalOpen(true)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">{shift?'Close shift':'Open shift'}</button><button onClick={()=>setPaymentPickerOpen(true)} disabled={!cart.length||!shift} className="rounded-md bg-[#354f43] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#496456] disabled:opacity-50">{supermarketCheckout?'Checkout':'Point of Sale'}</button></div>
       </div>
 
       {!shiftStatusChecked && (
@@ -611,22 +623,23 @@ export default function POSPage() {
         )}
       </div>
 
-      <main className="max-w-[1800px] mx-auto px-2 py-2 pb-28 sm:px-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.95fr)] gap-3 sm:gap-4">
+      {supermarketCheckout&&<div className="mx-3 mt-2 rounded-sm border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900 sm:mx-5"><strong>Supermarket checkout</strong><span className="ml-2 text-emerald-800">Scan or search items, confirm the basket and take payment.</span></div>}
+      <main className={`w-full min-w-0 max-w-[1800px] mx-auto px-2 py-2 pb-28 sm:px-4 grid grid-cols-1 ${supermarketCheckout?'lg:grid-cols-[minmax(0,1.35fr)_minmax(380px,0.85fr)]':'lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.95fr)]'} gap-3 sm:gap-4`}>
         {/* -- Left: Cart ------------------------------- */}
-        <div className="min-h-[52vh] lg:h-[calc(100vh-255px)] rounded-[20px] border border-white/70 bg-[#d6eaff]/80 shadow-[0_5px_18px_rgba(33,85,130,.12)] flex flex-col">
-          <div className="p-3 sm:p-4 border-b border-blue-200">
+        <div className={`min-h-[52vh] lg:h-[calc(100vh-255px)] rounded-md border border-gray-200 bg-white shadow-sm flex flex-col ${supermarketCheckout?'order-2 lg:order-2':'order-1'}`}>
+          <div className="p-3 sm:p-4 border-b border-gray-200">
             <button type="button" onClick={() => setMobileCartOpen(value => !value)} aria-expanded={mobileCartOpen} className="flex w-full items-center justify-between text-left lg:pointer-events-none">
-              <span><span className="block text-base font-semibold text-gray-900">New Sale</span><span className="mt-0.5 block text-xs text-gray-500">{itemCount} item(s) in cart</span></span>
+              <span><span className="block text-base font-semibold text-gray-900">{supermarketCheckout?'Customer basket':'New Sale'}</span><span className="mt-0.5 block text-xs text-gray-500">{itemCount} item(s) · {cart.length} line(s)</span></span>
               <span className="text-xs font-medium text-green-700 lg:hidden">{mobileCartOpen?'Hide cart':'View cart'}</span>
             </button>
             {posSettings.enableTransactionDate && <label className={`${mobileCartOpen?'':'hidden'} lg:block mt-3 text-xs font-medium text-gray-600`}>Transaction date<input type="date" value={transactionDate} max={todayISO()} onChange={event=>setTransactionDate(event.target.value)} className="mt-1 block w-full rounded-sm border border-gray-300 px-2 py-1.5 text-sm" /></label>}
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)_55px_65px_70px_24px] border-b border-blue-200 px-3 py-3 text-[10px] font-bold sm:grid-cols-[minmax(0,1.4fr)_90px_100px_100px_30px] lg:grid-cols-[minmax(0,1.4fr)_110px_120px_120px_36px]"><span>Product</span><span>Qty</span><span>Price</span><span>Subtotal</span><span></span></div>
-          <div className={`${mobileCartOpen?'':'hidden'} lg:block flex-1 overflow-y-auto max-h-[55vh] lg:max-h-none divide-y divide-blue-100`}>
+          <div className="grid grid-cols-[minmax(0,1fr)_55px_65px_70px_24px] border-b border-gray-200 px-3 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:grid-cols-[minmax(0,1.4fr)_90px_100px_100px_30px] lg:grid-cols-[minmax(0,1.4fr)_110px_120px_120px_36px]"><span>Product</span><span>Qty</span><span>Price</span><span>Subtotal</span><span></span></div>
+          <div className={`${mobileCartOpen?'':'hidden'} lg:block flex-1 overflow-y-auto max-h-[55vh] lg:max-h-none divide-y divide-gray-100`}>
             {cart.length === 0 && (
               <div className="p-8 text-center text-sm text-gray-400">
-                Click a product on the right to add it here
+                {supermarketCheckout?'Scan a barcode or select a product to start the basket.':'Click a product on the right to add it here'}
               </div>
             )}
             {cart.map((line) => (
@@ -665,22 +678,29 @@ export default function POSPage() {
                   </div>
                   <div>
                     <div className="px-2 py-1.5 text-sm font-medium text-gray-900">
-                      {(line.quantity * line.price).toLocaleString()}
+                      {(line.quantity * line.price * (1-discountFor(line)/100)).toLocaleString()}
                     </div>
+                    {discountFor(line)>0&&<div className="px-2 text-[11px] text-gray-500 line-through">{(line.quantity*line.price).toLocaleString()}</div>}
                   </div>
               </div>
             ))}
           </div>
 
-          <div className="hidden p-4 border-t border-gray-200 space-y-3">
+          <div className={`${supermarketCheckout?'p-4 border-t border-gray-200 space-y-3':'hidden p-4 border-t border-gray-200 space-y-3'}`}>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">Items</span>
               <span className="font-medium text-gray-900">{itemCount}</span>
             </div>
+            {supermarketCheckout&&<>
+              <div className="flex items-center justify-between text-sm"><span className="text-gray-500">Subtotal</span><span>KSh {grossSubtotal.toLocaleString()}</span></div>
+              <div className="flex items-center justify-between text-sm"><span className="text-gray-500">Promotions</span><span className={discountSavings?'text-emerald-700':''}>{discountSavings?`− KSh ${discountSavings.toLocaleString()}`:'KSh 0'}</span></div>
+            </>}
             <div className="flex items-center justify-between text-base font-semibold">
-              <span>Total</span>
+              <span>{supermarketCheckout?'Amount due':'Total'}</span>
               <span>KSh {subtotal.toLocaleString()}</span>
             </div>
+
+            {supermarketCheckout&&<button type="button" onClick={()=>setPaymentPickerOpen(true)} disabled={checkingOut||!cart.length||!shift} className="w-full rounded-sm bg-emerald-700 py-3 text-base font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{checkingOut?'Processing…':'Take payment'}</button>}
 
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
@@ -724,14 +744,14 @@ export default function POSPage() {
         </div>
 
         {/* -- Right: Product grid ------------------------- */}
-        <div className="min-h-[52vh] lg:h-[calc(100vh-255px)] space-y-3 flex flex-col">
+        <div className={`min-w-0 min-h-[52vh] lg:h-[calc(100vh-255px)] space-y-3 flex flex-col ${supermarketCheckout?'order-1 lg:order-1':'order-2'}`}>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative w-full flex gap-2">
               <ScanLine className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input type="text" placeholder="Scan barcode or enter SKU..." value={barcodeInput}
+              <input ref={barcodeInputRef} type="text" aria-label="Scan product barcode or SKU" placeholder="Scan barcode or enter SKU..." value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') scanBarcode(); }}
-                className="flex-1 pl-10 pr-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <button onClick={scanBarcode} className="px-4 py-2 rounded-sm bg-gray-900 text-white text-sm">Scan / Add</button>
+                className="min-w-0 flex-1 pl-10 pr-4 py-2 border border-gray-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <button onClick={scanBarcode} className="shrink-0 px-4 py-2 rounded-sm bg-gray-900 text-white text-sm">Scan / Add</button>
             </div>
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -750,7 +770,7 @@ export default function POSPage() {
                 aria-expanded={categoriesOpen}
                 aria-controls="pos-category-options"
                 onClick={() => setCategoriesOpen(open => !open)}
-                className={`inline-flex min-h-[54px] flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-base font-semibold ${categoriesOpen || catFilter !== 'All' ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-blue-200 bg-indigo-600 text-white hover:bg-blue-700'}`}
+                className={`inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium ${categoriesOpen || catFilter !== 'All' ? 'border-[#354f43] bg-[#354f43] text-white hover:bg-[#496456]' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
               >
                 ▦ Category <span aria-hidden="true">{categoriesOpen ? '▲' : '▼'}</span>
                 {catFilter !== 'All' && <span className="max-w-48 truncate rounded-sm bg-white/20 px-2 py-0.5 text-xs">{catFilter}</span>}
@@ -763,7 +783,7 @@ export default function POSPage() {
                       type="button"
                       onClick={() => { setCatFilter(category); setCategoriesOpen(false); }}
                       aria-pressed={catFilter === category}
-                      className={`rounded-sm border px-3 py-1.5 text-xs font-medium ${catFilter === category ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+                      className={`rounded-sm border px-3 py-1.5 text-xs font-medium ${catFilter === category ? 'border-[#354f43] bg-[#354f43] text-white hover:bg-[#496456]' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
                     >
                       {category}
                     </button>
@@ -774,17 +794,17 @@ export default function POSPage() {
           </div>
 
           {!posSettings.hideProductSuggestions && !loading && topSellers.length > 0 && (
-            <section className="rounded-sm border border-green-200 bg-green-50 p-3" aria-label="Top selling product suggestions">
-              <h2 className="text-sm font-semibold text-green-900">Suggested top sellers</h2>
-              <p className="text-xs text-green-700 mt-1">Ranked by total units sold. Tap to add to your cart.</p>
+            <section className="rounded-md border border-gray-200 bg-white p-3" aria-label="Top selling product suggestions">
+              <h2 className="text-sm font-semibold text-gray-800">Suggested top sellers</h2>
+              <p className="text-xs text-gray-500 mt-1">Ranked by total units sold. Tap to add to your cart.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
                 {topSellers.map((product, index) => (
                   <button key={product.id} onClick={() => addToCart(product)}
-                    className="min-h-28 rounded-sm border border-green-200 bg-white p-3 text-left hover:border-green-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500">
-                    <span className="text-[11px] font-semibold text-green-700">#{index + 1} best seller</span>
+                    className="min-h-28 rounded-sm border border-gray-200 bg-white p-3 text-left hover:border-[#9aada2] hover:bg-[#f5f8f6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#53695f]">
+                    <span className="text-[11px] font-medium text-gray-500">#{index + 1} best seller</span>
                     <p className="text-sm font-medium text-gray-900 line-clamp-2 mt-1">{product.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{Number(product.sold).toLocaleString()} sold · {product.stock} in stock</p>
-                    <p className="text-sm font-semibold text-green-700 mt-2">KSh {Number(product.price).toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-[#354f43] mt-2">KSh {Number(product.price).toLocaleString()}</p>
                   </button>
                 ))}
               </div>
@@ -794,19 +814,19 @@ export default function POSPage() {
           {loading ? (
             <div className="text-center py-16 text-sm text-gray-400">Loading products...</div>
           ) : (
-            <div className="flex-1 overflow-y-auto rounded-[18px] bg-[#cbe3fa]/70 p-2"><div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
+            <div className="flex-1 overflow-y-auto rounded-md bg-gray-100 p-2"><div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2">
               {filtered.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
                   disabled={product.stock <= 0}
-                  className="min-h-36 rounded-[18px] border border-white/70 bg-[#d9edff] p-2.5 text-center hover:border-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="min-h-36 rounded-md border border-gray-200 bg-white p-2.5 text-center hover:border-[#9aada2] hover:bg-[#f5f8f6] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {product.image_url ? <img src={product.image_url} alt="" className="mx-auto mb-2 h-16 w-16 object-cover" /> : <span aria-hidden="true" className="mx-auto mb-2 flex h-16 w-16 items-center justify-center bg-blue-100 text-2xl text-blue-400">▧</span>}
+                  {product.image_url ? <img src={product.image_url} alt="" className="mx-auto mb-2 h-16 w-16 object-cover" /> : <span aria-hidden="true" className="mx-auto mb-2 flex h-16 w-16 items-center justify-center bg-gray-100 text-2xl text-gray-400">▧</span>}
                   <p className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm font-semibold text-indigo-700">
+                    <span className="text-sm font-semibold text-[#354f43]">
                       KSh {product.price.toLocaleString()}
                     </span>
                     <span className={`text-[11px] ${product.stock <= 5 ? 'text-red-500' : 'text-gray-400'}`}>
@@ -825,14 +845,9 @@ export default function POSPage() {
         </div>
       </main>
 
-      <div className="pos-checkout-bar fixed bottom-0 left-0 right-0 z-40 hidden items-center gap-3 border-t border-blue-200 bg-[#d5eaff] px-4 py-3 shadow-[0_-4px_14px_rgba(30,75,120,.12)] lg:flex md:left-60">
-        <button onClick={openMultiplePay} disabled={!cart.length||!shift||checkingOut} className="rounded-lg border border-blue-200 bg-white/70 px-4 py-3 text-sm font-semibold disabled:opacity-50">Multiple pay</button>
-        {!posSettings.disableCreditSaleButton&&<button onClick={()=>setCreditModalOpen(true)} disabled={!cart.length||!shift||checkingOut} className="rounded-lg border border-blue-200 bg-white/70 px-4 py-3 text-sm font-semibold disabled:opacity-50">Credit sale</button>}
-        <button onClick={()=>{setCardReference('');setCardModalOpen(true);}} disabled={!cart.length||!shift||checkingOut} className="rounded-lg bg-slate-800 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Card</button>
-        <button onClick={()=>checkout('cash')} disabled={!cart.length||!shift||checkingOut} className="rounded-lg bg-emerald-600 px-8 py-3 text-sm font-semibold text-white disabled:opacity-50">Cash</button>
-        <button onClick={clearCart} disabled={!cart.length||checkingOut} className="rounded-lg bg-red-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">Cancel</button>
-        <div className="ml-auto text-right"><span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Total payable</span><span className="text-2xl font-bold text-emerald-800">KSh {subtotal.toLocaleString()}</span></div>
-        <button onClick={()=>void openRecentTransactions()} className="rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Recent transactions</button>
+      <div className="pos-checkout-bar fixed bottom-0 left-0 right-0 z-40 hidden items-center gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-4px_14px_rgba(0,0,0,.06)] lg:flex md:left-60">
+        <div className="ml-auto text-right"><span className="block text-xs font-medium uppercase tracking-wide text-gray-500">Total payable</span><span className="text-xl font-semibold text-gray-900">KSh {subtotal.toLocaleString()}</span></div>
+        <button onClick={()=>void openRecentTransactions()} className="rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium hover:bg-gray-50">Recent transactions</button>
       </div>
 
       <div className="fixed inset-x-0 bottom-14 z-40 border-t border-gray-300 bg-white/95 p-2 shadow-[0_-4px_12px_rgba(0,0,0,.08)] backdrop-blur-sm lg:hidden" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom))' }}>
@@ -844,7 +859,7 @@ export default function POSPage() {
       </div>
 
       {/* -- Credit sale: customer picker ------------------- */}
-      {paymentPickerOpen && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-picker-title"><div className="w-full max-w-sm space-y-3 rounded-sm bg-white p-6"><div className="flex items-center justify-between"><h2 id="payment-picker-title" className="text-lg font-semibold">Pay &amp; Checkout</h2><button onClick={()=>setPaymentPickerOpen(false)} aria-label="Close payment methods"><X className="h-4 w-4 text-gray-500"/></button></div><p className="text-sm text-gray-600">Choose how the customer is paying KSh {subtotal.toLocaleString()}.</p><button onClick={()=>{setPaymentPickerOpen(false);void checkout('cash');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Cash</button><button onClick={()=>{setPaymentPickerOpen(false);setCardReference('');setCardModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-slate-700 py-2.5 text-sm font-medium text-white disabled:opacity-50">Card</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('mpesa');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-800 py-2.5 text-sm font-medium text-white disabled:opacity-50">M-Pesa</button>{!posSettings.disableCreditSaleButton&&<button onClick={()=>{setPaymentPickerOpen(false);setCreditModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-amber-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Credit / Tab</button>}<button onClick={()=>setPaymentPickerOpen(false)} className="w-full rounded-sm border py-2 text-sm">Cancel</button></div></div>}
+      {paymentPickerOpen && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-picker-title"><div className="w-full max-w-sm space-y-3 rounded-sm bg-white p-6"><div className="flex items-center justify-between"><h2 id="payment-picker-title" className="text-lg font-semibold">Pay &amp; Checkout</h2><button onClick={()=>setPaymentPickerOpen(false)} aria-label="Close payment methods"><X className="h-4 w-4 text-gray-500"/></button></div><p className="text-sm text-gray-600">Amount due: <strong>KSh {subtotal.toLocaleString()}</strong></p>{supermarketCheckout&&<div className="rounded-sm bg-gray-50 p-3"><label className="block text-sm font-medium">Cash received<input aria-label="Cash received from customer" inputMode="decimal" type="number" min={subtotal} step="0.01" value={cashReceived} onChange={event=>setCashReceived(event.target.value)} className="mt-1 w-full rounded-sm border bg-white px-3 py-2 text-base"/></label><p className="mt-2 flex justify-between text-sm"><span>Change due</span><strong>KSh {Math.max(0,Number(cashReceived||0)-subtotal).toLocaleString()}</strong></p></div>}<button onClick={()=>{if(supermarketCheckout&&Number(cashReceived)<subtotal){toast.error('Cash received must cover the amount due');return;}setPaymentPickerOpen(false);void checkout('cash');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Cash{supermarketCheckout&&Number(cashReceived)>subtotal?` · give KSh ${(Number(cashReceived)-subtotal).toLocaleString()} change`:''}</button><button onClick={()=>{setPaymentPickerOpen(false);setCardReference('');setCardModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-slate-700 py-2.5 text-sm font-medium text-white disabled:opacity-50">Card</button><button onClick={()=>{setPaymentPickerOpen(false);void checkout('mpesa');}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-green-800 py-2.5 text-sm font-medium text-white disabled:opacity-50">M-Pesa</button>{!posSettings.disableCreditSaleButton&&<button onClick={()=>{setPaymentPickerOpen(false);setCreditModalOpen(true);}} disabled={!cart.length||checkingOut} className="w-full rounded-sm bg-amber-600 py-2.5 text-sm font-medium text-white disabled:opacity-50">Credit / Tab</button>}<button onClick={()=>setPaymentPickerOpen(false)} className="w-full rounded-sm border py-2 text-sm">Cancel</button></div></div>}
       {multiPayOpen&&<div className="fixed inset-0 z-[76] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="multi-pay-title"><section className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><div><h2 id="multi-pay-title" className="text-xl font-semibold">Multiple payment</h2><p className="mt-1 text-sm text-slate-600">Split the sale across cash and card. Card payments should already be approved on your terminal.</p></div><button onClick={()=>setMultiPayOpen(false)} aria-label="Close multiple payment" className="p-2"><X/></button></header><div className="grid gap-5 p-5 md:grid-cols-[1fr_230px]"><div className="space-y-4">{paymentRows.map((row,index)=><div key={index} className="grid gap-3 rounded-lg bg-white/55 p-4 sm:grid-cols-[1fr_1fr_1.2fr_auto]"><label className="text-sm font-semibold">Amount<input type="number" min="0.01" step="0.01" value={row.amount} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,amount:e.target.value}:item))} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Payment method<select value={row.method} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,method:e.target.value as 'cash'|'card'}:item))} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"><option value="cash">Cash</option><option value="card">Card</option></select></label><label className="text-sm font-semibold">Terminal reference <span className="font-normal text-slate-500">(card only)</span><input value={row.referenceNo} onChange={e=>setPaymentRows(rows=>rows.map((item,i)=>i===index?{...item,referenceNo:e.target.value}:item))} disabled={row.method!=='card'} placeholder="Authorization reference" className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal disabled:bg-slate-100"/></label><button type="button" disabled={paymentRows.length===1} onClick={()=>setPaymentRows(rows=>rows.filter((_,i)=>i!==index))} className="self-end px-3 py-2 text-rose-700 disabled:opacity-30">Remove</button></div>)}<button onClick={addPaymentRow} className="w-full rounded-lg bg-rose-700 px-4 py-3 text-sm font-semibold text-white">Add payment row</button><p className="text-xs text-slate-600">Payment accounts are taken from your accounting settings. Do not enter card numbers or security codes here.</p></div><aside className="h-fit rounded-lg bg-amber-600 p-5 text-white"><p className="text-sm font-semibold">Total payable</p><p className="mt-1 text-2xl font-bold">KSh {subtotal.toLocaleString()}</p><hr className="my-4 border-amber-800/50"/><p className="text-sm font-semibold">Total paying</p><p className="text-xl font-bold">KSh {paymentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0).toLocaleString()}</p><p className="mt-3 text-sm font-semibold">Remaining</p><p className="text-lg font-bold">KSh {Math.max(0,subtotal-paymentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0)).toLocaleString()}</p></aside></div><footer className="flex justify-end gap-3 border-t border-blue-200 px-5 py-4"><button onClick={()=>setMultiPayOpen(false)} className="rounded-lg border border-blue-300 px-5 py-2.5">Close</button><button onClick={finalizeMultiplePay} disabled={checkingOut||!shift} className="rounded-lg bg-rose-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{checkingOut?'Processing…':'Finalize payment'}</button></footer></section></div>}
       {cardModalOpen&&<div className="fixed inset-0 z-[77] flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="card-payment-title"><section className="w-full max-w-2xl rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><h2 id="card-payment-title" className="text-xl font-semibold">Card transaction details</h2><button onClick={()=>setCardModalOpen(false)} aria-label="Close card payment"><X/></button></header><div className="grid gap-4 p-6 sm:grid-cols-2"><label className="text-sm font-semibold">Amount<input readOnly value={`KSh ${subtotal.toLocaleString()}`} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><label className="text-sm font-semibold">Card type<select value={cardBrand} onChange={e=>setCardBrand(e.target.value)} className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"><option>Visa</option><option>Mastercard</option><option>American Express</option><option>Other</option></select></label><label className="text-sm font-semibold sm:col-span-2">Card transaction reference<input autoFocus required value={cardReference} onChange={e=>setCardReference(e.target.value)} placeholder="Enter the approval code from your card terminal" className="mt-1 w-full border border-blue-200 bg-white px-3 py-2 font-normal"/></label><p className="text-xs text-slate-600 sm:col-span-2">Take payment on your card terminal first, then enter its approval reference. This screen never asks for or stores a card number or security code.</p></div><footer className="flex justify-end gap-3 border-t border-blue-200 px-6 py-4"><button onClick={()=>setCardModalOpen(false)} className="rounded-lg border border-blue-300 px-5 py-2.5">Close</button><button onClick={()=>{if(!cardReference.trim()){toast.error('Enter the terminal approval reference');return;}const reference=`${cardBrand}: ${cardReference.trim()}`;setCardModalOpen(false);void checkout('bank',undefined,[{method:'card',amount:subtotal,referenceNo:reference}],'Card');}} disabled={checkingOut||!cart.length||!shift} className="rounded-lg bg-rose-700 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{checkingOut?'Processing…':'Finalize payment'}</button></footer></section></div>}
       {recentOpen&&<div className="fixed inset-0 z-[78] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="recent-transactions-title"><section className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-[#d4e9ff] shadow-2xl"><header className="flex items-center justify-between border-b border-blue-200 px-6 py-4"><div><h2 id="recent-transactions-title" className="text-xl font-semibold">Recent transactions</h2><p className="mt-1 text-sm text-slate-600">Latest sales for the selected location.</p></div><button onClick={()=>setRecentOpen(false)} aria-label="Close recent transactions"><X/></button></header>{recentLoading?<p className="p-8 text-center">Loading recent transactions…</p>:<div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-blue-200"><tr>{['Sale','Customer','Cashier','Payment','When','Total','Items'].map(label=><th key={label} className="px-4 py-3">{label}</th>)}</tr></thead><tbody>{recentSales.map(sale=><tr key={sale.id} className="border-b border-blue-100"><td className="px-4 py-3 font-semibold">{sale.id}</td><td className="px-4 py-3">{sale.customer_name||'Walk-in customer'}</td><td className="px-4 py-3">{sale.created_by_name||'—'}</td><td className="px-4 py-3 capitalize">{sale.payment_method||'—'}</td><td className="px-4 py-3 whitespace-nowrap">{new Date(sale.created_at).toLocaleString()}</td><td className="px-4 py-3 font-semibold">KSh {Number(sale.total).toLocaleString()}</td><td className="px-4 py-3">{sale.items?.reduce((sum:number,item:any)=>sum+Number(item.quantity),0)||0}</td></tr>)}</tbody></table>{!recentSales.length&&<p className="p-8 text-center text-slate-600">No sales found yet.</p>}</div>}<footer className="flex justify-between gap-3 border-t border-blue-200 px-5 py-4"><Link href="/sales" onClick={()=>setRecentOpen(false)} className="text-indigo-800 underline">Open sales history</Link><button onClick={()=>void openRecentTransactions()} className="rounded-lg border border-blue-300 px-4 py-2">Refresh</button></footer></section></div>}
@@ -1003,6 +1018,7 @@ export default function POSPage() {
                 <p className="text-sm text-gray-600">
                   Opening float: KSh {Number(shift.opening_float).toLocaleString()}
                 </p>
+                <p className="text-xs text-gray-500">This shift automatically closes after {Number(shift.duration_hours||12)} hours{shiftCloseTime(shift)?`, at ${shiftCloseTime(shift)}`:''}. The duration is set in Business Settings → Point Of Sale.</p>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Actual Cash Counted</label>
                   <input

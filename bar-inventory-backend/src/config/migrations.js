@@ -85,6 +85,47 @@ async function migrate(connection) {
       await q("UPDATE users u JOIN access_roles r ON r.business_id=u.business_id AND r.name='Cashier' SET u.access_role_id=r.id WHERE u.business_id=? AND u.role='employee' AND u.access_role_id IS NULL",[business.id]);
     }
   });
+  await step('022-customer-contact-schema-repair',async()=>{
+    for(const[column,type]of [
+      ['contact_type',"VARCHAR(20) NOT NULL DEFAULT 'customer'"],
+      ['entity_type',"VARCHAR(20) NOT NULL DEFAULT 'individual'"],
+      ['contact_id','VARCHAR(40) NULL'],
+      ['customer_group','VARCHAR(100) NULL'],
+      ['currency_code',"VARCHAR(3) NOT NULL DEFAULT 'KES'"],
+      ['alternate_phone','VARCHAR(20) NULL'],
+      ['landline','VARCHAR(20) NULL'],
+      ['email','VARCHAR(150) NULL'],
+      ['assigned_to','VARCHAR(120) NULL'],
+      ['account_type','VARCHAR(30) NULL'],
+      ['tax_number','VARCHAR(50) NULL'],
+      ['address_line1','VARCHAR(200) NULL'],
+      ['address_line2','VARCHAR(200) NULL'],
+      ['city','VARCHAR(100) NULL'],
+      ['state','VARCHAR(100) NULL'],
+      ['country','VARCHAR(100) NULL'],
+      ['zip_code','VARCHAR(20) NULL'],
+      ['opening_balance','DECIMAL(15,2) NOT NULL DEFAULT 0'],
+      ['payment_term_value','INT NULL'],
+      ['payment_term_unit','VARCHAR(20) NULL'],
+      ['landmark','VARCHAR(150) NULL'],
+      ['street_name','VARCHAR(150) NULL'],
+      ['building_number','VARCHAR(50) NULL'],
+      ['additional_number','VARCHAR(50) NULL'],
+      ['id_number','VARCHAR(80) NULL'],
+      ...Array.from({length:10},(_,i)=>[`custom_field_${i+1}`,'VARCHAR(200) NULL'])
+    ])await add('customers',column,type);
+    const[indices]=await q('SHOW INDEX FROM customers');
+    if(!indices.some(row=>row.Key_name==='uq_customer_business_contact'))await q('ALTER TABLE customers ADD UNIQUE KEY uq_customer_business_contact(business_id,contact_id)');
+  });
+  await step('023-supermarket-pro-package',async()=>{await require('./platformMigration').migratePlatform(connection);await q("UPDATE access_roles SET permissions_json=JSON_SET(permissions_json,'$.supermarket.view','all') WHERE is_builtin=TRUE AND name='Cashier'");});
+  await step('024-configurable-shift-duration',async()=>{await add('shifts','duration_hours','INT NOT NULL DEFAULT 12');});
+  await step('025-fleet-management',async()=>{await require('./platformMigration').migratePlatform(connection);await require('./fleetMigration').migrateFleet(connection);});
+  await step('026-marketplace-listings',async()=>{
+    await require('./platformMigration').migratePlatform(connection);
+    await q("UPDATE platform_packages SET modules_json=JSON_ARRAY_APPEND(COALESCE(modules_json,JSON_ARRAY()),'$', 'marketplace') WHERE JSON_CONTAINS(COALESCE(modules_json,JSON_ARRAY()),JSON_QUOTE('marketplace'))=0");
+    await q("CREATE TABLE IF NOT EXISTS marketplace_listings (id INT AUTO_INCREMENT PRIMARY KEY,business_id INT NOT NULL,inventory_item_id INT NOT NULL,description TEXT NULL,whatsapp_phone VARCHAR(40) NOT NULL,published BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,UNIQUE KEY uq_marketplace_item(business_id,inventory_item_id),KEY idx_marketplace_published(published,updated_at),CONSTRAINT fk_marketplace_business FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,CONSTRAINT fk_marketplace_inventory FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id) ON DELETE CASCADE)");
+    await q("UPDATE access_roles r JOIN users u ON u.access_role_id=r.id AND u.business_id=r.business_id SET r.permissions_json=JSON_SET(COALESCE(r.permissions_json,JSON_OBJECT()),'$.marketplace.view','all','$.marketplace.create',TRUE,'$.marketplace.update',TRUE) WHERE u.role='admin'");
+  });
 
 }
 module.exports = { migrate };

@@ -15,6 +15,7 @@ async function migratePlatform(connection){
  await connection.query('CREATE TABLE IF NOT EXISTS platform_audit (id BIGINT AUTO_INCREMENT PRIMARY KEY,actor_user_id INT NOT NULL,business_id INT NULL,action VARCHAR(100) NOT NULL,details_json JSON NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)');
  await connection.query('CREATE TABLE IF NOT EXISTS support_sessions (id VARCHAR(64) PRIMARY KEY,actor_user_id INT NOT NULL,target_user_id INT NOT NULL,business_id INT NOT NULL,reason VARCHAR(500) NOT NULL,expires_at DATETIME NOT NULL,ended_at DATETIME NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)');
  for(const p of Object.values(PACKAGES))await connection.query('INSERT IGNORE INTO platform_packages (id,name,price,max_locations,max_members,modules_json) VALUES (?,?,?,?,?,?)',[p.id,p.name,p.price,p.maxLocations,p.maxMembers,JSON.stringify(p.modules)]);
+ const erp=PACKAGES.erp;await connection.query('UPDATE platform_packages SET modules_json=? WHERE id=?',[JSON.stringify(erp.modules),erp.id]);
  await connection.query('INSERT IGNORE INTO platform_settings (id,settings_json) VALUES (1,?)',[JSON.stringify({appName:'StockPro',supportEmail:'',registrationEnabled:true,expiryAlertDays:7})]);
 }
 module.exports={migratePlatform};

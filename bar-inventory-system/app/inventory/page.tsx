@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Cookies from 'js-cookie';
 import { Search, Plus, Download, Upload, FileDown, X } from '../components/TextMark';
 import Navbar from '../components/Navbar';
@@ -322,6 +323,7 @@ export default function InventoryPage() {
             <p className="text-xs text-gray-500 mt-0.5">{items.length} items tracked</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/marketplace?manage=1" className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-sm hover:border-blue-500">Manage marketplace listings</Link>
             <button type="button" onClick={exportCSV} className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 text-sm px-3 py-2 rounded-sm hover:bg-gray-50">
               <Download className="w-3.5 h-3.5" /> Export
             </button>

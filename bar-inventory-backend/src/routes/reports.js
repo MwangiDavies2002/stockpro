@@ -6,6 +6,7 @@ router.use(authenticate);
 router.get('/stock-overview',require('../controllers/operationsReportController').stock);
 router.get('/expenses',require('../controllers/operationsReportController').expenses);
 router.get('/profit', adminOnly, ctrl.getProfit);
+router.get('/dashboard-summary', adminOnly, ctrl.getDashboardSummary);
 router.get('/owner-intelligence', adminOnly, require('../controllers/intelligenceController').overview);
 
 router.get('/stock',            ctrl.getStock);

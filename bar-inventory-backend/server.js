@@ -107,6 +107,8 @@ app.use('/api/etims', etimsRoutes);
 app.use('/api/business-settings', businessSettingsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/fleet', require('./src/routes/fleet'));
+app.use('/api/marketplace', require('./src/routes/marketplace'));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Development-only routes
@@ -131,6 +133,10 @@ function listenAsync(port) {
 async function startServer(startPort, attempts = 5) {
   initializeDatabase();
   await testConnection();
+  const autoCloseShifts=require('./src/controllers/shiftController').autoCloseExpiredShifts;
+  const shiftCloseTimer=setInterval(()=>autoCloseShifts().catch(error=>console.error('Automatic shift closure failed:',error.message)),60_000);
+  shiftCloseTimer.unref();
+  autoCloseShifts().catch(error=>console.error('Automatic shift closure failed:',error.message));
 
   let port = startPort;
   for (let i = 0; i < attempts; i++) {

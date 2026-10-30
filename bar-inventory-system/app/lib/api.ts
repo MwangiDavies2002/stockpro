@@ -105,15 +105,15 @@ const inventoryApi = {
  * Orders API helpers
  */
 const ordersApi = {
-  addPayment: (id: number, data: {amount: number; method: string; treasuryId?: number; referenceNo?: string; notes?: string; requestId: string}) => api.post(`/orders/${id}/payments`, data),
-  getAll: (params?: { status?: string }) => api.get('/orders', { params }),
-  getOne: (id: number) => api.get(`/orders/${id}`),
-  create: (data: OrderPayload) => api.post('/orders', data),
+  addPayment: (id: number, data: {amount: number; method: string; treasuryId?: number; referenceNo?: string; notes?: string; requestId: string}) => api.post(`/orders/${id}/payments`, data,{timeout:120000}),
+  getAll: (params?: { status?: string }) => api.get('/orders', { params,timeout:120000 }),
+  getOne: (id: number) => api.get(`/orders/${id}`,{timeout:120000}),
+  create: (data: OrderPayload) => api.post('/orders', data,{timeout:120000}),
   update: (id: number, data: Partial<OrderPayload>) =>
-    api.put(`/orders/${id}`, data),
+    api.put(`/orders/${id}`, data,{timeout:120000}),
   delete: (id: number) => api.delete(`/orders/${id}`),
   updateStatus: (id: number, status: string) =>
-    api.patch(`/orders/${id}/status`, { status }),
+    api.patch(`/orders/${id}/status`, { status },{timeout:120000}),
 };
 const shiftsApi = {
   getCurrent: () => api.get('/shifts/current'),
@@ -142,6 +142,7 @@ const suppliersApi = {
 const stockTransfersApi={getAll:()=>api.get('/stock-transfers'),getOne:(id:number)=>api.get(`/stock-transfers/${id}`),create:(data:any)=>api.post('/stock-transfers',data)};
 const expensesApi={getAll:()=>api.get('/expenses'),getOne:(id:number)=>api.get(`/expenses/${id}`),categories:()=>api.get('/expenses/categories'),saveCategory:(data:any,id?:number)=>id?api.put(`/expenses/categories/${id}`,data):api.post('/expenses/categories',data),create:(data:any)=>api.post('/expenses',data),reverse:(id:number,data:any)=>api.post(`/expenses/${id}/reverse`,data)};
 const reportsApi = {
+  dashboardSummary:(days:number)=>api.get('/reports/dashboard-summary',{params:{days},timeout:30000}),
   stockOverview:(days:number,locationId?:number)=>api.get('/reports/stock-overview',{params:{days,locationId}}),
   expenses:(days:number,locationId?:number)=>api.get('/reports/expenses',{params:{days,locationId}}),
   getProfit: (days: number) => api.get('/reports/profit', { params: { days } }),
@@ -250,6 +251,8 @@ const subscriptionsApi = {
   approve: (id: number) => api.patch(`/subscriptions/${id}/approve`),
 };
 const loyaltyApi = { getCustomers: () => api.get('/loyalty/customers'), getRedemptions: () => api.get('/loyalty/redemptions'), redeem: (data: { customerId: number; reward: string; points: number }) => api.post('/loyalty/redeem', data) };
+const fleetApi={dashboard:()=>api.get('/fleet/dashboard'),list:(resource:string)=>api.get(`/fleet/${resource}`),create:(resource:string,data:any)=>api.post(`/fleet/${resource}`,data),update:(resource:string,id:number,data:any)=>api.put(`/fleet/${resource}/${id}`,data),remove:(resource:string,id:number)=>api.delete(`/fleet/${resource}/${id}`)};
+const marketplaceApi={search:(q='')=>api.get('/marketplace/products',{params:q?{q}:undefined}),getProduct:(id:string|number)=>api.get(`/marketplace/products/${id}`),manage:()=>api.get('/marketplace/manage'),save:(id:number,data:{description:string;whatsappPhone:string;published:boolean})=>api.put(`/marketplace/manage/${id}`,data)};
 
 export const etimsApi = {
   initialize:()=>api.post('/etims/initialize'),
@@ -404,5 +407,5 @@ export interface DiscountPayload {
   active?: boolean;
 }
 
-export { stockTransfersApi,expensesApi,inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi };
+export { stockTransfersApi,expensesApi,inventoryApi, ordersApi, suppliersApi, reportsApi, mpesaApi, salesApi, salesDocumentsApi, discountsApi, usersApi, shiftsApi, locationsApi, customersApi, subscriptionsApi, loyaltyApi, accountsApi, treasuryApi, settingsApi, journalEntryApi, referenceDataApi, fleetApi, marketplaceApi };
 export default api;

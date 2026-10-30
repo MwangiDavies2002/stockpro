@@ -28,7 +28,28 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 print:bg-white print:p-0">
       <style jsx global>{`
+        #receipt-print {
+          background: #fff !important;
+          color: #000 !important;
+          color-scheme: light;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        #receipt-print * {
+          color: #000 !important;
+        }
+        #receipt-print .border-black {
+          border-color: #000 !important;
+        }
         @media print {
+          @page {
+            margin: 0;
+          }
+          html,
+          body {
+            background: #fff !important;
+            color: #000 !important;
+          }
           body * {
             visibility: hidden;
           }
@@ -40,6 +61,8 @@ export default function Receipt({ saleId, items, total, paymentMethod, cashierNa
             top: 0;
             left: 0;
             width: 80mm;
+            background: #fff !important;
+            color: #000 !important;
           }
         }
       `}</style>

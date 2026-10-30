@@ -57,10 +57,13 @@ exports.update = async (req, res, next) => {
     if (logoUrl.length > 2800000 || (logoUrl && !validLogo)) invalid('Choose a PNG, JPG or WebP logo under 2MB');
 
     const editDays = Number(body.transactionEditDays ?? stored.transactionEditDays ?? 30);
+    const shiftDurationHours=Number(body.shiftDurationHours??stored.shiftDurationHours??12);
     const profit = Number(body.defaultProfitPercent ?? stored.defaultProfitPercent ?? 0);
     const currencyPrecision = Number(body.currencyPrecision ?? stored.currencyPrecision ?? 2);
     const quantityPrecision = Number(body.quantityPrecision ?? stored.quantityPrecision ?? 2);
     if (!Number.isInteger(editDays) || editDays < 0 || editDays > 3650) invalid('Transaction edit days must be from 0 to 3650');
+    if (!Number.isInteger(shiftDurationHours) || shiftDurationHours < 1 || shiftDurationHours > 72) invalid('Shift duration must be a whole number from 1 to 72 hours');
+    if (!Number.isInteger(shiftDurationHours) || shiftDurationHours < 1 || shiftDurationHours > 72) invalid('Shift duration must be a whole number from 1 to 72 hours');
     if (!Number.isFinite(profit) || profit < 0 || profit > 1000) invalid('Default profit percent must be from 0 to 1000');
     if (!Number.isInteger(currencyPrecision) || currencyPrecision < 0 || currencyPrecision > 4) invalid('Currency precision must be from 0 to 4');
     if (!Number.isInteger(quantityPrecision) || quantityPrecision < 0 || quantityPrecision > 6) invalid('Quantity precision must be from 0 to 6');
@@ -95,6 +98,8 @@ exports.update = async (req, res, next) => {
     for (const key of ['businessName','startDate','currency','logoUrl','timezone','stockAccountingMethod','financialYearStartMonth']) delete config[key];
     if (body.saleSizeGroups !== undefined) config.saleSizeGroups = validateSaleSizeGroups(body.saleSizeGroups);
     config.transactionEditDays = editDays;
+    config.shiftDurationHours=shiftDurationHours;
+    config.shiftDurationHours=shiftDurationHours;
     config.defaultProfitPercent = profit;
     config.currencyPrecision = currencyPrecision;
     config.quantityPrecision = quantityPrecision;

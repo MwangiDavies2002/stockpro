@@ -22,7 +22,7 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
   });
   const [glAccounts, setGlAccounts] = useState<any[]>([]);
   const [linked, setLinked] = useState('');
-  useEffect(() => { accountsApi.getAll().then(r => setGlAccounts(r.data)).catch(() => setError('Unable to load Chart of Accounts')); setLinked(String(account?.linked_gl_account || '')); }, [account]);
+  useEffect(() => { accountsApi.getAll().then(r => setGlAccounts(r.data)).catch(() => setError('Unable to load Chart of Accounts')); setLinked(account ? String(account.linked_gl_account || '') : 'auto'); }, [account]);
   const submitting=useRef(false);
   const [requestId]=useState(()=>crypto.randomUUID());
   const [loading, setLoading] = useState(false);
@@ -92,7 +92,7 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
 
       const payload = {
         ...formData,requestId,
-        name: formData.account_name, type: formData.account_type || 'Cash', linked_gl_account: Number(linked),
+        name: formData.account_name,         type: formData.account_type || 'Cash', linked_gl_account: linked === 'auto' ? undefined : Number(linked), autoCreateGlAccount: linked === 'auto',
         details: detailsJson
       };
 
@@ -153,10 +153,11 @@ export default function EditAccountModal({ account, onClose, onSave }: EditAccou
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Chart of Accounts account:*</label>
               <select required disabled={!!account?.id} value={linked} onChange={e => setLinked(e.target.value)} className="w-full px-3 py-2 border border-gray-300">
+                {!account?.id && <option value="auto">Create a matching Chart of Accounts asset automatically</option>}
                 <option value="">Select an existing asset account</option>
                 {glAccounts.filter(a => a.account_type === 'Assets' && (a.active||String(a.id)===linked)).map(a => <option key={a.id} value={a.id}>{[a.account_type, a.account_subtype, a.detail_type, a.account_name].filter(Boolean).join(' / ')} ({a.account_code})</option>)}
               </select>
-              <p className="text-sm text-gray-600 mt-2">Choose any active asset account you created in Chart of Accounts. Its name is up to you; Treasury will use the selected account and its ledger balance.</p>
+              <p className="text-sm text-gray-600 mt-2">By default, Treasury creates a matching asset ledger in Chart of Accounts. You can instead link an existing active asset account.</p>
             </div>
 
             {!account?.id && <label className="block text-sm font-medium">Opening Treasury balance (KES)

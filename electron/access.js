@@ -3,6 +3,7 @@ function ensureCashierRole(db,bid){
  let role=db.prepare("SELECT * FROM access_roles WHERE business_id=? AND name='Cashier'").get(bid);
  if(!role){db.prepare('INSERT OR IGNORE INTO access_roles(business_id,name,permissions_json,is_builtin) VALUES (?,?,?,1)').run(bid,'Cashier',JSON.stringify(policy.permissionDefaults(false)));role=db.prepare("SELECT * FROM access_roles WHERE business_id=? AND name='Cashier'").get(bid);}
  else if(!role.is_builtin){db.prepare('UPDATE access_roles SET is_builtin=1 WHERE id=? AND business_id=?').run(role.id,bid);role.is_builtin=1;}
+ if(role?.is_builtin){const permissions=policy.normalizePermissions(role.permissions_json);if(permissions.supermarket.view==='none'){permissions.supermarket.view='all';db.prepare('UPDATE access_roles SET permissions_json=? WHERE id=? AND business_id=?').run(JSON.stringify(permissions),role.id,bid);role.permissions_json=JSON.stringify(permissions);}}
  return role;
 }
 function loadAccess(db,user){

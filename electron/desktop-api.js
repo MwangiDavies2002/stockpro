@@ -142,6 +142,7 @@ function apiRequest(db,request){
     if(!timezone||timezone.length>80)fail('Enter a valid time zone');
     if(!Number.isInteger(month)||month<1||month>12)fail('Financial year start month must be between 1 and 12');
     if(!['fifo','lifo','weighted_average'].includes(method))fail('Choose a valid stock accounting method');
+    if(!Number.isInteger(Number(next.shiftDurationHours??12))||Number(next.shiftDurationHours??12)<1||Number(next.shiftDurationHours??12)>72)fail('Shift duration must be a whole number from 1 to 72 hours');
     if(!Number.isInteger(Number(next.transactionEditDays??30))||Number(next.transactionEditDays??30)<0||Number(next.transactionEditDays??30)>3650)fail('Transaction edit days must be from 0 to 3650');
     if(!Number.isFinite(Number(next.defaultProfitPercent??0))||Number(next.defaultProfitPercent??0)<0||Number(next.defaultProfitPercent??0)>1000)fail('Default profit percent must be from 0 to 1000');
     run('UPDATE businesses SET name=?,currency=?,timezone=?,settings_json=? WHERE id=?',name,currency,timezone,JSON.stringify(next),bid);

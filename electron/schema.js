@@ -36,14 +36,16 @@ function upgrade(db){
     CREATE TABLE IF NOT EXISTS platform_audit(id INTEGER PRIMARY KEY,actor_user_id INTEGER NOT NULL,business_id INTEGER,action TEXT NOT NULL,details_json TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS support_sessions(id TEXT PRIMARY KEY,actor_user_id INTEGER NOT NULL,target_user_id INTEGER NOT NULL,business_id INTEGER NOT NULL,reason TEXT NOT NULL,expires_at TEXT NOT NULL,ended_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
   for(const p of Object.values(require('../bar-inventory-backend/src/utils/accessPolicy').PACKAGES))db.prepare('INSERT OR IGNORE INTO platform_packages(id,name,price,max_locations,max_members,modules_json) VALUES (?,?,?,?,?,?)').run(p.id,p.name,p.price,p.maxLocations,p.maxMembers,JSON.stringify(p.modules));
+  const erp=require('../bar-inventory-backend/src/utils/accessPolicy').PACKAGES.erp;db.prepare('UPDATE platform_packages SET modules_json=? WHERE id=?').run(JSON.stringify(erp.modules),erp.id);
   db.prepare('INSERT OR IGNORE INTO platform_settings(id,settings_json) VALUES (1,?)').run(JSON.stringify({appName:'StockPro',supportEmail:'',registrationEnabled:true,expiryAlertDays:7}));
   db.prepare('UPDATE businesses SET created_at=CURRENT_TIMESTAMP WHERE created_at IS NULL').run();
   require('./operations-schema').upgrade(db);
+  require('./fleet-schema').upgrade(db);
   const fields={
     users:{username:'TEXT',is_owner:'INTEGER DEFAULT 0',access_role_id:'INTEGER'},
     inventory_items:{location_id:'INTEGER DEFAULT 1',category_id:'INTEGER',unit_id:'INTEGER',brand_id:'INTEGER',brand:'TEXT',barcode:'TEXT',barcode_type:'TEXT NOT NULL DEFAULT \'code128\'',sku:'TEXT',image_url:'TEXT',previous_unit_price:'REAL',previous_discount:'REAL',track_serial_numbers:'INTEGER NOT NULL DEFAULT 0',serial_number:'TEXT',chassis_number:'TEXT',color:'TEXT',lot_number:'TEXT',not_for_selling:'INTEGER NOT NULL DEFAULT 0'},
     locations:{active:'INTEGER DEFAULT 1',payment_options:'TEXT'},customers:{active:'INTEGER DEFAULT 1',contact_type:"TEXT NOT NULL DEFAULT 'customer'",entity_type:"TEXT NOT NULL DEFAULT 'individual'",contact_id:'TEXT',customer_group:'TEXT',currency_code:"TEXT NOT NULL DEFAULT 'KES'",alternate_phone:'TEXT',landline:'TEXT',email:'TEXT',assigned_to:'TEXT',account_type:'TEXT',tax_number:'TEXT',address_line1:'TEXT',address_line2:'TEXT',city:'TEXT',state:'TEXT',country:'TEXT',zip_code:'TEXT',opening_balance:'REAL NOT NULL DEFAULT 0',payment_term_value:'INTEGER',payment_term_unit:'TEXT',landmark:'TEXT',street_name:'TEXT',building_number:'TEXT',additional_number:'TEXT',id_number:'TEXT',...Object.fromEntries(Array.from({length:10},(_,i)=>[`custom_field_${i+1}`,'TEXT']))},
-    shifts:{user_id:'INTEGER',closing_expected:'REAL DEFAULT 0',closing_actual:'REAL DEFAULT 0',variance:'REAL DEFAULT 0',notes:'TEXT'},
+    shifts:{user_id:'INTEGER',closing_expected:'REAL DEFAULT 0',closing_actual:'REAL DEFAULT 0',variance:'REAL DEFAULT 0',notes:'TEXT',duration_hours:'INTEGER NOT NULL DEFAULT 12'},
     sales:{created_by:'INTEGER',location_id:'INTEGER DEFAULT 1',customer_id:'INTEGER',notes:'TEXT'},
     sale_items:{item_name:'TEXT',unit_cost:'REAL',net_revenue:'REAL'},
     chart_of_accounts:{parent_id:'INTEGER',account_subtype:'TEXT',detail_type:'TEXT',details:'TEXT'},

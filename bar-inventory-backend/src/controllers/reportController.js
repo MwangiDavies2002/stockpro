@@ -36,6 +36,28 @@ async function getProfit(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getDashboardSummary(req,res,next){
+  try{
+    const days=Number(req.query.days??30);if(!Number.isInteger(days)||days<1||days>3660)return res.status(400).json({message:'Days must be a whole number between 1 and 3660'});
+    const w=await reportingWindow(req,days),bid=w.bid,since=w.since,until=w.until;
+    const [sales,credits,gross,invoiceDue,purchases,purchaseDue,expenses]=await Promise.all([
+      query('SELECT COALESCE(SUM(total),0) total FROM sales WHERE business_id=? AND created_at>=? AND created_at<?',[bid,since,until]),
+      query("SELECT COALESCE(SUM(total),0) total FROM sales_documents WHERE business_id=? AND type='credit_note' AND status='issued' AND created_at>=? AND created_at<?",[bid,since,until]),
+      query(`SELECT COALESCE(SUM(CASE WHEN unit_cost IS NULL THEN 1 ELSE 0 END),0) missing_cost_lines,COALESCE(SUM(CASE WHEN unit_cost IS NULL THEN 0 ELSE revenue-quantity*unit_cost END),0) gross_profit FROM (
+        SELECT si.quantity,si.unit_cost,COALESCE(si.net_revenue,si.quantity*si.unit_price) revenue FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE s.business_id=? AND s.created_at>=? AND s.created_at<?
+        UNION ALL
+        SELECT -ci.quantity,ci.unit_cost,-ci.subtotal FROM sales_document_items ci JOIN sales_documents cn ON cn.id=ci.document_id WHERE cn.business_id=? AND cn.type='credit_note' AND cn.status='issued' AND cn.created_at>=? AND cn.created_at<?
+      ) AS profit_events`,[bid,since,until,bid,since,until]),
+      query("SELECT COALESCE(SUM(balance_due),0) total FROM sales_documents WHERE business_id=? AND type='invoice' AND status IN ('issued','partial')",[bid]),
+      query("SELECT COALESCE(SUM(total),0) total FROM orders WHERE business_id=? AND transaction_type='purchase' AND status='delivered' AND purchase_date>=? AND purchase_date<?",[bid,since,until]),
+      query("SELECT COALESCE(SUM(GREATEST(total-COALESCE(paid_amount,0),0)),0) total FROM orders WHERE business_id=? AND transaction_type='purchase' AND status='delivered'",[bid]),
+      query('SELECT COALESCE(SUM(CASE WHEN expense_date>=? AND expense_date<? THEN amount ELSE 0 END),0)-COALESCE(SUM(CASE WHEN reversal_date>=? AND reversal_date<? THEN amount ELSE 0 END),0) total FROM expenses WHERE business_id=?',[since,until,since,until,bid])
+    ]);
+    const totalSales=Number(sales.rows[0].total),creditNotes=Number(credits.rows[0].total),grossData=gross.rows[0];
+    res.json({days,currency:w.business.currency||'KES',totalSales,grossProfit:Number(grossData.missing_cost_lines)?null:Number(grossData.gross_profit),missingCostLines:Number(grossData.missing_cost_lines),invoiceDue:Number(invoiceDue.rows[0].total),netSales:Number((totalSales-creditNotes).toFixed(2)),creditNotes,totalPurchases:Number(purchases.rows[0].total),purchaseDue:Number(purchaseDue.rows[0].total),purchaseCreditNotes:0,purchaseCreditNotesTracked:false,expenses:Number(expenses.rows[0].total)});
+  }catch(err){next(err);}
+}
+
 /* GET /api/reports/stock */
 /**
  * Report: current stock levels with a status of LOW/OK per item.
@@ -115,4 +137,4 @@ async function getLedger(_req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getProfit, getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getBenchmarks, getProductPairs, getLossAlerts, getStaffPerformance, getLedger };
+module.exports = { getProfit, getDashboardSummary, getStock, getUsage, getSaleSizeGroups, getSalesTrend, getHourlySales, getBenchmarks, getProductPairs, getLossAlerts, getStaffPerformance, getLedger };

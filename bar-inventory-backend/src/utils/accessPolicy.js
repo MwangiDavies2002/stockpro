@@ -2,19 +2,21 @@ const mysql = require('mysql2');
 const MODULES = [
   ['pos','Point of sale'],['inventory','Products and stock'],['sales','Sales and sales documents'],
   ['customers','Customers'],['reports','Reports'],['expenses','Expenses'],['purchases','Purchases'],['suppliers','Suppliers'],
-  ['discounts','Discounts'],['loyalty','Loyalty'],['network','Business network'],['accounting','Accounting and treasury'],
-  ['users','Members'],['roles','Roles'],['locations','Locations'],['settings','Business settings'],['payments','M-Pesa payments'],['integrations','Integrations']
+  ['discounts','Discounts'],['loyalty','Loyalty'],['network','Business network'],['marketplace','Public product marketplace'],['accounting','Accounting and treasury'],
+  ['users','Members'],['roles','Roles'],['locations','Locations'],['settings','Business settings'],['payments','M-Pesa payments'],['integrations','Integrations'],['supermarket','Supermarket operations'],['fleet','Fleet management']
 ].map(([key,label])=>({key,label,own:['sales','purchases'].includes(key)}));
-const COMMON=['expenses','pos','inventory','sales','customers','reports','users','roles','locations','settings','payments','integrations'];
+const COMMON=['expenses','pos','inventory','sales','customers','reports','users','roles','locations','settings','payments','integrations','marketplace'];
 const PACKAGES={
   basic:{id:'basic',name:'Basic POS',price:1000,maxLocations:2,maxMembers:5,modules:COMMON},
   growth:{id:'growth',name:'Growth',price:5000,maxLocations:5,maxMembers:null,modules:[...COMMON,'purchases','suppliers','discounts','loyalty','accounting']},
-  erp:{id:'erp',name:'ERP',price:30000,maxLocations:null,maxMembers:null,modules:MODULES.map(m=>m.key)}
+  erp:{id:'erp',name:'ERP',price:30000,maxLocations:null,maxMembers:null,modules:MODULES.map(m=>m.key)},
+  supermarket:{id:'supermarket',name:'Supermarket Pro',price:12000,maxLocations:5,maxMembers:null,modules:[...new Set([...MODULES.map(m=>m.key),'supermarket'])]},
+  fleet:{id:'fleet',name:'Fleet Pro',price:15000,maxLocations:5,maxMembers:null,modules:MODULES.map(m=>m.key).filter(key=>key!=='supermarket')}
 };
 const fail=(message,status=403)=>{throw Object.assign(new Error(message),{status});};
 function parse(value,fallback){try{return typeof value==='string'?JSON.parse(value):value||fallback;}catch{return fallback;}}
 function planFor(id){return PACKAGES[id]||PACKAGES.basic;}
-function permissionDefaults(admin=false){return Object.fromEntries(MODULES.map(({key})=>[key,{view:admin?'all':['pos','inventory','sales','customers','locations','payments'].includes(key)?(key==='sales'?'own':'all'):'none',create:admin||['pos','sales','customers','payments'].includes(key),update:admin||key==='pos',delete:admin,payments:admin||key==='sales',price:admin,discount:admin,export:admin}]));}
+function permissionDefaults(admin=false){return Object.fromEntries(MODULES.map(({key})=>[key,{view:admin?'all':['pos','inventory','sales','customers','locations','payments','supermarket'].includes(key)?(key==='sales'?'own':'all'):'none',create:admin||['pos','sales','customers','payments'].includes(key),update:admin||key==='pos',delete:admin,payments:admin||key==='sales',price:admin,discount:admin,export:admin}]));}
 function normalizePermissions(value){
  const source=parse(value,{}),result={};
  for(const module of MODULES){const p=source[module.key]||{};result[module.key]={view:['none','all',...(module.own?['own']:[])].includes(p.view)?p.view:'none'};for(const action of ['create','update','delete','payments','price','discount','export'])result[module.key][action]=p[action]===true;}
@@ -35,9 +37,11 @@ function moduleFor(path,body={}){
  if(url.startsWith('/reports')||url.startsWith('/notifications'))return 'reports';
  if(url.startsWith('/orders'))return 'purchases';
  if(url.startsWith('/business-settings'))return 'settings';
+ if(url.startsWith('/marketplace'))return 'marketplace';
  if(url.startsWith('/etims'))return 'integrations';
  if(url.startsWith('/mpesa'))return 'payments';
  if(url.startsWith('/owner-network'))return 'network';
+ if(url.startsWith('/supermarket'))return 'supermarket';
  if(url.startsWith('/shifts'))return 'pos';
  return MODULES.find(m=>url===`/${m.key}`||url.startsWith(`/${m.key}/`))?.key||null;
 }

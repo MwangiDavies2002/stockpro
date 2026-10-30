@@ -5,13 +5,14 @@ const {openDatabase,apiRequest}=require('./db');
 const {authenticate}=require('./desktop-api');
 const {serveRenderer}=require('./renderer-server');
 const {exportBackup,restoreBackup}=require('./backups');
-let db,backupTimer,renderer,restoring=false;
+let db,backupTimer,shiftTimer,renderer,restoring=false;
 const dataRoot=()=>process.env.STOCKPRO_DATA_DIR||(app.isPackaged?app.getPath('userData'):path.join(app.getAppPath(),'stockpro-user-data'));
 function trusted(event){if(!renderer||new URL(event.senderFrame.url).origin!==renderer.url)throw new Error('Untrusted request origin');}
 function admin(authorization){const user=authenticate(db,authorization);if(user.supportSession||!user.is_owner)throw new Error('Only the business owner can back up or restore the database');}
 function createWindow(){const win=new BrowserWindow({width:1440,height:900,show:process.env.STOCKPRO_AUDIT_MODE!=='1',webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(event,url)=>{if(new URL(url).origin!==renderer.url)event.preventDefault();});win.loadURL(renderer.url);return win;}
 app.whenReady().then(async()=>{
   const root=dataRoot();db=openDatabase(root);renderer=await serveRenderer(path.join(__dirname,'../bar-inventory-system/out'));
+  const sweepShifts=()=>{if(restoring)return;try{require('./shifts').sweep(db);}catch(error){console.error('Automatic shift closure failed:',error.message);}};sweepShifts();shiftTimer=setInterval(sweepShifts,60_000);
   ipcMain.handle('api:request',async(event,request)=>{try{trusted(event);if(restoring)throw new Error('Database restore is in progress');return await apiRequest(db,request);}catch(error){return{__stockproError:true,message:error.message,status:error.status||400};}});
   ipcMain.handle('share:whatsapp',async(event,authorization,text)=>{trusted(event);const user=authenticate(db,authorization);await require('./share-report').shareWhatsApp(user,text,url=>shell.openExternal(url));});
   ipcMain.handle('share:document-whatsapp',async(event,authorization,phone,text,kind)=>{trusted(event);const user=authenticate(db,authorization);await require('./share-report').shareDocumentWhatsApp(user,phone,text,kind,url=>shell.openExternal(url));});
@@ -26,4 +27,4 @@ app.whenReady().then(async()=>{
   app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});
 }).catch(error=>{console.error(error.message);app.exit(1);});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
-app.on('will-quit',()=>{clearInterval(backupTimer);renderer?.server.close();if(db?.open)db.close();});
+app.on('will-quit',()=>{clearInterval(backupTimer);clearInterval(shiftTimer);renderer?.server.close();if(db?.open)db.close();});

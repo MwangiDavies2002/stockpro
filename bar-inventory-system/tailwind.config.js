@@ -70,9 +70,9 @@ module.exports = {
         },
       },
       borderRadius: {
-        lg: '2px',
-        md: '2px',
-        sm: '2px',
+        lg: '0.75rem',
+        md: '0.625rem',
+        sm: '0.5rem',
       },
     },
   },

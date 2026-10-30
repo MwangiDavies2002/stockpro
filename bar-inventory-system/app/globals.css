@@ -183,3 +183,90 @@ input[type="checkbox"], input[type="radio"] { accent-color: rgb(var(--brand-rgb,
 .text-green-900,.text-emerald-900,.text-blue-900,.text-indigo-900,.text-purple-900,.text-violet-900,.text-pink-900,.text-cyan-900,.text-teal-900,.text-orange-900,.text-yellow-900,.text-lime-900,.text-sky-900,.text-fuchsia-900 { color: rgb(var(--brand-ink-rgb, 53 79 67)); }
 
 :root { --brand-rgb: 53 79 67; --brand-ink-rgb: 53 79 67; --chart-accent: #354f43; --brand-on: #fff; --theme-50: 247 248 247; --theme-100: 237 239 238; --theme-200: 215 220 217; --theme-300: 178 188 184; --theme-400: 134 149 142; --theme-500: 83 105 95; --theme-600: 53 79 67; --theme-700: 45 67 57; --theme-800: 37 55 47; --theme-900: 26 40 34; --theme-950: 19 28 23; }
+
+html[data-theme-mode="dark"] { color-scheme: dark; --background: 220 14% 10%; --foreground: 210 20% 92%; --border: 215 15% 27%; --input: 215 15% 27%; --muted: 217 15% 17%; --muted-foreground: 215 12% 68%; }
+html[data-theme-mode="dark"] body { background-color: #171a20; color: #e5e7eb; }
+html[data-theme-mode="dark"] .bg-white,
+html[data-theme-mode="dark"] .bg-white\/50,
+html[data-theme-mode="dark"] .bg-white\/55,
+html[data-theme-mode="dark"] .bg-gray-50,
+html[data-theme-mode="dark"] .bg-gray-100,
+html[data-theme-mode="dark"] .bg-slate-50,
+html[data-theme-mode="dark"] .bg-slate-100,
+html[data-theme-mode="dark"] .bg-stone-50,
+html[data-theme-mode="dark"] .bg-gray-50\/50 { background-color: #20242c !important; }
+html[data-theme-mode="dark"] .bg-gray-200,
+html[data-theme-mode="dark"] .bg-slate-200,
+html[data-theme-mode="dark"] .bg-stone-100 { background-color: #2a303a !important; }
+html[data-theme-mode="dark"] .text-gray-900,
+html[data-theme-mode="dark"] .text-slate-900,
+html[data-theme-mode="dark"] .text-gray-800,
+html[data-theme-mode="dark"] .text-slate-800,
+html[data-theme-mode="dark"] .text-gray-700,
+html[data-theme-mode="dark"] .text-slate-700,
+html[data-theme-mode="dark"] .text-gray-600,
+html[data-theme-mode="dark"] .text-slate-600,
+html[data-theme-mode="dark"] .text-gray-500,
+html[data-theme-mode="dark"] .text-slate-500,
+html[data-theme-mode="dark"] .text-gray-400,
+html[data-theme-mode="dark"] .text-slate-400 { color: #d1d5db !important; }
+html[data-theme-mode="dark"] .border-gray-100,
+html[data-theme-mode="dark"] .border-gray-200,
+html[data-theme-mode="dark"] .border-gray-300,
+html[data-theme-mode="dark"] .border-slate-100,
+html[data-theme-mode="dark"] .border-slate-200,
+html[data-theme-mode="dark"] .border-slate-300,
+html[data-theme-mode="dark"] .border-stone-200 { border-color: #3a414d !important; }
+html[data-theme-mode="dark"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme-mode="dark"] select,
+html[data-theme-mode="dark"] textarea { background-color: #171a20; color: #e5e7eb; border-color: #454d5a; color-scheme: dark; }
+html[data-theme-mode="dark"] input::placeholder,
+html[data-theme-mode="dark"] textarea::placeholder { color: #9ca3af; }
+html[data-theme-mode="dark"] table thead,
+html[data-theme-mode="dark"] .divide-y > :not([hidden]) ~ :not([hidden]) { border-color: #3a414d; }
+html[data-theme-mode="dark"] .odd\:bg-slate-50:nth-child(odd) { background-color: #252a33; }
+html[data-theme-mode="dark"] .site-footer { color: #cbd5e1; border-color: #3a414d; }
+html[data-theme-mode="dark"] .theme-options { color: #e5e7eb; }
+html[data-theme-mode="dark"] [data-sonner-toast] { background: #2a303a !important; }
+html[data-theme-mode="dark"] [data-radix-dialog-content] {
+  background-color: #20242c !important;
+  color: #f3f4f6 !important;
+}
+html[data-theme-mode="dark"] [class*="bg-white"] {
+  background-color: #20242c !important;
+}
+html[data-theme-mode="dark"] [class*="bg-gray-50"],
+html[data-theme-mode="dark"] [class*="bg-gray-100"],
+html[data-theme-mode="dark"] [class*="bg-slate-50"],
+html[data-theme-mode="dark"] [class*="bg-slate-100"],
+html[data-theme-mode="dark"] [class*="bg-stone-50"] {
+  background-color: #20242c !important;
+}
+html[data-theme-mode="dark"] [class*="text-gray-"],
+html[data-theme-mode="dark"] [class*="text-slate-"],
+html[data-theme-mode="dark"] [class*="text-stone-"] {
+  color: #d1d5db !important;
+}
+html[data-theme-mode="dark"] [data-radix-dialog-content] [class*="text-gray-"],
+html[data-theme-mode="dark"] [data-radix-dialog-content] [class*="text-slate-"],
+html[data-theme-mode="dark"] [data-radix-dialog-content] [class*="text-stone-"] {
+  color: #d1d5db !important;
+}
+html[data-theme-mode="dark"] .loading-sheet {
+  background-color: #20242c;
+  border-color: #3a414d;
+}
+html[data-theme-mode="dark"] .loading-sheet p {
+  color: #d1d5db !important;
+}
+html[data-theme-mode="dark"] .skeleton-line {
+  background-color: #3a414d;
+}
+
+/* Keep framed panels and unstyled controls rounded across every screen. */
+:where(.border, .border-2, .border-4, .border-8):not([class*="rounded-"]) {
+  border-radius: 0.5rem;
+}
+:where(button, input, select, textarea):not([class*="rounded-"]) {
+  border-radius: 0.5rem;
+}

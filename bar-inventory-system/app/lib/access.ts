@@ -10,6 +10,8 @@ export function pageModule(path:string):string|null {
  if(path.startsWith('/business/settings'))return 'settings';
  if(path.startsWith('/payments'))return 'payments';
  if(path.startsWith('/network'))return 'network';
+ if(path.startsWith('/supermarket'))return 'supermarket';
+ if(path.startsWith('/fleet'))return 'fleet';
  return ['expenses','pos','customers','suppliers','locations','users','roles','discounts','loyalty'].find(key=>path===`/${key}`||path.startsWith(`/${key}/`))||null;
 }
 export function canVisit(access:Access|undefined,path:string){
